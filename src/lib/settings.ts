@@ -1,0 +1,104 @@
+import { LazyStore } from "@tauri-apps/plugin-store";
+
+export type InstallerFormat = "msi" | "deb" | "dmg";
+
+export interface PortableSettings {
+  windows: boolean;
+  linux: boolean;
+  macos: boolean;
+}
+
+export interface InstallerSettings {
+  windows: { enabled: boolean; format: "msi" };
+  linux: { enabled: boolean; format: "deb" };
+  macos: { enabled: boolean; format: "dmg" };
+}
+
+export interface PluginSettings {
+  steam: boolean;
+}
+
+export interface CompressionSettings {
+  enabled: boolean;
+  level: number;
+  maxPackSize: string;
+  exclude: string[];
+  bootInclude: string[];
+}
+
+export interface PackmasterSettings {
+  sourceDir: string | null;
+  portable: PortableSettings;
+  installers: InstallerSettings;
+  plugins: PluginSettings;
+  compression: CompressionSettings;
+}
+
+// Mirrors `mach bundle`'s own defaults (see the engine's
+// python/servo/post_build_commands.py) so a user who never touches these
+// screens still gets exactly what a plain `mach bundle` invocation would
+// have produced.
+export const defaultSettings: PackmasterSettings = {
+  sourceDir: null,
+  portable: {
+    windows: true,
+    linux: true,
+    macos: true,
+  },
+  installers: {
+    windows: { enabled: false, format: "msi" },
+    linux: { enabled: false, format: "deb" },
+    macos: { enabled: false, format: "dmg" },
+  },
+  plugins: {
+    steam: false,
+  },
+  compression: {
+    enabled: true, // --content-compress=auto is the engine's own default
+    level: 1,
+    maxPackSize: "500M",
+    exclude: [],
+    bootInclude: [],
+  },
+};
+
+// A single persisted store, loaded lazily on first access — every user
+// change to any setting on the configure screen is written back here, and
+// read back the next time Packmaster starts (see this project's own
+// CLAUDE.md and the main engine repo's CLAUDE.md, which requires asking
+// whether any *new* shell setting should also get a home here).
+const STORE_FILE = "settings.json";
+const SETTINGS_KEY = "settings";
+
+let storeInstance: LazyStore | null = null;
+
+function getStore(): LazyStore {
+  if (!storeInstance) {
+    storeInstance = new LazyStore(STORE_FILE);
+  }
+  return storeInstance;
+}
+
+export async function loadSettings(): Promise<PackmasterSettings> {
+  const store = getStore();
+  const stored = await store.get<PackmasterSettings>(SETTINGS_KEY);
+  if (!stored) {
+    return defaultSettings;
+  }
+  // Shallow-merged with defaults so a Packmaster upgrade that adds a new
+  // setting doesn't crash on an older, incomplete stored settings file.
+  return {
+    ...defaultSettings,
+    ...stored,
+    portable: { ...defaultSettings.portable, ...stored.portable },
+    installers: { ...defaultSettings.installers, ...stored.installers },
+    plugins: { ...defaultSettings.plugins, ...stored.plugins },
+    compression: { ...defaultSettings.compression, ...stored.compression },
+  };
+}
+
+export async function saveSettings(settings: PackmasterSettings): Promise<void> {
+  const store = getStore();
+  await store.set(SETTINGS_KEY, settings);
+  await store.save();
+}

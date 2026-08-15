@@ -1,0 +1,81 @@
+{
+	"app": {
+		"name": "Roves Packmaster",
+		"tagline": "Package your game for every desktop platform"
+	},
+	"common": {
+		"back": "Back",
+		"continue": "Continue",
+		"cancel": "Cancel",
+		"close": "Close",
+		"browse": "Browse…",
+		"start": "Start"
+	},
+	"source": {
+		"title": "Where's your built game?",
+		"description": "Point Packmaster at the folder your bundler already built — the output of your own build step, not your source code. If your game was built with Vite.js, that's the {{dist}} folder Vite creates when you run {{command}} (usually right next to your {{packageJson}}).",
+		"pathLabel": "Build output folder",
+		"pathPlaceholder": "No folder selected yet",
+		"browseDialogTitle": "Select your game's build output folder",
+		"errorTitle": "This doesn't look like a build output folder",
+		"errorDescription": "Packmaster couldn't find an {{indexHtml}} in this folder. Double-check you picked the built output (e.g. {{dist}}), not your project's source folder.",
+		"analyzing": "Checking this folder…"
+	},
+	"configure": {
+		"title": "Configure your release",
+		"sourceLabel": "Source",
+		"changeSource": "Change",
+		"portable": {
+			"title": "Portable",
+			"description": "A single double-click-to-run bundle for each platform you pick — no installer, no admin rights needed.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS"
+		},
+		"installers": {
+			"title": "Installable packages",
+			"description": "A proper installer for each platform you enable. Turning one on lets you also pick which installer format to build.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS",
+			"typeLabel": "Installer format",
+			"unavailableOnThisSystem": "Building this requires {{system}}, which isn't available on your current system."
+		},
+		"plugins": {
+			"title": "Plugins",
+			"description": "Optional integrations, compiled in only if you enable them.",
+			"steam": "Steam integration",
+			"steamDescription": "Achievements, stats, DLC, overlay, and store, via Steamworks. Degrades harmlessly if Steam isn't running or wasn't enabled."
+		},
+		"compression": {
+			"title": "Content compression",
+			"description": "Packs your game's content into a handful of compressed archives instead of shipping it as loose, individually browsable files. Extracted automatically the first time your game runs.",
+			"enable": "Compress game content",
+			"levelLabel": "Compression level",
+			"levelDescription": "Lower favors faster startup extraction; higher favors a smaller download.",
+			"maxPackSizeLabel": "Maximum archive size",
+			"maxPackSizeDescription": "Splits archives so none exceeds this size.",
+			"excludeLabel": "Never compress these files",
+			"excludeDescription": "Glob patterns, one per line — useful for a save-data or user-config folder that needs to stay as plain, writable files.",
+			"excludePlaceholder": "e.g. saves/**",
+			"bootIncludeLabel": "Always extract these files upfront",
+			"bootIncludeDescription": "Glob patterns, one per line, for extra files needed as soon as your game starts (beyond your HTML file and whatever it directly references).",
+			"bootIncludePlaceholder": "e.g. splash.png"
+		},
+		"startButton": "Generate release"
+	},
+	"generating": {
+		"title": "Generating your release…",
+		"doneTitle": "Your release is ready",
+		"doneDescription": "Packmaster saved everything to the {{folder}} folder.",
+		"openFolder": "Open release folder",
+		"startOver": "Start over",
+		"errorTitle": "Something went wrong",
+		"errorGeneric": "Packmaster couldn't finish generating your release."
+	},
+	"system": {
+		"windows": "Windows",
+		"macos": "macOS",
+		"linux": "Linux"
+	}
+}

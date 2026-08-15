@@ -1,0 +1,81 @@
+{
+	"app": {
+		"name": "Roves Packmaster",
+		"tagline": "为每个桌面平台打包你的游戏"
+	},
+	"common": {
+		"back": "返回",
+		"continue": "继续",
+		"cancel": "取消",
+		"close": "关闭",
+		"browse": "浏览…",
+		"start": "开始"
+	},
+	"source": {
+		"title": "你构建好的游戏在哪里？",
+		"description": "请指向你的打包工具已经生成的输出文件夹，而不是源代码文件夹。如果你的游戏是用 Vite.js 构建的，运行 {{command}} 后 Vite 生成的就是 {{dist}} 文件夹（通常紧邻你的 {{packageJson}}）。",
+		"pathLabel": "构建输出文件夹",
+		"pathPlaceholder": "尚未选择文件夹",
+		"browseDialogTitle": "选择你游戏的构建输出文件夹",
+		"errorTitle": "这似乎不是有效的构建输出文件夹",
+		"errorDescription": "Packmaster 在此文件夹中找不到 {{indexHtml}} 文件。请确认你选择的是构建输出（例如 {{dist}}），而不是项目的源代码文件夹。",
+		"analyzing": "正在检查该文件夹…"
+	},
+	"configure": {
+		"title": "配置你的发行版",
+		"sourceLabel": "来源",
+		"changeSource": "更改",
+		"portable": {
+			"title": "便携版",
+			"description": "为每个选中的平台生成一个双击即可运行的独立程序——无需安装程序，无需管理员权限。",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS"
+		},
+		"installers": {
+			"title": "安装包",
+			"description": "为每个启用的平台生成正式的安装程序。启用后，你还可以选择要生成的安装包格式。",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS",
+			"typeLabel": "安装包格式",
+			"unavailableOnThisSystem": "生成此项需要 {{system}}，而你当前系统不支持。"
+		},
+		"plugins": {
+			"title": "插件",
+			"description": "可选集成功能，仅在你启用后才会编译进去。",
+			"steam": "Steam 集成",
+			"steamDescription": "通过 Steamworks 提供成就、统计、DLC、悬浮窗和商店功能。若 Steam 未运行或未启用，会自动优雅降级。"
+		},
+		"compression": {
+			"title": "内容压缩",
+			"description": "将游戏内容打包成少量压缩归档文件，而不是以可单独浏览的松散文件形式发布。首次运行游戏时会自动解压。",
+			"enable": "压缩游戏内容",
+			"levelLabel": "压缩级别",
+			"levelDescription": "数值越低，启动时解压越快；数值越高，下载体积越小。",
+			"maxPackSizeLabel": "归档文件最大大小",
+			"maxPackSizeDescription": "拆分归档文件，确保没有一个超过此大小。",
+			"excludeLabel": "永不压缩这些文件",
+			"excludeDescription": "每行一个 glob 模式——适用于需要保持为可写普通文件的存档或用户配置文件夹。",
+			"excludePlaceholder": "例如 saves/**",
+			"bootIncludeLabel": "始终预先解压这些文件",
+			"bootIncludeDescription": "每行一个 glob 模式，用于游戏启动时立即需要的额外文件（除了 HTML 文件及其直接引用的内容）。",
+			"bootIncludePlaceholder": "例如 splash.png"
+		},
+		"startButton": "生成发行版"
+	},
+	"generating": {
+		"title": "正在生成你的发行版…",
+		"doneTitle": "发行版已就绪",
+		"doneDescription": "Packmaster 已将所有内容保存到 {{folder}} 文件夹。",
+		"openFolder": "打开发行版文件夹",
+		"startOver": "重新开始",
+		"errorTitle": "出现了问题",
+		"errorGeneric": "Packmaster 未能完成发行版的生成。"
+	},
+	"system": {
+		"windows": "Windows",
+		"macos": "macOS",
+		"linux": "Linux"
+	}
+}

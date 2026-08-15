@@ -1,0 +1,81 @@
+{
+	"app": {
+		"name": "Roves Packmaster",
+		"tagline": "Verpacke dein Spiel für jede Desktop-Plattform"
+	},
+	"common": {
+		"back": "Zurück",
+		"continue": "Weiter",
+		"cancel": "Abbrechen",
+		"close": "Schließen",
+		"browse": "Durchsuchen…",
+		"start": "Starten"
+	},
+	"source": {
+		"title": "Wo befindet sich dein gebautes Spiel?",
+		"description": "Zeige Packmaster den Ordner, den dein Bundler bereits erstellt hat — nicht deinen Quellcode. Wurde dein Spiel mit Vite.js gebaut, ist das der {{dist}}-Ordner, den Vite beim Ausführen von {{command}} erstellt (meist direkt neben deiner {{packageJson}}).",
+		"pathLabel": "Build-Ausgabeordner",
+		"pathPlaceholder": "Noch kein Ordner ausgewählt",
+		"browseDialogTitle": "Build-Ausgabeordner deines Spiels auswählen",
+		"errorTitle": "Das sieht nicht nach einem gültigen Build-Ausgabeordner aus",
+		"errorDescription": "Packmaster konnte in diesem Ordner keine {{indexHtml}} finden. Stelle sicher, dass du die Build-Ausgabe (z. B. {{dist}}) und nicht den Quellordner deines Projekts ausgewählt hast.",
+		"analyzing": "Ordner wird geprüft…"
+	},
+	"configure": {
+		"title": "Release konfigurieren",
+		"sourceLabel": "Quelle",
+		"changeSource": "Ändern",
+		"portable": {
+			"title": "Portabel",
+			"description": "Eine einzige, per Doppelklick startbare Datei für jede ausgewählte Plattform — kein Installationsprogramm, keine Administratorrechte nötig.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS"
+		},
+		"installers": {
+			"title": "Installationspakete",
+			"description": "Ein vollwertiges Installationsprogramm für jede aktivierte Plattform. Nach der Aktivierung kannst du zusätzlich das Installer-Format wählen.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS",
+			"typeLabel": "Installer-Format",
+			"unavailableOnThisSystem": "Dafür wird {{system}} benötigt, was auf deinem aktuellen System nicht verfügbar ist."
+		},
+		"plugins": {
+			"title": "Plugins",
+			"description": "Optionale Integrationen, die nur bei Aktivierung mit eingebaut werden.",
+			"steam": "Steam-Integration",
+			"steamDescription": "Erfolge, Statistiken, DLC, Overlay und Store über Steamworks. Wird ohne Probleme deaktiviert, wenn Steam nicht läuft oder nicht aktiviert wurde."
+		},
+		"compression": {
+			"title": "Inhaltskomprimierung",
+			"description": "Packt die Inhalte deines Spiels in wenige komprimierte Archive, statt sie als einzeln durchsuchbare lose Dateien auszuliefern. Wird beim ersten Start deines Spiels automatisch entpackt.",
+			"enable": "Spielinhalte komprimieren",
+			"levelLabel": "Komprimierungsstufe",
+			"levelDescription": "Niedriger begünstigt schnelleres Entpacken beim Start; höher begünstigt einen kleineren Download.",
+			"maxPackSizeLabel": "Maximale Archivgröße",
+			"maxPackSizeDescription": "Teilt Archive so auf, dass keines diese Größe überschreitet.",
+			"excludeLabel": "Diese Dateien nie komprimieren",
+			"excludeDescription": "Glob-Muster, eines pro Zeile — nützlich für einen Spielstand- oder Benutzerkonfigurationsordner, der als einfache, beschreibbare Dateien erhalten bleiben muss.",
+			"excludePlaceholder": "z. B. saves/**",
+			"bootIncludeLabel": "Diese Dateien immer im Voraus entpacken",
+			"bootIncludeDescription": "Glob-Muster, eines pro Zeile, für zusätzliche Dateien, die sofort beim Spielstart benötigt werden (zusätzlich zu deiner HTML-Datei und dem, worauf sie direkt verweist).",
+			"bootIncludePlaceholder": "z. B. splash.png"
+		},
+		"startButton": "Release generieren"
+	},
+	"generating": {
+		"title": "Release wird generiert…",
+		"doneTitle": "Dein Release ist bereit",
+		"doneDescription": "Packmaster hat alles im Ordner {{folder}} gespeichert.",
+		"openFolder": "Release-Ordner öffnen",
+		"startOver": "Von vorn beginnen",
+		"errorTitle": "Etwas ist schiefgelaufen",
+		"errorGeneric": "Packmaster konnte die Generierung des Release nicht abschließen."
+	},
+	"system": {
+		"windows": "Windows",
+		"macos": "macOS",
+		"linux": "Linux"
+	}
+}

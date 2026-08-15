@@ -1,0 +1,81 @@
+{
+	"app": {
+		"name": "Roves Packmaster",
+		"tagline": "あなたのゲームをあらゆるデスクトップ向けにパッケージ化"
+	},
+	"common": {
+		"back": "戻る",
+		"continue": "続ける",
+		"cancel": "キャンセル",
+		"close": "閉じる",
+		"browse": "参照…",
+		"start": "開始"
+	},
+	"source": {
+		"title": "ビルド済みのゲームはどこにありますか？",
+		"description": "バンドラーがすでに生成した出力フォルダーを指定してください（ソースコードではありません）。Vite.js でビルドした場合、{{command}} を実行した際に Vite が作成する {{dist}} フォルダーです（通常は {{packageJson}} のすぐ隣にあります）。",
+		"pathLabel": "ビルド出力フォルダー",
+		"pathPlaceholder": "フォルダーが選択されていません",
+		"browseDialogTitle": "ゲームのビルド出力フォルダーを選択",
+		"errorTitle": "有効なビルド出力フォルダーではないようです",
+		"errorDescription": "このフォルダー内に {{indexHtml}} が見つかりませんでした。プロジェクトのソースフォルダーではなく、ビルド出力（例: {{dist}}）を選択したか確認してください。",
+		"analyzing": "フォルダーを確認しています…"
+	},
+	"configure": {
+		"title": "リリースを設定",
+		"sourceLabel": "ソース",
+		"changeSource": "変更",
+		"portable": {
+			"title": "ポータブル版",
+			"description": "選択した各プラットフォーム向けに、インストーラー不要・管理者権限不要のダブルクリックで実行できる単一ファイルを生成します。",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS"
+		},
+		"installers": {
+			"title": "インストーラーパッケージ",
+			"description": "有効にした各プラットフォーム向けに正式なインストーラーを生成します。有効にすると、生成するインストーラー形式を選択できます。",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS",
+			"typeLabel": "インストーラー形式",
+			"unavailableOnThisSystem": "これを生成するには {{system}} が必要ですが、現在のシステムでは利用できません。"
+		},
+		"plugins": {
+			"title": "プラグイン",
+			"description": "オプションの統合機能で、有効にした場合のみビルドに含まれます。",
+			"steam": "Steam 連携",
+			"steamDescription": "Steamworks による実績、統計、DLC、オーバーレイ、ストア機能。Steam が起動していない、または有効化されていない場合は問題なく機能を無効化します。"
+		},
+		"compression": {
+			"title": "コンテンツ圧縮",
+			"description": "個別に閲覧可能な単純なファイルとして配布する代わりに、ゲームのコンテンツをいくつかの圧縮アーカイブにまとめます。ゲームの初回起動時に自動的に展開されます。",
+			"enable": "ゲームコンテンツを圧縮する",
+			"levelLabel": "圧縮レベル",
+			"levelDescription": "低いほど起動時の展開が速く、高いほどダウンロードサイズが小さくなります。",
+			"maxPackSizeLabel": "アーカイブの最大サイズ",
+			"maxPackSizeDescription": "この値を超えないようにアーカイブを分割します。",
+			"excludeLabel": "これらのファイルは圧縮しない",
+			"excludeDescription": "1行に1つの glob パターン。書き込み可能な状態を保つ必要があるセーブデータやユーザー設定フォルダーに便利です。",
+			"excludePlaceholder": "例: saves/**",
+			"bootIncludeLabel": "これらのファイルを常に事前展開する",
+			"bootIncludeDescription": "1行に1つの glob パターン。HTML ファイルとその直接参照ファイル以外に、ゲーム起動直後に必要な追加ファイル用です。",
+			"bootIncludePlaceholder": "例: splash.png"
+		},
+		"startButton": "リリースを生成"
+	},
+	"generating": {
+		"title": "リリースを生成しています…",
+		"doneTitle": "リリースの準備ができました",
+		"doneDescription": "Packmaster はすべてを {{folder}} フォルダーに保存しました。",
+		"openFolder": "リリースフォルダーを開く",
+		"startOver": "最初からやり直す",
+		"errorTitle": "問題が発生しました",
+		"errorGeneric": "Packmaster はリリースの生成を完了できませんでした。"
+	},
+	"system": {
+		"windows": "Windows",
+		"macos": "macOS",
+		"linux": "Linux"
+	}
+}

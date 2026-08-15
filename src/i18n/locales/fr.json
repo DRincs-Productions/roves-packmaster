@@ -1,0 +1,81 @@
+{
+	"app": {
+		"name": "Roves Packmaster",
+		"tagline": "Empaquetez votre jeu pour toutes les plateformes de bureau"
+	},
+	"common": {
+		"back": "Retour",
+		"continue": "Continuer",
+		"cancel": "Annuler",
+		"close": "Fermer",
+		"browse": "Parcourir…",
+		"start": "Démarrer"
+	},
+	"source": {
+		"title": "Où se trouve votre jeu compilé ?",
+		"description": "Indiquez à Packmaster le dossier déjà généré par votre bundler, pas votre code source. Si votre jeu a été compilé avec Vite.js, il s'agit du dossier {{dist}} créé par Vite lors de l'exécution de {{command}} (généralement juste à côté de votre {{packageJson}}).",
+		"pathLabel": "Dossier de sortie de la compilation",
+		"pathPlaceholder": "Aucun dossier sélectionné pour l'instant",
+		"browseDialogTitle": "Sélectionnez le dossier de sortie de la compilation de votre jeu",
+		"errorTitle": "Cela ne ressemble pas à un dossier de sortie de compilation valide",
+		"errorDescription": "Packmaster n'a pas trouvé de fichier {{indexHtml}} dans ce dossier. Vérifiez que vous avez sélectionné la sortie de la compilation (par ex. {{dist}}), et non le dossier source de votre projet.",
+		"analyzing": "Vérification de ce dossier…"
+	},
+	"configure": {
+		"title": "Configurez votre version",
+		"sourceLabel": "Source",
+		"changeSource": "Modifier",
+		"portable": {
+			"title": "Portable",
+			"description": "Un exécutable unique prêt à l'emploi en double-clic pour chaque plateforme choisie — pas d'installateur, aucun droit administrateur requis.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS"
+		},
+		"installers": {
+			"title": "Paquets installables",
+			"description": "Un véritable installateur pour chaque plateforme activée. En activer une permet aussi de choisir le format d'installateur à générer.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS",
+			"typeLabel": "Format d'installateur",
+			"unavailableOnThisSystem": "Générer ceci nécessite {{system}}, indisponible sur votre système actuel."
+		},
+		"plugins": {
+			"title": "Plugins",
+			"description": "Intégrations optionnelles, incluses uniquement si vous les activez.",
+			"steam": "Intégration Steam",
+			"steamDescription": "Succès, statistiques, DLC, overlay et boutique, via Steamworks. Se désactive sans problème si Steam n'est pas lancé ou n'a pas été activé."
+		},
+		"compression": {
+			"title": "Compression du contenu",
+			"description": "Regroupe le contenu de votre jeu dans quelques archives compressées au lieu de le distribuer en fichiers libres consultables individuellement. Extrait automatiquement au premier lancement de votre jeu.",
+			"enable": "Compresser le contenu du jeu",
+			"levelLabel": "Niveau de compression",
+			"levelDescription": "Une valeur plus basse favorise une extraction plus rapide au démarrage ; une valeur plus élevée favorise un téléchargement plus léger.",
+			"maxPackSizeLabel": "Taille maximale de l'archive",
+			"maxPackSizeDescription": "Divise les archives pour qu'aucune ne dépasse cette taille.",
+			"excludeLabel": "Ne jamais compresser ces fichiers",
+			"excludeDescription": "Motifs glob, un par ligne — utile pour un dossier de sauvegardes ou de configuration utilisateur qui doit rester en fichiers simples et modifiables.",
+			"excludePlaceholder": "ex. saves/**",
+			"bootIncludeLabel": "Toujours extraire ces fichiers à l'avance",
+			"bootIncludeDescription": "Motifs glob, un par ligne, pour les fichiers supplémentaires nécessaires dès le lancement du jeu (en plus de votre fichier HTML et de ce qu'il référence directement).",
+			"bootIncludePlaceholder": "ex. splash.png"
+		},
+		"startButton": "Générer la version"
+	},
+	"generating": {
+		"title": "Génération de votre version…",
+		"doneTitle": "Votre version est prête",
+		"doneDescription": "Packmaster a tout enregistré dans le dossier {{folder}}.",
+		"openFolder": "Ouvrir le dossier de la version",
+		"startOver": "Recommencer",
+		"errorTitle": "Un problème est survenu",
+		"errorGeneric": "Packmaster n'a pas pu terminer la génération de votre version."
+	},
+	"system": {
+		"windows": "Windows",
+		"macos": "macOS",
+		"linux": "Linux"
+	}
+}

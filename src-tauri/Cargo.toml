@@ -5,6 +5,11 @@ description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
+# roves-ui lives inside the main Roves engine repo's own directory tree, which has its own
+# Cargo workspace (see ../../Cargo.toml) — an empty [workspace] table here tells Cargo this
+# crate is its own workspace root instead of trying to join that unrelated one.
+[workspace]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
@@ -20,6 +25,10 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-os = "2"
+tauri-plugin-store = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

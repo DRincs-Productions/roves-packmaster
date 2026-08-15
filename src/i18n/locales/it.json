@@ -1,0 +1,81 @@
+{
+	"app": {
+		"name": "Roves Packmaster",
+		"tagline": "Impacchetta il tuo gioco per ogni piattaforma desktop"
+	},
+	"common": {
+		"back": "Indietro",
+		"continue": "Continua",
+		"cancel": "Annulla",
+		"close": "Chiudi",
+		"browse": "Sfoglia…",
+		"start": "Avvia"
+	},
+	"source": {
+		"title": "Dove si trova il tuo gioco compilato?",
+		"description": "Indica a Packmaster la cartella già generata dal tuo bundler — l'output della tua build, non il codice sorgente. Se il tuo gioco è stato compilato con Vite.js, è la cartella {{dist}} creata da Vite quando esegui {{command}} (di solito accanto al tuo {{packageJson}}).",
+		"pathLabel": "Cartella di output della build",
+		"pathPlaceholder": "Nessuna cartella selezionata",
+		"browseDialogTitle": "Seleziona la cartella di output del tuo gioco",
+		"errorTitle": "Questa non sembra una cartella di output valida",
+		"errorDescription": "Packmaster non ha trovato un file {{indexHtml}} in questa cartella. Verifica di aver selezionato l'output della build (es. {{dist}}), non la cartella sorgente del progetto.",
+		"analyzing": "Controllo della cartella in corso…"
+	},
+	"configure": {
+		"title": "Configura la tua release",
+		"sourceLabel": "Sorgente",
+		"changeSource": "Cambia",
+		"portable": {
+			"title": "Portatile",
+			"description": "Un singolo eseguibile pronto all'uso per ogni piattaforma selezionata — nessun installer, nessun permesso da amministratore richiesto.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS"
+		},
+		"installers": {
+			"title": "Pacchetti installabili",
+			"description": "Un vero installer per ogni piattaforma abilitata. Attivandone una potrai anche scegliere il formato di installer da generare.",
+			"windows": "Windows",
+			"linux": "Linux",
+			"macos": "macOS",
+			"typeLabel": "Formato installer",
+			"unavailableOnThisSystem": "Generarlo richiede {{system}}, non disponibile sul tuo sistema attuale."
+		},
+		"plugins": {
+			"title": "Plugin",
+			"description": "Integrazioni opzionali, incluse solo se le abiliti.",
+			"steam": "Integrazione Steam",
+			"steamDescription": "Obiettivi, statistiche, DLC, overlay e store, tramite Steamworks. Si disattiva senza problemi se Steam non è in esecuzione o non è stato abilitato."
+		},
+		"compression": {
+			"title": "Compressione dei contenuti",
+			"description": "Comprime i contenuti del gioco in un piccolo numero di archivi invece di distribuirli come file sciolti e sfogliabili singolarmente. Vengono estratti automaticamente al primo avvio del gioco.",
+			"enable": "Comprimi i contenuti del gioco",
+			"levelLabel": "Livello di compressione",
+			"levelDescription": "Un valore più basso favorisce un'estrazione più rapida all'avvio; uno più alto favorisce un download più piccolo.",
+			"maxPackSizeLabel": "Dimensione massima dell'archivio",
+			"maxPackSizeDescription": "Divide gli archivi in modo che nessuno superi questa dimensione.",
+			"excludeLabel": "Non comprimere mai questi file",
+			"excludeDescription": "Pattern glob, uno per riga — utile per una cartella di salvataggi o configurazioni utente che deve restare come file semplici e scrivibili.",
+			"excludePlaceholder": "es. saves/**",
+			"bootIncludeLabel": "Estrai sempre subito questi file",
+			"bootIncludeDescription": "Pattern glob, uno per riga, per file extra necessari appena il gioco si avvia (oltre al file HTML e a ciò che referenzia direttamente).",
+			"bootIncludePlaceholder": "es. splash.png"
+		},
+		"startButton": "Genera release"
+	},
+	"generating": {
+		"title": "Generazione della release in corso…",
+		"doneTitle": "La tua release è pronta",
+		"doneDescription": "Packmaster ha salvato tutto nella cartella {{folder}}.",
+		"openFolder": "Apri cartella della release",
+		"startOver": "Ricomincia",
+		"errorTitle": "Qualcosa è andato storto",
+		"errorGeneric": "Packmaster non è riuscito a completare la generazione della release."
+	},
+	"system": {
+		"windows": "Windows",
+		"macos": "macOS",
+		"linux": "Linux"
+	}
+}
