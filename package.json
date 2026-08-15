@@ -1,13 +1,13 @@
 {
-  "name": "roves-ui",
+  "name": "roves-ui1",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -19,8 +19,8 @@
     "@tauri-apps/plugin-opener": "^2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "shadcn": "^4.18.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
@@ -28,10 +28,12 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
-    "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
   }
 }
