@@ -1,32 +1,54 @@
-# React + TypeScript + Vite
+# Roves Packmaster
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A desktop GUI for packaging a web-built game into [Roves](https://github.com/DRincs-Productions/roves)
+distributions — portable binaries and installers for Windows, macOS, and Linux — without
+needing Rust or Python installed. Point it at your game's built output, choose what to
+generate, and it produces the releases for you.
 
-Currently, two official plugins are available:
+Built with [Tauri](https://tauri.app/) (Rust + a native webview) so Packmaster itself
+ships as a single, ordinary desktop app: the *user running Packmaster* never needs a Rust
+or Python toolchain, even though *building Roves itself* still does (see the engine's own
+[README](../README.md)) — Packmaster is meant to work from pre-built Roves engine
+binaries rather than compiling Servo on your machine.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Status
 
-## React Compiler
+This is an early, UI-first pass: every screen described below is real and functional, but
+there's no real Roves engine wired up yet behind the "generate release" button — it's a
+working mock of the intended flow (see this project's own `CLAUDE.md` for what's expected
+of any change made here in the meantime). The release folder it creates and opens at the
+end is real; what gets put in it isn't, yet.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## What it does
 
-## Expanding the Oxlint configuration
+1. **Pick your build output.** Point Packmaster at the folder your bundler already
+   produced (a Vite.js project's `dist/`, or the equivalent from any other bundler) —
+   not your source code. Packmaster checks for an `index.html` there before continuing.
+2. **Configure your release:**
+   - **Portable** — a self-contained, double-click-to-run bundle per platform, no
+     installer or admin rights needed.
+   - **Installable packages** — a real installer (`.msi`/`.deb`/`.dmg`) per platform,
+     only shown for platforms your current system can actually build (each format needs
+     a host-specific tool — WiX on Windows, `dpkg-deb` on Linux, `hdiutil` on macOS).
+   - **Plugins** — currently just Steam integration, opt-in.
+   - **Compression** — packs your game's content into compressed archives instead of
+     loose files, with the same tunables (level, max archive size, exclusions) as the
+     engine's own `mach bundle --content-compress` flags, defaulting to what the engine
+     itself defaults to.
+3. **Generate.** Shows progress, then opens the folder the release was written to —
+   always a `release/` folder next to wherever Packmaster itself is running from.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+Every screen shows the Roves icon and wordmark, and is available in nine languages
+(English, Italian, Chinese, Japanese, Korean, Spanish, French, Russian, German) — see
+`src/i18n/`.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Development
+
+```bash
+npm install
+npm run tauri dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Recommended IDE Setup
+
+[VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
