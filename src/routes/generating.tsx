@@ -98,7 +98,7 @@ function GeneratingView() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 text-center">
+    <div className="my-auto flex flex-col items-center gap-8 text-center">
       <div className="flex items-center gap-4">
         <img src={roversIcon} alt="" className="h-16 w-16" />
         <span className="font-heading text-5xl leading-none tracking-wide">Roves</span>

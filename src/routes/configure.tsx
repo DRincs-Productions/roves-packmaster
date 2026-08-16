@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { InstallerCard } from "@/components/installer-card";
 import { type Platform, PlatformToggle } from "@/components/platform-toggle";
 import {
   Accordion,
@@ -23,6 +24,16 @@ export const Route = createFileRoute("/configure")({
 });
 
 const PORTABLE_PLATFORMS: Platform[] = ["windows", "linux", "macos"];
+
+// Only one real installer format exists per platform today — see README.md's own
+// "nsis/rpm/appimage aren't implemented yet" — but each card's format picker is a
+// multi-select regardless (see installer-card.tsx), so a second format later just means
+// adding an entry here, not reshaping the UI.
+const INSTALLER_FORMATS: Record<Platform, { value: string; label: string }[]> = {
+  windows: [{ value: "msi", label: ".msi" }],
+  linux: [{ value: "deb", label: ".deb" }],
+  macos: [{ value: "dmg", label: ".dmg" }],
+};
 
 function ConfigureView() {
   const { t } = useTranslation();
@@ -169,112 +180,167 @@ function ConfigureView() {
         </CardContent>
       </Card>
 
-      <Accordion defaultValue={["compression"]}>
-        <AccordionItem value="compression">
-          <AccordionTrigger>{t("configure.compression.title")}</AccordionTrigger>
-          <AccordionContent className="flex flex-col gap-4">
-            <p className="text-muted-foreground text-sm">
-              {t("configure.compression.description")}
-            </p>
-            <div className="flex items-center justify-between gap-4">
-              <Label>{t("configure.compression.enable")}</Label>
-              <Switch
-                checked={settings.compression.enabled}
-                onCheckedChange={(checked) =>
-                  updateSettings({
-                    compression: { ...settings.compression, enabled: checked },
-                  })
-                }
-              />
-            </div>
-            {settings.compression.enabled && (
-              <>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="compression-level">{t("configure.compression.levelLabel")}</Label>
-                  <p className="text-muted-foreground text-xs">
-                    {t("configure.compression.levelDescription")}
-                  </p>
-                  <Input
-                    id="compression-level"
-                    type="number"
-                    min={1}
-                    max={19}
-                    value={settings.compression.level}
-                    onChange={(e) =>
-                      updateSettings({
-                        compression: {
-                          ...settings.compression,
-                          level: Number(e.target.value),
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="max-pack-size">
-                    {t("configure.compression.maxPackSizeLabel")}
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    {t("configure.compression.maxPackSizeDescription")}
-                  </p>
-                  <Input
-                    id="max-pack-size"
-                    value={settings.compression.maxPackSize}
-                    onChange={(e) =>
-                      updateSettings({
-                        compression: {
-                          ...settings.compression,
-                          maxPackSize: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="exclude">{t("configure.compression.excludeLabel")}</Label>
-                  <p className="text-muted-foreground text-xs">
-                    {t("configure.compression.excludeDescription")}
-                  </p>
-                  <Textarea
-                    id="exclude"
-                    placeholder={t("configure.compression.excludePlaceholder")}
-                    value={settings.compression.exclude.join("\n")}
-                    onChange={(e) =>
-                      updateSettings({
-                        compression: {
-                          ...settings.compression,
-                          exclude: e.target.value.split("\n").filter(Boolean),
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="boot-include">
-                    {t("configure.compression.bootIncludeLabel")}
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    {t("configure.compression.bootIncludeDescription")}
-                  </p>
-                  <Textarea
-                    id="boot-include"
-                    placeholder={t("configure.compression.bootIncludePlaceholder")}
-                    value={settings.compression.bootInclude.join("\n")}
-                    onChange={(e) =>
-                      updateSettings({
-                        compression: {
-                          ...settings.compression,
-                          bootInclude: e.target.value.split("\n").filter(Boolean),
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">{t("configure.installers.title")}</h2>
+          <p className="text-muted-foreground text-sm">{t("configure.installers.description")}</p>
+        </div>
+        <div className="flex gap-3">
+          {PORTABLE_PLATFORMS.map((p) => (
+            <InstallerCard
+              key={p}
+              platform={p}
+              title={t(`configure.installers.${p}`)}
+              typeLabel={t("configure.installers.typeLabel")}
+              enabled={settings.installers[p].enabled}
+              onEnabledChange={(enabled) =>
+                updateSettings({
+                  installers: {
+                    ...settings.installers,
+                    [p]: { ...settings.installers[p], enabled },
+                  },
+                })
+              }
+              availableFormats={INSTALLER_FORMATS[p]}
+              formats={settings.installers[p].formats}
+              onFormatsChange={(formats) =>
+                updateSettings({
+                  installers: {
+                    ...settings.installers,
+                    [p]: { ...settings.installers[p], formats },
+                  },
+                })
+              }
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">{t("configure.advanced.title")}</h2>
+        <Accordion className="gap-4" defaultValue={["compression"]}>
+          <AccordionItem
+            value="steam"
+            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+          >
+            <AccordionTrigger>{t("configure.steam.title")}</AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              <p className="text-muted-foreground text-sm">{t("configure.steam.description")}</p>
+              <p className="text-muted-foreground text-sm">{t("configure.steam.apiHint")}</p>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem
+            value="compression"
+            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+          >
+            <AccordionTrigger>{t("configure.compression.title")}</AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-4">
+              <p className="text-muted-foreground text-sm">
+                {t("configure.compression.description")}
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <Label>{t("configure.compression.enable")}</Label>
+                <Switch
+                  checked={settings.compression.enabled}
+                  onCheckedChange={(checked) =>
+                    updateSettings({
+                      compression: { ...settings.compression, enabled: checked },
+                    })
+                  }
+                />
+              </div>
+              {settings.compression.enabled && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="compression-level">
+                      {t("configure.compression.levelLabel")}
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      {t("configure.compression.levelDescription")}
+                    </p>
+                    <Input
+                      id="compression-level"
+                      type="number"
+                      min={1}
+                      max={19}
+                      value={settings.compression.level}
+                      onChange={(e) =>
+                        updateSettings({
+                          compression: {
+                            ...settings.compression,
+                            level: Number(e.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="max-pack-size">
+                      {t("configure.compression.maxPackSizeLabel")}
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      {t("configure.compression.maxPackSizeDescription")}
+                    </p>
+                    <Input
+                      id="max-pack-size"
+                      value={settings.compression.maxPackSize}
+                      onChange={(e) =>
+                        updateSettings({
+                          compression: {
+                            ...settings.compression,
+                            maxPackSize: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="exclude">{t("configure.compression.excludeLabel")}</Label>
+                    <p className="text-muted-foreground text-xs">
+                      {t("configure.compression.excludeDescription")}
+                    </p>
+                    <Textarea
+                      id="exclude"
+                      placeholder={t("configure.compression.excludePlaceholder")}
+                      value={settings.compression.exclude.join("\n")}
+                      onChange={(e) =>
+                        updateSettings({
+                          compression: {
+                            ...settings.compression,
+                            exclude: e.target.value.split("\n").filter(Boolean),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="boot-include">
+                      {t("configure.compression.bootIncludeLabel")}
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      {t("configure.compression.bootIncludeDescription")}
+                    </p>
+                    <Textarea
+                      id="boot-include"
+                      placeholder={t("configure.compression.bootIncludePlaceholder")}
+                      value={settings.compression.bootInclude.join("\n")}
+                      onChange={(e) =>
+                        updateSettings({
+                          compression: {
+                            ...settings.compression,
+                            bootInclude: e.target.value.split("\n").filter(Boolean),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
 
       <Button
         type="button"

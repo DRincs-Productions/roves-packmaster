@@ -72,7 +72,7 @@ function SourceView() {
   };
 
   return (
-    <Card className="w-full max-w-xl">
+    <Card className="my-auto w-full max-w-xl">
       <CardHeader>
         <CardTitle className="text-xl">{t("source.title")}</CardTitle>
         <CardDescription>

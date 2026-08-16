@@ -44,14 +44,15 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"typeLabel": "インストーラー形式",
-			"unavailableOnThisSystem": "これを生成するには {{system}} が必要ですが、現在のシステムでは利用できません。"
+			"typeLabel": "インストーラー形式"
 		},
-		"plugins": {
-			"title": "プラグイン",
-			"description": "オプションの統合機能で、有効にした場合のみビルドに含まれます。",
-			"steam": "Steam 連携",
-			"steamDescription": "Steamworks による実績、統計、DLC、オーバーレイ、ストア機能。Steam が起動していない、または有効化されていない場合は問題なく機能を無効化します。"
+		"advanced": {
+			"title": "詳細設定"
+		},
+		"steam": {
+			"title": "Steam",
+			"description": "エンジン自体は Steam 対応（--features steam）でビルドできますが、Packmaster はまだそれをビルドできません — コンパイルする代わりにプリビルド済みのシェルをダウンロードする仕組みで、Steam 対応のプリビルド版はまだ存在しないためです。",
+			"apiHint": "それが存在するようになれば、ゲーム自身のコードは @drincs/roves-api/steam を通じてやり取りします — Steamworks による実績、統計、DLC、オーバーレイ、ストア機能です。"
 		},
 		"compression": {
 			"title": "コンテンツ圧縮",

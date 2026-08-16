@@ -8,10 +8,19 @@ export interface PortableSettings {
   macos: boolean;
 }
 
+export interface InstallerPlatformSettings {
+  enabled: boolean;
+  /** Multi-select, even though each platform only has one real format today (see
+   * README.md's "nsis/rpm/appimage aren't implemented yet") — a select-one-of-many field
+   * would need reshaping the moment a second format per platform exists, a multi-select
+   * doesn't. */
+  formats: string[];
+}
+
 export interface InstallerSettings {
-  windows: { enabled: boolean; format: "msi" };
-  linux: { enabled: boolean; format: "deb" };
-  macos: { enabled: boolean; format: "dmg" };
+  windows: InstallerPlatformSettings;
+  linux: InstallerPlatformSettings;
+  macos: InstallerPlatformSettings;
 }
 
 export interface PluginSettings {
@@ -57,9 +66,9 @@ export const defaultSettings: PackmasterSettings = {
     macos: true,
   },
   installers: {
-    windows: { enabled: false, format: "msi" },
-    linux: { enabled: false, format: "deb" },
-    macos: { enabled: false, format: "dmg" },
+    windows: { enabled: false, formats: [] },
+    linux: { enabled: false, formats: [] },
+    macos: { enabled: false, formats: [] },
   },
   plugins: {
     steam: false,

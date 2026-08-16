@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 
 export type Platform = "windows" | "linux" | "macos";
 
-const PLATFORM_ICONS: Record<Platform, Icon> = {
+/** Exported so other platform-specific UI (e.g. the installer cards in configure.tsx) uses
+ * the exact same icon per platform, instead of each picking its own. */
+export const PLATFORM_ICONS: Record<Platform, Icon> = {
   windows: WindowsLogo,
   linux: LinuxLogo,
   macos: AppleLogo,

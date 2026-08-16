@@ -44,14 +44,15 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"typeLabel": "Formato de instalador",
-			"unavailableOnThisSystem": "Generar esto requiere {{system}}, que no está disponible en tu sistema actual."
+			"typeLabel": "Formato de instalador"
 		},
-		"plugins": {
-			"title": "Complementos",
-			"description": "Integraciones opcionales, incluidas solo si las activas.",
-			"steam": "Integración con Steam",
-			"steamDescription": "Logros, estadísticas, DLC, overlay y tienda, mediante Steamworks. Se desactiva sin problemas si Steam no está en ejecución o no se habilitó."
+		"advanced": {
+			"title": "Avanzado"
+		},
+		"steam": {
+			"title": "Steam",
+			"description": "El motor en sí puede compilarse con soporte para Steam (--features steam), pero Packmaster aún no puede generar eso — descarga un shell prediseñado en lugar de compilar uno, y todavía no existe una versión prediseñada con Steam habilitado.",
+			"apiHint": "Cuando exista, el propio código de tu juego se comunicará con ella a través de @drincs/roves-api/steam — logros, estadísticas, DLC, overlay y tienda, mediante Steamworks."
 		},
 		"compression": {
 			"title": "Compresión de contenido",

@@ -44,14 +44,15 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"typeLabel": "安装包格式",
-			"unavailableOnThisSystem": "生成此项需要 {{system}}，而你当前系统不支持。"
+			"typeLabel": "安装包格式"
 		},
-		"plugins": {
-			"title": "插件",
-			"description": "可选集成功能，仅在你启用后才会编译进去。",
-			"steam": "Steam 集成",
-			"steamDescription": "通过 Steamworks 提供成就、统计、DLC、悬浮窗和商店功能。若 Steam 未运行或未启用，会自动优雅降级。"
+		"advanced": {
+			"title": "高级"
+		},
+		"steam": {
+			"title": "Steam",
+			"description": "引擎本身可以编译为支持 Steam（--features steam），但 Packmaster 目前还无法生成这种构建——它下载的是预构建的外壳，而不是自行编译，而目前还没有支持 Steam 的预构建发行版。",
+			"apiHint": "一旦有了这样的版本，你游戏自己的代码将通过 @drincs/roves-api/steam 与其通信——通过 Steamworks 提供成就、统计、DLC、悬浮窗和商店功能。"
 		},
 		"compression": {
 			"title": "内容压缩",

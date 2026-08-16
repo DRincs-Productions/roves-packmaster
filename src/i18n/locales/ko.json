@@ -44,14 +44,15 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"typeLabel": "설치 프로그램 형식",
-			"unavailableOnThisSystem": "이 항목을 빌드하려면 {{system}}이(가) 필요하지만 현재 시스템에서는 사용할 수 없습니다."
+			"typeLabel": "설치 프로그램 형식"
 		},
-		"plugins": {
-			"title": "플러그인",
-			"description": "선택적 통합 기능으로, 활성화한 경우에만 빌드에 포함됩니다.",
-			"steam": "Steam 통합",
-			"steamDescription": "Steamworks를 통한 업적, 통계, DLC, 오버레이 및 스토어 기능입니다. Steam이 실행 중이 아니거나 활성화되지 않은 경우 문제없이 비활성화됩니다."
+		"advanced": {
+			"title": "고급"
+		},
+		"steam": {
+			"title": "Steam",
+			"description": "엔진 자체는 Steam 지원(--features steam)으로 컴파일할 수 있지만, Packmaster는 아직 이를 빌드할 수 없습니다 — 직접 컴파일하는 대신 미리 빌드된 셸을 다운로드하는 방식이며, 아직 Steam 지원 미리 빌드 릴리스가 없습니다.",
+			"apiHint": "그것이 생기면, 게임 자체 코드가 @drincs/roves-api/steam을 통해 통신하게 됩니다 — Steamworks를 통한 업적, 통계, DLC, 오버레이, 스토어 기능입니다."
 		},
 		"compression": {
 			"title": "콘텐츠 압축",
