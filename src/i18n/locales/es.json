@@ -30,7 +30,8 @@
 			"description": "Un único ejecutable listo para usar con doble clic para cada plataforma que elijas, sin instalador ni permisos de administrador.",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "No se encontró ninguna build del shell publicada para esta plataforma por ahora — inténtalo más tarde."
 		},
 		"installers": {
 			"title": "Paquetes instalables",

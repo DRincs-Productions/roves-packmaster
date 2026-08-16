@@ -32,3 +32,16 @@ tauri-plugin-store = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# Real bundling (see src/bundle.rs): downloads a prebuilt Roves shell release instead of
+# compiling one (no Rust/Python toolchain needed on a game developer's machine), then packs
+# their content into it in-process by linking the engine repo's own content-packer crate as
+# a library — see the engine repo's CLAUDE.md, "Cutting a versioned release" section, on why
+# roves-ui/roves-action must track a specific shell tag.
+roves-content-packer = { git = "https://github.com/DRincs-Productions/roves", tag = "v0.1.0" }
+glob = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+tokio = { version = "1", features = ["fs", "io-util"] }
+futures-util = "0.3"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+walkdir = "2"
+

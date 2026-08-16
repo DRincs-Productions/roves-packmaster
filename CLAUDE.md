@@ -80,4 +80,40 @@ Some settings are only meaningful on a specific host OS (see `src/lib/platform.t
 comment — `.msi` needs Windows+WiX, `.dmg` needs macOS+`hdiutil`, `.deb` needs
 Linux+`dpkg-deb`). Hide, don't just disable, options that can't actually work on the
 current system — an unavailable option a user can still see and try to enable is worse
-than one that isn't shown at all.
+than one that isn't shown at all. (`configure.tsx`'s installers/plugins screens are
+currently hidden entirely on this same principle — see "Real bundling backend" below for
+why, not a host-OS distinction this time.)
+
+## Real bundling backend
+
+"Generate release" is real, not a mock — see `src-tauri/src/{shell,packer,bundle}.rs`:
+
+- **`shell.rs`** downloads (and caches, per version+platform, under this app's cache dir)
+  the engine's own prebuilt `roves_shell_<platform>.zip` release asset — never compiles
+  one. `TARGET_SHELL_VERSION` here **must** stay in sync with `src/lib/shell-version.ts`'s
+  constant of the same name — see the engine repo's own `CLAUDE.md`, "Cutting a versioned
+  release" section, which is the authoritative place this sync obligation is documented.
+- **`packer.rs`** places the user's content into the downloaded shell — either packed (by
+  linking the engine repo's `roves-content-packer` crate directly as a Cargo library
+  dependency, so packing happens in-process, no separate toolchain or sidecar binary
+  needed) or plain-copied, matching `compression.enabled`. Mirrors `python/servo/
+  post_build_commands.py`'s `_place_bundle_content`/`_write_launch_config`/
+  `_resolve_window_title` in the engine repo — consult that file before changing this
+  one, since the two must keep producing bundles the shipped engine binary can actually
+  launch (see `ports/servoshell/desktop/bundle_launch.rs` for the runtime contract:
+  `launch.json`'s schema, and where packed content must live relative to the binary).
+- **`bundle.rs`** orchestrates both per selected platform, emits `bundle-progress` events
+  the frontend listens for, and zips the result.
+
+**Why portable only, and no Steam plugin, for now:** both need something this
+download-a-prebuilt-shell approach doesn't have — native per-platform installer tooling
+(WiX/`dpkg-deb`/`hdiutil`) for the former, a Steam-enabled prebuilt shell variant for the
+latter (the engine's own `v0.1.0` release is a single, default-features build). Revisit
+`configure.tsx`'s hidden installers/plugins sections once either becomes real, rather than
+half-wiring them now.
+
+**Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
+(portable output) on every push and publishes it to a rolling "test" GitHub Release,
+mirroring the main engine repo's own `test.yml` — see this project's own README for
+details. Prefer this over asking whoever's iterating on Packmaster to have a working
+Rust/Tauri toolchain on hand.

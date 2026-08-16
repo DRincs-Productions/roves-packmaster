@@ -1,0 +1,136 @@
+name: 'Build Packmaster Test Distribution'
+
+# Mirrors the main Roves engine repo's own .github/workflows/test.yml: a rolling, unversioned
+# "test" GitHub Release, rebuilt (and its assets replaced) on every push, so a real, runnable
+# Packmaster build always exists to download and try — without anyone needing a local Rust +
+# Tauri toolchain (this machine's own toolchain gap is exactly why this workflow exists; see
+# the engine repo's CLAUDE.md/README for the "no Rust/Python needed" premise this preserves).
+#
+# Portable only, matching Packmaster's own current scope (see configure.tsx and CLAUDE.md):
+# `--no-bundle` on Windows/Linux (the raw compiled binary is already portable), `--bundles
+# app` on macOS (the .app bundle itself, not wrapped in a .dmg installer).
+
+on:
+  push:
+  workflow_dispatch: {}
+
+env:
+  TEST_RELEASE_TAG: 'test'
+
+jobs:
+  # ── Create the rolling "test" release exactly once before the matrix starts ────
+  ensure-test-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: ensure release "test" exists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$TEST_RELEASE_TAG" 2>/dev/null || \
+          gh release create "$TEST_RELEASE_TAG" \
+            --title "Packmaster test build" \
+            --notes "Rolling test build of Packmaster, from source, on every push. Not a real release — no versioning, no changelog. Latest build: commit ${{ github.sha }}." \
+            --prerelease \
+            2>/dev/null || \
+          gh release view "$TEST_RELEASE_TAG" > /dev/null
+
+  # ── Build Packmaster and upload the portable output, once per platform ─────────
+  build-and-publish:
+    needs: ensure-test-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            os_name: 'windows'
+          - platform: 'macos-latest'
+            os_name: 'macos'
+          - platform: 'ubuntu-24.04'
+            os_name: 'linux'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Tauri v2's own Linux prerequisites (webkit2gtk for the webview, appindicator/rsvg for
+      # tray/icon support, patchelf for its own AppImage tooling even though this workflow
+      # doesn't use it) — see https://v2.tauri.app/start/prerequisites/.
+      - name: install Tauri's Linux system dependencies
+        if: matrix.os_name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            libssl-dev
+
+      - name: npm install
+        run: npm install
+
+      # rustup ships preinstalled on all 3 GitHub-hosted runner images; no pinned toolchain
+      # here (unlike the main engine repo) so the default stable channel is used as-is.
+      - name: build Packmaster (portable, no installer)
+        shell: bash
+        run: |
+          if [ "${{ matrix.os_name }}" = "macos" ]; then
+            npm run tauri build -- --bundles app
+          else
+            npm run tauri build -- --no-bundle
+          fi
+
+      - name: stage build output
+        shell: bash
+        run: |
+          mkdir -p out/roves-packmaster
+          case "${{ matrix.os_name }}" in
+            windows)
+              cp src-tauri/target/release/roves-ui.exe out/roves-packmaster/
+              ;;
+            linux)
+              cp src-tauri/target/release/roves-ui out/roves-packmaster/
+              ;;
+            macos)
+              cp -r src-tauri/target/release/bundle/macos/roves-ui.app out/roves-packmaster/
+              ;;
+          esac
+          if [ -z "$(ls -A out/roves-packmaster)" ]; then
+            echo "::error::no build output staged — contents of src-tauri/target/release:"
+            find src-tauri/target/release -maxdepth 2
+            exit 1
+          fi
+
+      - name: zip bundle (Linux/macOS)
+        if: matrix.os_name != 'windows'
+        run: |
+          ZIP="roves-packmaster-test_${{ matrix.os_name }}.zip"
+          cd out
+          zip -r "$ZIP" roves-packmaster
+          echo "ZIP=out/$ZIP" >> "$GITHUB_ENV"
+
+      - name: zip bundle (Windows)
+        if: matrix.os_name == 'windows'
+        shell: pwsh
+        run: |
+          $zip = "roves-packmaster-test_windows.zip"
+          Compress-Archive -Path out/roves-packmaster -DestinationPath "out/$zip"
+          echo "ZIP=out/$zip" >> $env:GITHUB_ENV
+
+      - name: upload to "test" release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "$TEST_RELEASE_TAG" "$ZIP" --clobber

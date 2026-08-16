@@ -30,7 +30,8 @@
 			"description": "Un singolo eseguibile pronto all'uso per ogni piattaforma selezionata — nessun installer, nessun permesso da amministratore richiesto.",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "Nessuna build della shell pubblicata per questa piattaforma al momento — riprova più tardi."
 		},
 		"installers": {
 			"title": "Pacchetti installabili",

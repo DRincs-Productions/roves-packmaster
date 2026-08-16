@@ -30,7 +30,8 @@
 			"description": "選択した各プラットフォーム向けに、インストーラー不要・管理者権限不要のダブルクリックで実行できる単一ファイルを生成します。",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "このプラットフォーム向けに公開されているシェルビルドが見つかりません。後でもう一度お試しください。"
 		},
 		"installers": {
 			"title": "インストーラーパッケージ",

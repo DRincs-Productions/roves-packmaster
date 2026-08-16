@@ -30,7 +30,8 @@
 			"description": "为每个选中的平台生成一个双击即可运行的独立程序——无需安装程序，无需管理员权限。",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "目前未找到该平台已发布的外壳构建版本——请稍后再试。"
 		},
 		"installers": {
 			"title": "安装包",

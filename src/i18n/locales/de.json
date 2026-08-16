@@ -30,7 +30,8 @@
 			"description": "Eine einzige, per Doppelklick startbare Datei für jede ausgewählte Plattform — kein Installationsprogramm, keine Administratorrechte nötig.",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "Derzeit ist kein veröffentlichter Shell-Build für diese Plattform verfügbar — versuche es später erneut."
 		},
 		"installers": {
 			"title": "Installationspakete",

@@ -30,7 +30,8 @@
 			"description": "Un exécutable unique prêt à l'emploi en double-clic pour chaque plateforme choisie — pas d'installateur, aucun droit administrateur requis.",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "Aucune version du shell publiée pour cette plateforme pour le moment — réessayez plus tard."
 		},
 		"installers": {
 			"title": "Paquets installables",

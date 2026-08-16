@@ -30,7 +30,8 @@
 			"description": "A single double-click-to-run bundle for each platform you pick — no installer, no admin rights needed.",
 			"windows": "Windows",
 			"linux": "Linux",
-			"macos": "macOS"
+			"macos": "macOS",
+			"shellUnavailable": "No published shell build found for this platform right now — try again later."
 		},
 		"installers": {
 			"title": "Installable packages",
