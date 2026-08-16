@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "roves-ui",
+  "productName": "Roves Packmaster",
   "version": "0.1.0",
-  "identifier": "com.drincs.roves-ui",
+  "identifier": "com.drincs.roves-packmaster",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "roves-ui",
+        "title": "Roves Packmaster",
         "width": 800,
         "height": 600
       }

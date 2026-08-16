@@ -1,8 +1,4 @@
 {
-	"app": {
-		"name": "Roves Packmaster",
-		"tagline": "Empaquetez votre jeu pour toutes les plateformes de bureau"
-	},
 	"common": {
 		"back": "Retour",
 		"continue": "Continuer",

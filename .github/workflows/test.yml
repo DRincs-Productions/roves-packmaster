@@ -97,13 +97,13 @@ jobs:
           mkdir -p out/roves-packmaster
           case "${{ matrix.os_name }}" in
             windows)
-              cp src-tauri/target/release/roves-ui.exe out/roves-packmaster/
+              cp src-tauri/target/release/roves-packmaster.exe out/roves-packmaster/
               ;;
             linux)
-              cp src-tauri/target/release/roves-ui out/roves-packmaster/
+              cp src-tauri/target/release/roves-packmaster out/roves-packmaster/
               ;;
             macos)
-              cp -r src-tauri/target/release/bundle/macos/roves-ui.app out/roves-packmaster/
+              cp -r "src-tauri/target/release/bundle/macos/Roves Packmaster.app" out/roves-packmaster/
               ;;
           esac
           if [ -z "$(ls -A out/roves-packmaster)" ]; then

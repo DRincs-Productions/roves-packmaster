@@ -1,8 +1,4 @@
 {
-	"app": {
-		"name": "Roves Packmaster",
-		"tagline": "为每个桌面平台打包你的游戏"
-	},
 	"common": {
 		"back": "返回",
 		"continue": "继续",

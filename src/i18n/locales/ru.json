@@ -1,8 +1,4 @@
 {
-	"app": {
-		"name": "Roves Packmaster",
-		"tagline": "Упакуйте свою игру для всех настольных платформ"
-	},
 	"common": {
 		"back": "Назад",
 		"continue": "Продолжить",

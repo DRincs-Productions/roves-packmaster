@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { languageNames, supportedLanguages } from "@/i18n";
+import { languageNames, type SupportedLanguage, supportedLanguages } from "@/i18n";
 
 export function LanguageSwitcher() {
   const { i18n } = useTranslation();
@@ -19,7 +19,9 @@ export function LanguageSwitcher() {
       }}
     >
       <SelectTrigger size="sm" className="w-36">
-        <SelectValue />
+        <SelectValue>
+          {(value: string | null) => (value ? languageNames[value as SupportedLanguage] : "")}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {supportedLanguages.map((lang) => (
