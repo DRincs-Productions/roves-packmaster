@@ -77,5 +77,10 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux"
+	},
+	"shellUpdate": {
+		"title": "Hay una nueva versión del shell disponible",
+		"description": "Packmaster actualmente apunta al shell de Roves {{current}}, pero se ha publicado la {{latest}}.",
+		"link": "Ver la última versión"
 	}
 }

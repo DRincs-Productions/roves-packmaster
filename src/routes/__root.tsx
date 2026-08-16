@@ -1,6 +1,7 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { BrandHeader } from "@/components/brand/brand-header";
 import { LanguageSwitcher } from "@/components/brand/language-switcher";
+import { ShellUpdateBanner } from "@/components/shell-update-banner";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -18,6 +19,7 @@ function RootLayout() {
           <LanguageSwitcher />
         </div>
       </div>
+      <ShellUpdateBanner />
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-10">
         <Outlet />
       </main>

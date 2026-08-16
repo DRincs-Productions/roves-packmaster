@@ -77,5 +77,10 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux"
+	},
+	"shellUpdate": {
+		"title": "Une nouvelle version du shell est disponible",
+		"description": "Packmaster cible actuellement le shell Roves {{current}}, mais la version {{latest}} a été publiée.",
+		"link": "Voir la dernière version"
 	}
 }

@@ -77,5 +77,10 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux"
+	},
+	"shellUpdate": {
+		"title": "Доступна новая версия оболочки",
+		"description": "Packmaster сейчас ориентирован на оболочку Roves {{current}}, но уже опубликована {{latest}}.",
+		"link": "Посмотреть последний релиз"
 	}
 }

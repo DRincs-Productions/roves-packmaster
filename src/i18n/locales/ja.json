@@ -77,5 +77,10 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux"
+	},
+	"shellUpdate": {
+		"title": "新しいシェルバージョンが利用可能です",
+		"description": "Packmaster は現在 Roves シェル {{current}} を対象としていますが、{{latest}} が公開されています。",
+		"link": "最新のリリースを見る"
 	}
 }

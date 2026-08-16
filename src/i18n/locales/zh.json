@@ -77,5 +77,10 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux"
+	},
+	"shellUpdate": {
+		"title": "有新版本的引擎外壳可用",
+		"description": "Packmaster 目前面向的是 Roves 引擎外壳 {{current}}，但已发布 {{latest}}。",
+		"link": "查看最新发行版"
 	}
 }
