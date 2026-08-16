@@ -45,3 +45,8 @@ futures-util = "0.3"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2"
 
+# Real installer generation (see src/installer.rs): WiX (Windows), hdiutil (macOS), dpkg-deb
+# (Linux) -- each only usable when Packmaster runs on its matching host with that native
+# tool already installed, unlike the portable/shell-download path.
+uuid = { version = "1", features = ["v4", "v5"] }
+

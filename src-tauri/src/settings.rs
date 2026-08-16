@@ -1,10 +1,7 @@
 //! Mirrors `src/lib/settings.ts`'s `PackmasterSettings` on the Rust side, for deserializing
-//! what the frontend sends into `generate_release`. Only `sourceDir`, `portable`, and
-//! `compression` currently drive real behavior (see `bundle.rs`) — `installers` and
-//! `plugins.steam` are accepted (so the whole settings object round-trips without the
-//! frontend needing a stripped-down variant) but not yet acted on: both need something this
-//! first real-integration pass deliberately doesn't have (native per-platform installer
-//! tooling, and a Steam-enabled prebuilt shell variant — see the engine repo's CLAUDE.md).
+//! what the frontend sends into `generate_release`. `plugins.steam` isn't included here at
+//! all — it isn't acted on yet (needs a Steam-enabled prebuilt shell variant that doesn't
+//! exist, see the engine repo's CLAUDE.md) and the frontend no longer sends it.
 
 use serde::Deserialize;
 
@@ -14,6 +11,21 @@ pub struct PortableSettings {
     pub windows: bool,
     pub linux: bool,
     pub macos: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallerPlatformSettings {
+    pub enabled: bool,
+    pub formats: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallerSettings {
+    pub windows: InstallerPlatformSettings,
+    pub linux: InstallerPlatformSettings,
+    pub macos: InstallerPlatformSettings,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,10 +43,20 @@ pub struct CompressionSettings {
 pub struct PackmasterSettings {
     pub source_dir: Option<String>,
     pub portable: PortableSettings,
+    pub installers: InstallerSettings,
     pub compression: CompressionSettings,
 }
 
 impl PortableSettings {
+    pub fn get(&self, platform: &str) -> bool {
+        match platform {
+            "windows" => self.windows,
+            "linux" => self.linux,
+            "macos" => self.macos,
+            _ => false,
+        }
+    }
+
     /// `(platform_id, enabled)` pairs, in the same order release.yml's own matrix builds
     /// them — used to iterate only the platforms the user actually asked for.
     pub fn selected(&self) -> Vec<&'static str> {
@@ -42,5 +64,15 @@ impl PortableSettings {
             .into_iter()
             .filter_map(|(platform, enabled)| enabled.then_some(platform))
             .collect()
+    }
+}
+
+impl InstallerSettings {
+    pub fn get(&self, platform: &str) -> &InstallerPlatformSettings {
+        match platform {
+            "windows" => &self.windows,
+            "linux" => &self.linux,
+            _ => &self.macos,
+        }
     }
 }

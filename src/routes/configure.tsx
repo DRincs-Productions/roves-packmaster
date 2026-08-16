@@ -15,6 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  checkInstallerAvailability,
+  type InstallerAvailability,
+} from "@/lib/installer-availability";
 import { readParentPackageJson } from "@/lib/release-info";
 import { useSettings } from "@/lib/settings-context";
 import { checkShellAvailability } from "@/lib/shell-availability";
@@ -40,6 +44,10 @@ function ConfigureView() {
   const navigate = useNavigate();
   const { settings, updateSettings } = useSettings();
   const [availability, setAvailability] = useState<Record<string, boolean> | null>(null);
+  const [installerAvailability, setInstallerAvailability] = useState<Record<
+    string,
+    InstallerAvailability
+  > | null>(null);
   const [releaseInfo, setReleaseInfo] = useState({ name: "", version: "" });
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
 
@@ -50,6 +58,14 @@ function ConfigureView() {
       navigate({ to: "/" });
     }
   }, [settings.sourceDir, navigate]);
+
+  // Real, live check ("is this actually distributable") that this exact machine can build
+  // an installer for each platform — right host OS *and* its native tool actually
+  // installed (WiX/hdiutil/dpkg-deb). Unlike the shell download, there's no way around
+  // this: an installer can only ever be built on its own platform.
+  useEffect(() => {
+    checkInstallerAvailability([...PORTABLE_PLATFORMS]).then(setInstallerAvailability);
+  }, []);
 
   // Real, live check ("is this actually distributable") against the targeted shell
   // release's actual assets — not assumed just because it's a supported platform.
@@ -197,10 +213,22 @@ function ConfigureView() {
                 updateSettings({
                   installers: {
                     ...settings.installers,
-                    [p]: { ...settings.installers[p], enabled },
+                    [p]: {
+                      ...settings.installers[p],
+                      enabled,
+                      // Default to the one real format that exists per platform today, so
+                      // enabling a card doesn't also require opening its (currently
+                      // single-option) format picker just to get anything selected.
+                      formats:
+                        enabled && settings.installers[p].formats.length === 0
+                          ? INSTALLER_FORMATS[p].map((f) => f.value)
+                          : settings.installers[p].formats,
+                    },
                   },
                 })
               }
+              available={installerAvailability ? installerAvailability[p].available : null}
+              unavailableReason={installerAvailability ? installerAvailability[p].reason : null}
               availableFormats={INSTALLER_FORMATS[p]}
               formats={settings.installers[p].formats}
               onFormatsChange={(formats) =>

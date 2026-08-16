@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
+use crate::installer;
 use crate::packer;
 use crate::settings::PackmasterSettings;
 use crate::shell;
@@ -63,7 +64,13 @@ pub async fn generate_release(
         .ok_or_else(|| "no source folder selected".to_string())?;
     let content_dir = PathBuf::from(source_dir);
 
-    let platforms = settings.portable.selected();
+    // The union of "build a portable zip" and "build an installer" per platform — a
+    // platform can be requested for either, both, or neither; either one means the same
+    // shell download + content-packing work has to happen for it.
+    let platforms: Vec<&'static str> = ["windows", "linux", "macos"]
+        .into_iter()
+        .filter(|&p| settings.portable.get(p) || settings.installers.get(p).enabled)
+        .collect();
     if platforms.is_empty() {
         return Err("no platform selected".to_string());
     }
@@ -77,7 +84,13 @@ pub async fn generate_release(
     std::fs::create_dir_all(&release_dir).map_err(|e| e.to_string())?;
 
     let window_title = (!name.trim().is_empty()).then(|| name.trim().to_string());
-    let file_stem = file_stem(window_title.as_deref().unwrap_or("game"), version.trim());
+    // `package_name` (just the sanitized game name) is what installers use — WiX's
+    // INSTALLDIR, the .deb's package name, the .dmg's volume name, etc. — while the
+    // portable zip's own filename folds the version in too, since it isn't a package
+    // identifier anywhere the way the installer name is.
+    let package_name = sanitize_name(window_title.as_deref().unwrap_or("game"));
+    let raw_version = version.trim().to_string();
+    let zip_stem = file_stem(window_title.as_deref().unwrap_or("game"), &raw_version);
 
     for &platform in &platforms {
         emit_progress(&app, platform, "checking", 0.0);
@@ -86,6 +99,16 @@ pub async fn generate_release(
                 "no published shell release found for {platform} (targeting {})",
                 shell::TARGET_SHELL_VERSION
             ));
+        }
+        let installer_settings = settings.installers.get(platform);
+        if installer_settings.enabled {
+            let (available, reason) = installer::check_installer_availability(platform);
+            if !available {
+                return Err(format!(
+                    "can't build an installer for {platform}: {}",
+                    reason.unwrap_or_else(|| "not available on this machine".to_string())
+                ));
+            }
         }
 
         let shell_root = shell::ensure_shell(&app, platform, |fraction| {
@@ -108,13 +131,28 @@ pub async fn generate_release(
             _ => (staging_dir.clone(), staging_dir.clone()),
         };
 
-        emit_progress(&app, platform, "packing", 0.5);
+        emit_progress(&app, platform, "packing", 0.4);
         packer::place_content(&content_dir, &content_root, &settings.compression, window_title.clone())?;
         packer::write_launch_json(&binary_dir, settings.compression.enabled, window_title.as_deref())?;
 
-        emit_progress(&app, platform, "zipping", 0.8);
-        let zip_path = release_dir.join(format!("{file_stem}_{platform}.zip"));
-        zip_dir_as(&staging_dir, &file_stem, &zip_path)?;
+        if settings.portable.get(platform) {
+            emit_progress(&app, platform, "zipping", 0.7);
+            let zip_path = release_dir.join(format!("{zip_stem}_{platform}.zip"));
+            zip_dir_as(&staging_dir, &package_name, &zip_path)?;
+        }
+
+        if installer_settings.enabled {
+            for format in &installer_settings.formats {
+                emit_progress(&app, platform, "packaging", 0.85);
+                let result = match format.as_str() {
+                    "msi" => installer::build_msi(&staging_dir, &release_dir, &package_name, &raw_version),
+                    "dmg" => installer::build_dmg(&staging_dir, &release_dir, &package_name, &raw_version),
+                    "deb" => installer::build_deb(&staging_dir, &release_dir, &package_name, &raw_version),
+                    other => Err(format!("unknown installer format {other:?}")),
+                };
+                result.map_err(|e| format!("building .{format} for {platform}: {e}"))?;
+            }
+        }
 
         std::fs::remove_dir_all(&staging_dir).ok();
         emit_progress(&app, platform, "done", 1.0);

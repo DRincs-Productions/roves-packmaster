@@ -7,12 +7,17 @@
 		"core:default",
 		"core:app:allow-version",
 		"opener:default",
+		"opener:allow-open-path",
 		"dialog:default",
 		"fs:default",
 		"fs:allow-read-dir",
 		"fs:allow-read-file",
 		"fs:allow-read-text-file",
 		"fs:allow-exists",
+		{
+			"identifier": "fs:scope",
+			"allow": ["**"]
+		},
 		"os:default",
 		"store:default"
 	]

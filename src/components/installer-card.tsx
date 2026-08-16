@@ -31,6 +31,10 @@ interface InstallerCardProps {
   availableFormats: FormatOption[];
   formats: string[];
   onFormatsChange: (formats: string[]) => void;
+  /** Real feasibility (right host OS + native tool actually installed) — see
+   * src/lib/installer-availability.ts. `null` while still checking. */
+  available: boolean | null;
+  unavailableReason: string | null;
 }
 
 export function InstallerCard({
@@ -42,9 +46,12 @@ export function InstallerCard({
   availableFormats,
   formats,
   onFormatsChange,
+  available,
+  unavailableReason,
 }: InstallerCardProps) {
   const PlatformIcon = PLATFORM_ICONS[platform];
   const anchor = useComboboxAnchor();
+  const isAvailable = available ?? true;
 
   return (
     <Card className="flex-1">
@@ -54,11 +61,17 @@ export function InstallerCard({
           {title}
         </CardTitle>
         <Checkbox
-          checked={enabled}
+          checked={isAvailable && enabled}
+          disabled={!isAvailable}
           onCheckedChange={(checked) => onEnabledChange(checked === true)}
         />
       </CardHeader>
-      {enabled && (
+      {!isAvailable && unavailableReason && (
+        <CardContent>
+          <p className="text-muted-foreground text-xs">{unavailableReason}</p>
+        </CardContent>
+      )}
+      {isAvailable && enabled && (
         <CardContent className="flex flex-col gap-1.5">
           <Label className="text-muted-foreground text-xs">{typeLabel}</Label>
           <Combobox

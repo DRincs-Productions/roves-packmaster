@@ -19,30 +19,39 @@ test release](https://github.com/DRincs-Productions/roves-ui/releases/tag/test) 
 
 Real, not a mock: "Generate release" actually downloads the targeted shell version
 (`src/lib/shell-version.ts`'s `TARGET_SHELL_VERSION`), packs your content into it, and
-writes a real, runnable release to disk. **Portable only for now** — no `.msi`/`.deb`/`.dmg`
-installers, since those need native per-platform tooling (WiX, `dpkg-deb`, `hdiutil`) that
-downloading a prebuilt shell doesn't solve; the installers/plugins screens from an earlier
-mock pass are hidden until that's real (see this project's own `CLAUDE.md`, "Hide, don't
-just disable"). Steam integration is the same story — it needs a Steam-enabled prebuilt
-shell variant that doesn't exist yet, so that toggle is gone for now too, not silently
-ignored.
+writes a real, runnable release to disk. Installers (`.msi`/`.dmg`/`.deb`) are real too
+(`src-tauri/src/installer.rs`, porting the engine's own WiX/`hdiutil`/`dpkg-deb` logic to
+Rust) — but unlike the portable path, each one only works when Packmaster itself is running
+on its matching OS *and* that OS's native tool is already installed (WiX on Windows,
+`hdiutil` on macOS — built in, `dpkg-deb` on Linux); Packmaster shows a real, live check for
+this per platform rather than assuming. Steam integration is the one thing still not real —
+it needs a Steam-enabled prebuilt shell variant that doesn't exist yet, so that section is
+informational only (see `configure.tsx`'s "Steam" panel).
 
 ## What it does
 
 1. **Pick your build output.** Point Packmaster at the folder your bundler already
    produced (a Vite.js project's `dist/`, or the equivalent from any other bundler) —
-   not your source code. Packmaster checks for an `index.html` there before continuing.
+   not your source code. Packmaster checks for an `index.html` there, and rejects a
+   folder that still has its own `package.json` (a project's source root, not its built
+   output — Vite ships an `index.html` at the source root too, so that check alone can't
+   tell the two apart).
 2. **Configure your release:**
+   - **Release info** — game name and version, read from the build folder's parent
+     `package.json` when present (the version always follows it fresh; the name is
+     remembered per source folder otherwise) and editable either way. These name the
+     generated files and the bundled window title.
    - **Portable** — a self-contained, double-click-to-run bundle per platform. Each
      platform shows a real, live check (a HEAD request against the targeted shell
      release's actual asset) for whether it's currently distributable, rather than
      assuming it always is.
-   - **Compression** — packs your game's content into compressed archives instead of
-     loose files, with the same tunables (level, max archive size, exclusions) as the
-     engine's own `mach bundle --content-compress` flags, defaulting to what the engine
-     itself defaults to.
+   - **Installable** — a real `.msi`/`.dmg`/`.deb` per platform, each with its own live
+     host-OS-and-tool availability check (see "Status" above).
+   - **Advanced** — Compression (packs your game's content into compressed archives
+     instead of loose files, with the same tunables as the engine's own `mach bundle
+     --content-compress` flags) and Steam (informational only for now — see "Status").
 3. **Generate.** Downloads the shell (cached per version/platform after the first run),
-   packs your content into it, and shows real progress per platform. Opens the folder the
+   packs your content into it, and shows real, per-step progress. Opens the folder the
    release was written to when done — a `release/` folder next to wherever Packmaster
    itself is running from, containing one `<your-game-name>_<platform>.zip` per platform.
 

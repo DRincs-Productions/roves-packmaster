@@ -76,13 +76,15 @@ should still be set the next time they open Packmaster. Any new setting needs:
 
 ## Platform-conditional UI
 
-Some settings are only meaningful on a specific host OS (see `src/lib/platform.ts`'s own
-comment — `.msi` needs Windows+WiX, `.dmg` needs macOS+`hdiutil`, `.deb` needs
-Linux+`dpkg-deb`). Hide, don't just disable, options that can't actually work on the
-current system — an unavailable option a user can still see and try to enable is worse
-than one that isn't shown at all. (`configure.tsx`'s installers/plugins screens are
-currently hidden entirely on this same principle — see "Real bundling backend" below for
-why, not a host-OS distinction this time.)
+Some settings are only meaningful on a specific host OS: `.msi` needs Windows+WiX, `.dmg`
+needs macOS+`hdiutil`, `.deb` needs Linux+`dpkg-deb` (see "Real bundling backend" below).
+Rather than a frontend-side OS guess, this is backed by a real, live check —
+`check_installer_availability` in `src-tauri/src/installer.rs`, surfaced to the frontend via
+`src/lib/installer-availability.ts` — since availability depends on the native tool actually
+being installed, not just which OS Packmaster is running on. `configure.tsx`'s installer
+cards disable themselves (not hide — the platform stays visible, with the reason shown)
+when that check comes back negative, so a user can still see what's possible elsewhere
+without being able to try an option that can't work here.
 
 ## Real bundling backend
 
@@ -102,15 +104,23 @@ why, not a host-OS distinction this time.)
   one, since the two must keep producing bundles the shipped engine binary can actually
   launch (see `ports/servoshell/desktop/bundle_launch.rs` for the runtime contract:
   `launch.json`'s schema, and where packed content must live relative to the binary).
-- **`bundle.rs`** orchestrates both per selected platform, emits `bundle-progress` events
-  the frontend listens for, and zips the result.
+- **`bundle.rs`** orchestrates both per selected platform (and per format, for installers —
+  see below), emits `bundle-progress` events the frontend listens for, and zips the
+  portable output.
+- **`installer.rs`** wraps the same staging dir `bundle.rs` already assembled into a real
+  `.msi`/`.dmg`/`.deb`, porting `post_build_commands.py`'s `_wrap_windows_msi`/
+  `_wrap_macos_dmg`/`_bundle_linux_deb` (and `support/windows/roves-bundle.wxs.mako` for
+  the WiX source) to Rust. Each format only works when Packmaster itself is running on its
+  matching OS *and* that OS's native tool (WiX/`hdiutil`/`dpkg-deb`) is already installed —
+  `check_installer_availability` is a real, live check for this (host OS + tool-on-PATH),
+  not an assumption; `configure.tsx`'s installer cards disable themselves accordingly.
 
-**Why portable only, and no Steam plugin, for now:** both need something this
-download-a-prebuilt-shell approach doesn't have — native per-platform installer tooling
-(WiX/`dpkg-deb`/`hdiutil`) for the former, a Steam-enabled prebuilt shell variant for the
-latter (the engine's own `v0.1.0` release is a single, default-features build). Revisit
-`configure.tsx`'s hidden installers/plugins sections once either becomes real, rather than
-half-wiring them now.
+**Why no Steam plugin still:** it needs something this download-a-prebuilt-shell approach
+doesn't have — a Steam-enabled prebuilt shell variant (the engine's own `v0.1.0` release is
+a single, default-features build). `configure.tsx`'s "Steam" panel is informational only
+(it explains this and points at `@drincs/roves-api/steam` for the actual game-side
+integration) — revisit once a Steam-enabled shell variant exists, rather than half-wiring
+a toggle that can't do anything yet.
 
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
 (portable output) on every push and publishes it to a rolling "test" GitHub Release,

@@ -1,7 +1,19 @@
 mod bundle;
+mod installer;
 mod packer;
 mod settings;
 mod shell;
+
+#[tauri::command]
+fn check_installer_availability(platforms: Vec<String>) -> Vec<(String, bool, Option<String>)> {
+    platforms
+        .into_iter()
+        .map(|platform| {
+            let (available, reason) = installer::check_installer_availability(&platform);
+            (platform, available, reason)
+        })
+        .collect()
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,7 +25,8 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             bundle::generate_release,
-            bundle::check_shell_availability
+            bundle::check_shell_availability,
+            check_installer_availability
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
