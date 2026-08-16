@@ -15,19 +15,28 @@
 		"browseDialogTitle": "Select your game's build output folder",
 		"errorTitle": "This doesn't look like a build output folder",
 		"errorDescription": "Packmaster couldn't find an {{indexHtml}} in this folder. Double-check you picked the built output (e.g. {{dist}}), not your project's source folder.",
+		"errorLooksLikeSource": "This folder still has a {{packageJson}} in it — that means it's your project's source folder, not its built output. Run your build first, then pick the {{dist}} folder it creates.",
 		"analyzing": "Checking this folder…"
 	},
 	"configure": {
 		"title": "Configure your release",
 		"sourceLabel": "Source",
 		"changeSource": "Change",
+		"releaseInfo": {
+			"title": "Release info",
+			"description": "Used to name the files Packmaster generates.",
+			"nameLabel": "Game name",
+			"namePlaceholder": "My Game",
+			"versionLabel": "Version",
+			"versionFromPackageJson": "Taken from your project's package.json — edit it there to change it."
+		},
 		"portable": {
 			"title": "Portable",
 			"description": "A single double-click-to-run bundle for each platform you pick — no installer, no admin rights needed.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "No published shell build found for this platform right now — try again later."
+			"shellUnavailable": "No published shell build found for: {{platforms}} — try again later."
 		},
 		"installers": {
 			"title": "Installable packages",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "Generating your release…",
+		"phase": {
+			"checking": "Checking {{platform}} availability…",
+			"downloading": "Downloading the {{platform}} shell…",
+			"assembling": "Assembling the {{platform}} package…",
+			"packing": "Packing your content for {{platform}}…",
+			"zipping": "Packaging the {{platform}} build…",
+			"done": "{{platform}} done"
+		},
 		"doneTitle": "Your release is ready",
 		"doneDescription": "Packmaster saved everything to the {{folder}} folder.",
 		"openFolder": "Open release folder",

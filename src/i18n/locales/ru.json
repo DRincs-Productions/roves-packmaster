@@ -15,19 +15,28 @@
 		"browseDialogTitle": "Выберите папку вывода сборки вашей игры",
 		"errorTitle": "Похоже, это не папка вывода сборки",
 		"errorDescription": "Packmaster не нашёл файл {{indexHtml}} в этой папке. Проверьте, что вы выбрали именно вывод сборки (например, {{dist}}), а не папку с исходным кодом проекта.",
+		"errorLooksLikeSource": "В этой папке всё ещё есть {{packageJson}} — значит, это папка с исходным кодом проекта, а не результат сборки. Сначала выполните сборку, затем выберите созданную папку {{dist}}.",
 		"analyzing": "Проверка папки…"
 	},
 	"configure": {
 		"title": "Настройте релиз",
 		"sourceLabel": "Источник",
 		"changeSource": "Изменить",
+		"releaseInfo": {
+			"title": "Информация о релизе",
+			"description": "Используется для именования файлов, создаваемых Packmaster.",
+			"nameLabel": "Название игры",
+			"namePlaceholder": "Моя игра",
+			"versionLabel": "Версия",
+			"versionFromPackageJson": "Взято из package.json вашего проекта — измените там, чтобы изменить здесь."
+		},
 		"portable": {
 			"title": "Портативная версия",
 			"description": "Единый исполняемый файл для каждой выбранной платформы, запускаемый двойным щелчком — без установщика и прав администратора.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "Сейчас для этой платформы нет опубликованной сборки оболочки — попробуйте позже."
+			"shellUnavailable": "Не найдена опубликованная сборка оболочки для: {{platforms}} — попробуйте позже."
 		},
 		"installers": {
 			"title": "Установочные пакеты",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "Создание релиза…",
+		"phase": {
+			"checking": "Проверка доступности для {{platform}}…",
+			"downloading": "Загрузка оболочки для {{platform}}…",
+			"assembling": "Сборка пакета для {{platform}}…",
+			"packing": "Упаковка контента для {{platform}}…",
+			"zipping": "Упаковка сборки {{platform}}…",
+			"done": "{{platform}} готово"
+		},
 		"doneTitle": "Релиз готов",
 		"doneDescription": "Packmaster сохранил всё в папку {{folder}}.",
 		"openFolder": "Открыть папку релиза",

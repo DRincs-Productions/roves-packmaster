@@ -26,8 +26,18 @@ export interface CompressionSettings {
   bootInclude: string[];
 }
 
+export interface ReleaseInfo {
+  name: string;
+  version: string;
+}
+
 export interface PackmasterSettings {
   sourceDir: string | null;
+  /** Remembered name/version per source folder — see configure.tsx's own release-info
+   * effect for how these get derived from package.json vs. remembered as-is. Keyed by the
+   * exact sourceDir path, so picking a different folder starts fresh rather than carrying
+   * over an unrelated game's name/version. */
+  releaseInfoByPath: Record<string, ReleaseInfo>;
   portable: PortableSettings;
   installers: InstallerSettings;
   plugins: PluginSettings;
@@ -40,6 +50,7 @@ export interface PackmasterSettings {
 // have produced.
 export const defaultSettings: PackmasterSettings = {
   sourceDir: null,
+  releaseInfoByPath: {},
   portable: {
     windows: true,
     linux: true,
@@ -90,6 +101,7 @@ export async function loadSettings(): Promise<PackmasterSettings> {
   return {
     ...defaultSettings,
     ...stored,
+    releaseInfoByPath: { ...defaultSettings.releaseInfoByPath, ...stored.releaseInfoByPath },
     portable: { ...defaultSettings.portable, ...stored.portable },
     installers: { ...defaultSettings.installers, ...stored.installers },
     plugins: { ...defaultSettings.plugins, ...stored.plugins },

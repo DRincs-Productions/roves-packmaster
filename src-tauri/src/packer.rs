@@ -3,8 +3,10 @@
 //! without shelling out to a separately-built tool or requiring a Rust toolchain on a game
 //! developer's machine) or copied as loose files, matching `mach bundle`'s own
 //! `--content-compress none` behavior. Mirrors `python/servo/post_build_commands.py`'s
-//! `_place_bundle_content`/`_write_launch_config`/`_resolve_window_title` — see that file for
-//! the Python original this reimplements in Rust.
+//! `_place_bundle_content`/`_write_launch_config` — see that file for the Python original
+//! this reimplements in Rust. Unlike that Python original, the window title/manifest name
+//! isn't derived here (see `_resolve_window_title`) — `configure.tsx`'s "Release info" fields
+//! own that job on the frontend now, since they're user-editable there.
 
 use std::fs;
 use std::path::Path;
@@ -13,26 +15,6 @@ use roves_content_packer::pack::{PackOptions, pack};
 use roves_content_packer::size::parse_size;
 
 use crate::settings::CompressionSettings;
-
-/// `manifest.json` (inside `content_dir`) then `../package.json` (one directory up from
-/// `content_dir`) — whichever exists first and has a truthy `name` field wins. Used both as
-/// the packed manifest's display name and as the bundled window title.
-pub fn resolve_window_title(content_dir: &Path) -> Option<String> {
-    for candidate in [content_dir.join("manifest.json"), content_dir.join("..").join("package.json")] {
-        let Ok(text) = fs::read_to_string(&candidate) else {
-            continue;
-        };
-        let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) else {
-            continue;
-        };
-        if let Some(name) = json.get("name").and_then(|v| v.as_str()) {
-            if !name.is_empty() {
-                return Some(name.to_string());
-            }
-        }
-    }
-    None
-}
 
 /// Always the whole entry html file itself, in `content_dir`'s own root — mirrors the same
 /// assumption Packmaster's source-selection screen already makes (`src/routes/index.tsx`

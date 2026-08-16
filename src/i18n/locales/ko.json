@@ -15,19 +15,28 @@
 		"browseDialogTitle": "게임의 빌드 출력 폴더 선택",
 		"errorTitle": "유효한 빌드 출력 폴더가 아닌 것 같습니다",
 		"errorDescription": "이 폴더에서 {{indexHtml}}을(를) 찾을 수 없습니다. 프로젝트의 소스 폴더가 아니라 빌드 출력(예: {{dist}})을 선택했는지 확인하세요.",
+		"errorLooksLikeSource": "이 폴더에는 아직 {{packageJson}}이(가) 있습니다 — 즉 이 폴더는 프로젝트의 소스 폴더이며, 빌드 출력이 아닙니다. 먼저 빌드를 실행한 다음 생성된 {{dist}} 폴더를 선택하세요.",
 		"analyzing": "폴더를 확인하는 중…"
 	},
 	"configure": {
 		"title": "릴리스 구성",
 		"sourceLabel": "소스",
 		"changeSource": "변경",
+		"releaseInfo": {
+			"title": "릴리스 정보",
+			"description": "Packmaster가 생성하는 파일의 이름을 지정하는 데 사용됩니다.",
+			"nameLabel": "게임 이름",
+			"namePlaceholder": "내 게임",
+			"versionLabel": "버전",
+			"versionFromPackageJson": "프로젝트의 package.json에서 가져왔습니다 — 변경하려면 거기서 수정하세요."
+		},
 		"portable": {
 			"title": "포터블",
 			"description": "선택한 각 플랫폼용으로 설치 프로그램이나 관리자 권한 없이 더블 클릭만으로 실행되는 단일 번들을 생성합니다.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "현재 이 플랫폼용으로 게시된 셸 빌드를 찾을 수 없습니다. 나중에 다시 시도하세요."
+			"shellUnavailable": "다음 플랫폼용으로 게시된 셸 빌드를 찾을 수 없습니다: {{platforms}}. 나중에 다시 시도하세요."
 		},
 		"installers": {
 			"title": "설치 패키지",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "릴리스를 생성하는 중…",
+		"phase": {
+			"checking": "{{platform}} 사용 가능 여부 확인 중…",
+			"downloading": "{{platform}} 셸 다운로드 중…",
+			"assembling": "{{platform}} 패키지 조립 중…",
+			"packing": "{{platform}}용 콘텐츠 패킹 중…",
+			"zipping": "{{platform}} 빌드 패키징 중…",
+			"done": "{{platform}} 완료"
+		},
 		"doneTitle": "릴리스가 준비되었습니다",
 		"doneDescription": "Packmaster가 모든 내용을 {{folder}} 폴더에 저장했습니다.",
 		"openFolder": "릴리스 폴더 열기",

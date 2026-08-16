@@ -32,6 +32,7 @@ function GeneratingView() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<Status>("running");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [phaseText, setPhaseText] = useState<string | null>(null);
   const releaseDirRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -51,15 +52,23 @@ function GeneratingView() {
 
     async function run() {
       unlisten = await listen<BundleProgressEvent>("bundle-progress", (event) => {
-        platformProgress.set(event.payload.platform, event.payload.fraction);
+        const { platform, phase, fraction } = event.payload;
+        platformProgress.set(platform, fraction);
         if (platformCount > 0) {
           const total = [...platformProgress.values()].reduce((sum, value) => sum + value, 0);
           setProgress(Math.round((total / platformCount) * 100));
         }
+        setPhaseText(t(`generating.phase.${phase}`, { platform: t(`system.${platform}`) }));
       });
 
       try {
-        const releaseDir = await invoke<string>("generate_release", { settings });
+        const sourceDir = settings.sourceDir as string;
+        const releaseInfo = settings.releaseInfoByPath[sourceDir];
+        const releaseDir = await invoke<string>("generate_release", {
+          settings,
+          name: releaseInfo?.name || "",
+          version: releaseInfo?.version || "",
+        });
         if (cancelled) return;
         releaseDirRef.current = releaseDir;
         setProgress(100);
@@ -80,7 +89,7 @@ function GeneratingView() {
     // `navigate` (TanStack Router) is a stable reference across renders —
     // listing it doesn't cause this effect to re-run on every render, it's
     // just here to satisfy the lint rule honestly rather than suppress it.
-  }, [settings, navigate]);
+  }, [settings, navigate, t]);
 
   const handleOpenFolder = async () => {
     if (releaseDirRef.current) {
@@ -98,7 +107,7 @@ function GeneratingView() {
       {status === "running" && (
         <div className="flex w-72 flex-col gap-3">
           <Progress value={progress} />
-          <p className="text-muted-foreground text-sm">{t("generating.title")}</p>
+          <p className="text-muted-foreground text-sm">{phaseText ?? t("generating.title")}</p>
         </div>
       )}
 

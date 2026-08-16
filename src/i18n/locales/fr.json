@@ -15,19 +15,28 @@
 		"browseDialogTitle": "Sélectionnez le dossier de sortie de la compilation de votre jeu",
 		"errorTitle": "Cela ne ressemble pas à un dossier de sortie de compilation valide",
 		"errorDescription": "Packmaster n'a pas trouvé de fichier {{indexHtml}} dans ce dossier. Vérifiez que vous avez sélectionné la sortie de la compilation (par ex. {{dist}}), et non le dossier source de votre projet.",
+		"errorLooksLikeSource": "Ce dossier contient encore un {{packageJson}} — cela signifie qu'il s'agit du dossier source de votre projet, pas de sa sortie compilée. Lancez d'abord votre build, puis sélectionnez le dossier {{dist}} qu'il crée.",
 		"analyzing": "Vérification de ce dossier…"
 	},
 	"configure": {
 		"title": "Configurez votre version",
 		"sourceLabel": "Source",
 		"changeSource": "Modifier",
+		"releaseInfo": {
+			"title": "Informations de la version",
+			"description": "Utilisées pour nommer les fichiers générés par Packmaster.",
+			"nameLabel": "Nom du jeu",
+			"namePlaceholder": "Mon jeu",
+			"versionLabel": "Version",
+			"versionFromPackageJson": "Reprise du package.json de votre projet — modifiez-la là-bas pour la changer."
+		},
 		"portable": {
 			"title": "Portable",
 			"description": "Un exécutable unique prêt à l'emploi en double-clic pour chaque plateforme choisie — pas d'installateur, aucun droit administrateur requis.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "Aucune version du shell publiée pour cette plateforme pour le moment — réessayez plus tard."
+			"shellUnavailable": "Aucune version du shell publiée pour : {{platforms}} — réessayez plus tard."
 		},
 		"installers": {
 			"title": "Paquets installables",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "Génération de votre version…",
+		"phase": {
+			"checking": "Vérification de la disponibilité pour {{platform}}…",
+			"downloading": "Téléchargement du shell {{platform}}…",
+			"assembling": "Assemblage du paquet {{platform}}…",
+			"packing": "Empaquetage de votre contenu pour {{platform}}…",
+			"zipping": "Empaquetage de la version {{platform}}…",
+			"done": "{{platform}} terminé"
+		},
 		"doneTitle": "Votre version est prête",
 		"doneDescription": "Packmaster a tout enregistré dans le dossier {{folder}}.",
 		"openFolder": "Ouvrir le dossier de la version",

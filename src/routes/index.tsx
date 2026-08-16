@@ -20,24 +20,29 @@ function SourceView() {
   const { settings, updateSettings } = useSettings();
   const [selectedDir, setSelectedDir] = useState(settings.sourceDir);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState(false);
+  const [errorReason, setErrorReason] = useState<"missing-index" | "looks-like-source" | null>(
+    null,
+  );
 
   const handleBrowse = async () => {
     const dir = await open({
       directory: true,
       multiple: false,
       title: t("source.browseDialogTitle"),
+      // Start from wherever was picked last, if anything — same folder a game developer
+      // rebuilds into most of the time.
+      defaultPath: selectedDir ?? undefined,
     });
     if (typeof dir === "string") {
       setSelectedDir(dir);
-      setError(false);
+      setErrorReason(null);
     }
   };
 
   const handleContinue = async () => {
     if (!selectedDir) return;
     setIsAnalyzing(true);
-    setError(false);
+    setErrorReason(null);
     try {
       // The one heuristic that doesn't need the real shell backend yet: a
       // built web app's output always has an index.html at its root (Vite,
@@ -45,7 +50,18 @@ function SourceView() {
       const separator = selectedDir.includes("\\") ? "\\" : "/";
       const hasIndexHtml = await exists(`${selectedDir}${separator}index.html`);
       if (!hasIndexHtml) {
-        setError(true);
+        setErrorReason("missing-index");
+        return;
+      }
+      // A real built dist/ output never ships its own package.json alongside the game
+      // files — only a project's *source* root does. Vite (and most bundlers) also emit
+      // index.html at the source root itself (the template `npm run build` starts from),
+      // so the index.html check alone can't tell "source root" and "built output" apart on
+      // its own — this catches exactly that case (confirmed by a real report: picking a
+      // Vite project's source root instead of its dist/ passed the index.html check clean).
+      const hasPackageJson = await exists(`${selectedDir}${separator}package.json`);
+      if (hasPackageJson) {
+        setErrorReason("looks-like-source");
         return;
       }
       updateSettings({ sourceDir: selectedDir });
@@ -84,15 +100,20 @@ function SourceView() {
           </div>
         </div>
 
-        {error && (
+        {errorReason && (
           <Alert variant="destructive">
             <WarningCircle />
             <AlertTitle>{t("source.errorTitle")}</AlertTitle>
             <AlertDescription>
-              {t("source.errorDescription", {
-                indexHtml: "index.html",
-                dist: "dist/",
-              })}
+              {errorReason === "missing-index"
+                ? t("source.errorDescription", {
+                    indexHtml: "index.html",
+                    dist: "dist/",
+                  })
+                : t("source.errorLooksLikeSource", {
+                    packageJson: "package.json",
+                    dist: "dist/",
+                  })}
             </AlertDescription>
           </Alert>
         )}

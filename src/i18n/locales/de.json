@@ -15,19 +15,28 @@
 		"browseDialogTitle": "Build-Ausgabeordner deines Spiels auswählen",
 		"errorTitle": "Das sieht nicht nach einem gültigen Build-Ausgabeordner aus",
 		"errorDescription": "Packmaster konnte in diesem Ordner keine {{indexHtml}} finden. Stelle sicher, dass du die Build-Ausgabe (z. B. {{dist}}) und nicht den Quellordner deines Projekts ausgewählt hast.",
+		"errorLooksLikeSource": "Dieser Ordner enthält noch eine {{packageJson}} — das bedeutet, es ist der Quellordner deines Projekts, nicht dessen Build-Ausgabe. Führe zuerst deinen Build aus und wähle dann den dabei erzeugten Ordner {{dist}}.",
 		"analyzing": "Ordner wird geprüft…"
 	},
 	"configure": {
 		"title": "Release konfigurieren",
 		"sourceLabel": "Quelle",
 		"changeSource": "Ändern",
+		"releaseInfo": {
+			"title": "Release-Informationen",
+			"description": "Werden verwendet, um die von Packmaster generierten Dateien zu benennen.",
+			"nameLabel": "Spielname",
+			"namePlaceholder": "Mein Spiel",
+			"versionLabel": "Version",
+			"versionFromPackageJson": "Aus der package.json deines Projekts übernommen — ändere sie dort, um dies zu ändern."
+		},
 		"portable": {
 			"title": "Portabel",
 			"description": "Eine einzige, per Doppelklick startbare Datei für jede ausgewählte Plattform — kein Installationsprogramm, keine Administratorrechte nötig.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "Derzeit ist kein veröffentlichter Shell-Build für diese Plattform verfügbar — versuche es später erneut."
+			"shellUnavailable": "Kein veröffentlichter Shell-Build gefunden für: {{platforms}} — versuche es später erneut."
 		},
 		"installers": {
 			"title": "Installationspakete",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "Release wird generiert…",
+		"phase": {
+			"checking": "Verfügbarkeit für {{platform}} wird geprüft…",
+			"downloading": "Shell für {{platform}} wird heruntergeladen…",
+			"assembling": "Paket für {{platform}} wird zusammengestellt…",
+			"packing": "Inhalte für {{platform}} werden gepackt…",
+			"zipping": "Build für {{platform}} wird verpackt…",
+			"done": "{{platform}} fertig"
+		},
 		"doneTitle": "Dein Release ist bereit",
 		"doneDescription": "Packmaster hat alles im Ordner {{folder}} gespeichert.",
 		"openFolder": "Release-Ordner öffnen",

@@ -15,19 +15,28 @@
 		"browseDialogTitle": "ゲームのビルド出力フォルダーを選択",
 		"errorTitle": "有効なビルド出力フォルダーではないようです",
 		"errorDescription": "このフォルダー内に {{indexHtml}} が見つかりませんでした。プロジェクトのソースフォルダーではなく、ビルド出力（例: {{dist}}）を選択したか確認してください。",
+		"errorLooksLikeSource": "このフォルダーにはまだ {{packageJson}} があります。つまりこれはプロジェクトのソースフォルダーであり、ビルド出力ではありません。先にビルドを実行し、生成された {{dist}} フォルダーを選択してください。",
 		"analyzing": "フォルダーを確認しています…"
 	},
 	"configure": {
 		"title": "リリースを設定",
 		"sourceLabel": "ソース",
 		"changeSource": "変更",
+		"releaseInfo": {
+			"title": "リリース情報",
+			"description": "Packmaster が生成するファイルの名前付けに使用されます。",
+			"nameLabel": "ゲーム名",
+			"namePlaceholder": "マイゲーム",
+			"versionLabel": "バージョン",
+			"versionFromPackageJson": "プロジェクトの package.json から取得しています — 変更するにはそちらを編集してください。"
+		},
 		"portable": {
 			"title": "ポータブル版",
 			"description": "選択した各プラットフォーム向けに、インストーラー不要・管理者権限不要のダブルクリックで実行できる単一ファイルを生成します。",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "このプラットフォーム向けに公開されているシェルビルドが見つかりません。後でもう一度お試しください。"
+			"shellUnavailable": "次のプラットフォーム向けに公開されているシェルビルドが見つかりません: {{platforms}}。後でもう一度お試しください。"
 		},
 		"installers": {
 			"title": "インストーラーパッケージ",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "リリースを生成しています…",
+		"phase": {
+			"checking": "{{platform}} の利用可否を確認しています…",
+			"downloading": "{{platform}} 用シェルをダウンロードしています…",
+			"assembling": "{{platform}} 用パッケージを組み立てています…",
+			"packing": "{{platform}} 向けにコンテンツを梱包しています…",
+			"zipping": "{{platform}} 用ビルドをパッケージ化しています…",
+			"done": "{{platform}} 完了"
+		},
 		"doneTitle": "リリースの準備ができました",
 		"doneDescription": "Packmaster はすべてを {{folder}} フォルダーに保存しました。",
 		"openFolder": "リリースフォルダーを開く",

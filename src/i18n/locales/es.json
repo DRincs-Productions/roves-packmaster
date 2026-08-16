@@ -15,19 +15,28 @@
 		"browseDialogTitle": "Selecciona la carpeta de salida de la compilación de tu juego",
 		"errorTitle": "Esto no parece una carpeta de salida de compilación válida",
 		"errorDescription": "Packmaster no encontró un archivo {{indexHtml}} en esta carpeta. Comprueba que hayas seleccionado la salida de la compilación (p. ej. {{dist}}), no la carpeta fuente de tu proyecto.",
+		"errorLooksLikeSource": "Esta carpeta todavía tiene un {{packageJson}} — eso significa que es la carpeta fuente de tu proyecto, no su salida compilada. Ejecuta primero tu build y luego selecciona la carpeta {{dist}} que genera.",
 		"analyzing": "Comprobando esta carpeta…"
 	},
 	"configure": {
 		"title": "Configura tu versión",
 		"sourceLabel": "Origen",
 		"changeSource": "Cambiar",
+		"releaseInfo": {
+			"title": "Información de la versión",
+			"description": "Se usa para nombrar los archivos que genera Packmaster.",
+			"nameLabel": "Nombre del juego",
+			"namePlaceholder": "Mi juego",
+			"versionLabel": "Versión",
+			"versionFromPackageJson": "Tomado del package.json de tu proyecto — edítalo ahí para cambiarlo."
+		},
 		"portable": {
 			"title": "Portátil",
 			"description": "Un único ejecutable listo para usar con doble clic para cada plataforma que elijas, sin instalador ni permisos de administrador.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "No se encontró ninguna build del shell publicada para esta plataforma por ahora — inténtalo más tarde."
+			"shellUnavailable": "No se encontró ninguna build del shell publicada para: {{platforms}} — inténtalo más tarde."
 		},
 		"installers": {
 			"title": "Paquetes instalables",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "Generando tu versión…",
+		"phase": {
+			"checking": "Comprobando disponibilidad para {{platform}}…",
+			"downloading": "Descargando el shell de {{platform}}…",
+			"assembling": "Ensamblando el paquete de {{platform}}…",
+			"packing": "Empaquetando tu contenido para {{platform}}…",
+			"zipping": "Empaquetando la build de {{platform}}…",
+			"done": "{{platform}} completado"
+		},
 		"doneTitle": "Tu versión está lista",
 		"doneDescription": "Packmaster guardó todo en la carpeta {{folder}}.",
 		"openFolder": "Abrir carpeta de la versión",

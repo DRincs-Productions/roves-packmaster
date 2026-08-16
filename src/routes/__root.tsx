@@ -13,14 +13,14 @@ export const Route = createRootRoute({
 function RootLayout() {
   return (
     <div className="flex min-h-svh flex-col">
-      <div className="flex items-center justify-between border-b">
+      <div className="bg-background sticky top-0 z-20 flex items-center justify-between border-b">
         <BrandHeader />
         <div className="pr-6">
           <LanguageSwitcher />
         </div>
       </div>
       <ShellUpdateBanner />
-      <main className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+      <main className="flex flex-1 flex-col items-center px-6 py-10">
         <Outlet />
       </main>
     </div>

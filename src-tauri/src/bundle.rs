@@ -47,8 +47,16 @@ pub async fn check_shell_availability(platforms: Vec<String>) -> Vec<(String, bo
     results
 }
 
+/// `name`/`version` come from the frontend's own "Release info" fields (configure.tsx) —
+/// derived from package.json but user-editable, so they're the actual source of truth for
+/// both the bundled window title and the generated filenames, not re-derived here.
 #[tauri::command]
-pub async fn generate_release(app: AppHandle, settings: PackmasterSettings) -> Result<String, String> {
+pub async fn generate_release(
+    app: AppHandle,
+    settings: PackmasterSettings,
+    name: String,
+    version: String,
+) -> Result<String, String> {
     let source_dir = settings
         .source_dir
         .as_ref()
@@ -68,8 +76,8 @@ pub async fn generate_release(app: AppHandle, settings: PackmasterSettings) -> R
     let release_dir = exe_dir.join("release");
     std::fs::create_dir_all(&release_dir).map_err(|e| e.to_string())?;
 
-    let window_title = packer::resolve_window_title(&content_dir);
-    let name = sanitize_name(window_title.as_deref().unwrap_or("game"));
+    let window_title = (!name.trim().is_empty()).then(|| name.trim().to_string());
+    let file_stem = file_stem(window_title.as_deref().unwrap_or("game"), version.trim());
 
     for &platform in &platforms {
         emit_progress(&app, platform, "checking", 0.0);
@@ -105,8 +113,8 @@ pub async fn generate_release(app: AppHandle, settings: PackmasterSettings) -> R
         packer::write_launch_json(&binary_dir, settings.compression.enabled, window_title.as_deref())?;
 
         emit_progress(&app, platform, "zipping", 0.8);
-        let zip_path = release_dir.join(format!("{name}_{platform}.zip"));
-        zip_dir_as(&staging_dir, &name, &zip_path)?;
+        let zip_path = release_dir.join(format!("{file_stem}_{platform}.zip"));
+        zip_dir_as(&staging_dir, &file_stem, &zip_path)?;
 
         std::fs::remove_dir_all(&staging_dir).ok();
         emit_progress(&app, platform, "done", 1.0);
@@ -120,15 +128,30 @@ fn process_id() -> u32 {
 }
 
 fn sanitize_name(name: &str) -> String {
+    // '.' is allowed too (on top of the usual alphanumeric/-/_) -- otherwise a plain
+    // dotted version like "1.0.0" would come out as "1_0_0", which is a needless mangling
+    // for a character every OS's filesystem already accepts fine.
     let cleaned: String = name
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' { c } else { '_' })
         .collect();
     let trimmed = cleaned.trim_matches('_');
     if trimmed.is_empty() {
         "game".to_string()
     } else {
         trimmed.to_lowercase()
+    }
+}
+
+/// `<name>` or `<name>_<version>` — the base every generated zip is named after, e.g.
+/// `mygame_1.0.0_windows.zip`. Version is folded in only when actually provided (blank is
+/// common: a game with no package.json and a user who hasn't typed one in yet).
+fn file_stem(name: &str, version: &str) -> String {
+    let name = sanitize_name(name);
+    if version.is_empty() {
+        name
+    } else {
+        format!("{name}_{}", sanitize_name(version))
     }
 }
 

@@ -15,19 +15,28 @@
 		"browseDialogTitle": "选择你游戏的构建输出文件夹",
 		"errorTitle": "这似乎不是有效的构建输出文件夹",
 		"errorDescription": "Packmaster 在此文件夹中找不到 {{indexHtml}} 文件。请确认你选择的是构建输出（例如 {{dist}}），而不是项目的源代码文件夹。",
+		"errorLooksLikeSource": "这个文件夹中仍然有一个 {{packageJson}} —— 这说明它是项目的源代码文件夹，而不是构建输出。请先运行构建，然后选择生成的 {{dist}} 文件夹。",
 		"analyzing": "正在检查该文件夹…"
 	},
 	"configure": {
 		"title": "配置你的发行版",
 		"sourceLabel": "来源",
 		"changeSource": "更改",
+		"releaseInfo": {
+			"title": "发行版信息",
+			"description": "用于为 Packmaster 生成的文件命名。",
+			"nameLabel": "游戏名称",
+			"namePlaceholder": "我的游戏",
+			"versionLabel": "版本",
+			"versionFromPackageJson": "取自你项目的 package.json——如需更改，请在那里修改。"
+		},
 		"portable": {
 			"title": "便携版",
 			"description": "为每个选中的平台生成一个双击即可运行的独立程序——无需安装程序，无需管理员权限。",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "目前未找到该平台已发布的外壳构建版本——请稍后再试。"
+			"shellUnavailable": "未找到以下平台已发布的外壳构建版本：{{platforms}}——请稍后再试。"
 		},
 		"installers": {
 			"title": "安装包",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "正在生成你的发行版…",
+		"phase": {
+			"checking": "正在检查 {{platform}} 的可用性…",
+			"downloading": "正在下载 {{platform}} 外壳…",
+			"assembling": "正在组装 {{platform}} 软件包…",
+			"packing": "正在为 {{platform}} 打包内容…",
+			"zipping": "正在打包 {{platform}} 版本…",
+			"done": "{{platform}} 已完成"
+		},
 		"doneTitle": "发行版已就绪",
 		"doneDescription": "Packmaster 已将所有内容保存到 {{folder}} 文件夹。",
 		"openFolder": "打开发行版文件夹",

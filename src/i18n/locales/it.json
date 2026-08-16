@@ -15,19 +15,28 @@
 		"browseDialogTitle": "Seleziona la cartella di output del tuo gioco",
 		"errorTitle": "Questa non sembra una cartella di output valida",
 		"errorDescription": "Packmaster non ha trovato un file {{indexHtml}} in questa cartella. Verifica di aver selezionato l'output della build (es. {{dist}}), non la cartella sorgente del progetto.",
+		"errorLooksLikeSource": "Questa cartella contiene ancora un {{packageJson}} — significa che è la cartella sorgente del progetto, non il suo output compilato. Esegui prima la build, poi seleziona la cartella {{dist}} che genera.",
 		"analyzing": "Controllo della cartella in corso…"
 	},
 	"configure": {
 		"title": "Configura la tua release",
 		"sourceLabel": "Sorgente",
 		"changeSource": "Cambia",
+		"releaseInfo": {
+			"title": "Informazioni sulla release",
+			"description": "Usate per dare un nome ai file generati da Packmaster.",
+			"nameLabel": "Nome del gioco",
+			"namePlaceholder": "Il mio gioco",
+			"versionLabel": "Versione",
+			"versionFromPackageJson": "Presa dal package.json del progetto — modificala lì per cambiarla."
+		},
 		"portable": {
 			"title": "Portatile",
 			"description": "Un singolo eseguibile pronto all'uso per ogni piattaforma selezionata — nessun installer, nessun permesso da amministratore richiesto.",
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "Nessuna build della shell pubblicata per questa piattaforma al momento — riprova più tardi."
+			"shellUnavailable": "Nessuna build della shell pubblicata per: {{platforms}} — riprova più tardi."
 		},
 		"installers": {
 			"title": "Pacchetti installabili",
@@ -63,6 +72,14 @@
 	},
 	"generating": {
 		"title": "Generazione della release in corso…",
+		"phase": {
+			"checking": "Controllo disponibilità per {{platform}}…",
+			"downloading": "Download della shell per {{platform}}…",
+			"assembling": "Assemblaggio del pacchetto per {{platform}}…",
+			"packing": "Confezionamento dei contenuti per {{platform}}…",
+			"zipping": "Impacchettamento della build {{platform}}…",
+			"done": "{{platform}} completato"
+		},
 		"doneTitle": "La tua release è pronta",
 		"doneDescription": "Packmaster ha salvato tutto nella cartella {{folder}}.",
 		"openFolder": "Apri cartella della release",

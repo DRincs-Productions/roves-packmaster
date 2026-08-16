@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { type Platform, PlatformToggle } from "@/components/platform-toggle";
 import {
   Accordion,
   AccordionContent,
@@ -8,11 +9,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { readParentPackageJson } from "@/lib/release-info";
 import { useSettings } from "@/lib/settings-context";
 import { checkShellAvailability } from "@/lib/shell-availability";
 
@@ -20,13 +22,15 @@ export const Route = createFileRoute("/configure")({
   component: ConfigureView,
 });
 
-const PORTABLE_PLATFORMS = ["windows", "linux", "macos"] as const;
+const PORTABLE_PLATFORMS: Platform[] = ["windows", "linux", "macos"];
 
 function ConfigureView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { settings, updateSettings } = useSettings();
   const [availability, setAvailability] = useState<Record<string, boolean> | null>(null);
+  const [releaseInfo, setReleaseInfo] = useState({ name: "", version: "" });
+  const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -42,7 +46,47 @@ function ConfigureView() {
     checkShellAvailability([...PORTABLE_PLATFORMS]).then(setAvailability);
   }, []);
 
+  // Derives name/version for this exact source folder. package.json's own version always
+  // wins when present — a developer bumping it between builds shouldn't have to notice and
+  // re-type it here — while the name, and the version when no package.json exists, fall
+  // back to whatever was remembered for this same folder last time. Both stay editable.
+  //
+  // Only re-derive when the folder itself changes — settings.releaseInfoByPath and
+  // updateSettings are read via closure on purpose (this effect is what writes the former);
+  // listing them would re-run this on every keystroke below and clobber in-progress edits.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
+  useEffect(() => {
+    const sourceDir = settings.sourceDir;
+    if (!sourceDir) return;
+    let cancelled = false;
+    readParentPackageJson(sourceDir).then((pkg) => {
+      if (cancelled) return;
+      const remembered = settings.releaseInfoByPath[sourceDir];
+      const next = {
+        name: remembered?.name || pkg?.name || "",
+        version: pkg?.version || remembered?.version || "",
+      };
+      setReleaseInfo(next);
+      setVersionFromPackageJson(Boolean(pkg?.version));
+      updateSettings({ releaseInfoByPath: { ...settings.releaseInfoByPath, [sourceDir]: next } });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.sourceDir]);
+
+  const updateReleaseInfo = (patch: Partial<{ name: string; version: string }>) => {
+    if (!settings.sourceDir) return;
+    const next = { ...releaseInfo, ...patch };
+    setReleaseInfo(next);
+    updateSettings({
+      releaseInfoByPath: { ...settings.releaseInfoByPath, [settings.sourceDir]: next },
+    });
+  };
+
   if (!settings.sourceDir) return null;
+
+  const unavailablePlatforms = PORTABLE_PLATFORMS.filter((p) => availability?.[p] === false);
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-6">
@@ -60,47 +104,72 @@ function ConfigureView() {
         </p>
       </div>
 
-      <Accordion defaultValue={["portable", "compression"]}>
-        <AccordionItem value="portable">
-          <AccordionTrigger>{t("configure.portable.title")}</AccordionTrigger>
-          <AccordionContent className="flex flex-col gap-4">
-            <p className="text-muted-foreground text-sm">{t("configure.portable.description")}</p>
-            <div className="flex flex-col gap-3">
-              {PORTABLE_PLATFORMS.map((p) => {
-                const isAvailable = availability?.[p] ?? true;
-                return (
-                  <div key={p} className="flex flex-col gap-1">
-                    {/* biome-ignore lint/a11y/noLabelWithoutControl: Checkbox (Base UI) renders a real <button>, a labelable element nesting it inside <label> validly associates the two. */}
-                    <label
-                      className="flex items-center gap-2 text-sm data-[disabled]:opacity-60"
-                      data-disabled={!isAvailable || undefined}
-                    >
-                      <Checkbox
-                        checked={isAvailable && settings.portable[p]}
-                        disabled={!isAvailable}
-                        onCheckedChange={(checked) =>
-                          updateSettings({
-                            portable: {
-                              ...settings.portable,
-                              [p]: checked === true,
-                            },
-                          })
-                        }
-                      />
-                      {t(`configure.portable.${p}`)}
-                    </label>
-                    {!isAvailable && (
-                      <span className="text-muted-foreground pl-6 text-xs">
-                        {t("configure.portable.shellUnavailable")}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("configure.releaseInfo.title")}</CardTitle>
+          <CardDescription>{t("configure.releaseInfo.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="game-name">{t("configure.releaseInfo.nameLabel")}</Label>
+            <Input
+              id="game-name"
+              value={releaseInfo.name}
+              placeholder={t("configure.releaseInfo.namePlaceholder")}
+              onChange={(e) => updateReleaseInfo({ name: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="game-version">{t("configure.releaseInfo.versionLabel")}</Label>
+            <Input
+              id="game-version"
+              value={releaseInfo.version}
+              placeholder="1.0.0"
+              onChange={(e) => updateReleaseInfo({ version: e.target.value })}
+            />
+            {versionFromPackageJson && (
+              <p className="text-muted-foreground text-xs">
+                {t("configure.releaseInfo.versionFromPackageJson")}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("configure.portable.title")}</CardTitle>
+          <CardDescription>{t("configure.portable.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <div className="flex gap-3">
+            {PORTABLE_PLATFORMS.map((p) => {
+              const isAvailable = availability?.[p] ?? true;
+              return (
+                <PlatformToggle
+                  key={p}
+                  platform={p}
+                  label={t(`configure.portable.${p}`)}
+                  selected={isAvailable && settings.portable[p]}
+                  disabled={!isAvailable}
+                  onSelectedChange={(selected) =>
+                    updateSettings({ portable: { ...settings.portable, [p]: selected } })
+                  }
+                />
+              );
+            })}
+          </div>
+          {unavailablePlatforms.length > 0 && (
+            <p className="text-muted-foreground text-xs">
+              {t("configure.portable.shellUnavailable", {
+                platforms: unavailablePlatforms.map((p) => t(`system.${p}`)).join(", "),
+              })}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Accordion defaultValue={["compression"]}>
         <AccordionItem value="compression">
           <AccordionTrigger>{t("configure.compression.title")}</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-4">
