@@ -24,9 +24,10 @@ writes a real, runnable release to disk. Installers (`.msi`/`.dmg`/`.deb`) are r
 Rust) — but unlike the portable path, each one only works when Packmaster itself is running
 on its matching OS *and* that OS's native tool is already installed (WiX on Windows,
 `hdiutil` on macOS — built in, `dpkg-deb` on Linux); Packmaster shows a real, live check for
-this per platform rather than assuming. Steam integration is the one thing still not real —
-it needs a Steam-enabled prebuilt shell variant that doesn't exist yet, so that section is
-informational only (see `configure.tsx`'s "Steam" panel).
+this per platform rather than assuming. Steam is real too: toggling it on (and entering your
+Steam App ID) downloads the engine's Steam-enabled shell variant instead of the plain one,
+and writes a `steam_appid.txt` next to the packaged executable, with its own live
+availability check per platform, same as the portable/installable paths above.
 
 ## What it does
 
@@ -49,7 +50,9 @@ informational only (see `configure.tsx`'s "Steam" panel).
      host-OS-and-tool availability check (see "Status" above).
    - **Advanced** — Compression (packs your game's content into compressed archives
      instead of loose files, with the same tunables as the engine's own `mach bundle
-     --content-compress` flags) and Steam (informational only for now — see "Status").
+     --content-compress` flags) and Steam (a toggle plus your Steam App ID — downloads the
+     Steam-enabled shell variant and writes a `steam_appid.txt` next to the packaged
+     executable; see "Status" above).
 3. **Generate.** Downloads the shell (cached per version/platform after the first run),
    packs your content into it, and shows real, per-step progress. Opens the folder the
    release was written to when done — a `release/` folder next to wherever Packmaster

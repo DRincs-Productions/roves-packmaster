@@ -51,8 +51,12 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "引擎本身可以编译为支持 Steam（--features steam），但 Packmaster 目前还无法生成这种构建——它下载的是预构建的外壳，而不是自行编译，而目前还没有支持 Steam 的预构建发行版。",
-			"apiHint": "一旦有了这样的版本，你游戏自己的代码将通过 @drincs/roves-api/steam 与其通信——通过 Steamworks 提供成就、统计、DLC、悬浮窗和商店功能。"
+			"description": "Packmaster 可以下载支持 Steam 的外壳，而不是普通版本，从而让你的游戏可以与 Steamworks 通信。",
+			"enableLabel": "启用 Steam",
+			"appIdLabel": "Steam 应用 ID",
+			"appIdPlaceholder": "480",
+			"appIdDescription": "会写入游戏可执行文件旁边的 steam_appid.txt 文件——用于在真实 Steam 客户端之外进行测试。游戏实际发布后，Steam 会自行设置该值。",
+			"apiHint": "你游戏自己的代码通过 @drincs/roves-api/steam 与其通信——通过 Steamworks 提供成就、统计、DLC、悬浮窗和商店功能。"
 		},
 		"compression": {
 			"title": "内容压缩",

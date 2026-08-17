@@ -51,8 +51,12 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "エンジン自体は Steam 対応（--features steam）でビルドできますが、Packmaster はまだそれをビルドできません — コンパイルする代わりにプリビルド済みのシェルをダウンロードする仕組みで、Steam 対応のプリビルド版はまだ存在しないためです。",
-			"apiHint": "それが存在するようになれば、ゲーム自身のコードは @drincs/roves-api/steam を通じてやり取りします — Steamworks による実績、統計、DLC、オーバーレイ、ストア機能です。"
+			"description": "Packmaster は通常のシェルの代わりに Steam 対応シェルをダウンロードできます。これによりゲームが Steamworks と通信できるようになります。",
+			"enableLabel": "Steam を有効にする",
+			"appIdLabel": "Steam アプリ ID",
+			"appIdPlaceholder": "480",
+			"appIdDescription": "ゲームの実行ファイルの隣に steam_appid.txt として書き込まれます — 実際の Steam クライアント外でテストするためのものです。ゲームが実際に公開されると、Steam 自身がこれを設定します。",
+			"apiHint": "ゲーム自身のコードは @drincs/roves-api/steam を通じてやり取りします — Steamworks による実績、統計、DLC、オーバーレイ、ストア機能です。"
 		},
 		"compression": {
 			"title": "コンテンツ圧縮",

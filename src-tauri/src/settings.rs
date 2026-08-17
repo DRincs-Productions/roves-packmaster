@@ -1,7 +1,5 @@
 //! Mirrors `src/lib/settings.ts`'s `PackmasterSettings` on the Rust side, for deserializing
-//! what the frontend sends into `generate_release`. `plugins.steam` isn't included here at
-//! all — it isn't acted on yet (needs a Steam-enabled prebuilt shell variant that doesn't
-//! exist, see the engine repo's CLAUDE.md) and the frontend no longer sends it.
+//! what the frontend sends into `generate_release`.
 
 use serde::Deserialize;
 
@@ -30,6 +28,19 @@ pub struct InstallerSettings {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SteamSettings {
+    pub enabled: bool,
+    pub app_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginSettings {
+    pub steam: SteamSettings,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompressionSettings {
     pub enabled: bool,
     pub level: i32,
@@ -44,6 +55,7 @@ pub struct PackmasterSettings {
     pub source_dir: Option<String>,
     pub portable: PortableSettings,
     pub installers: InstallerSettings,
+    pub plugins: PluginSettings,
     pub compression: CompressionSettings,
 }
 

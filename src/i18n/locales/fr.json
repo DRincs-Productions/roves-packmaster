@@ -51,8 +51,12 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "Le moteur lui-même peut être compilé avec la prise en charge de Steam (--features steam), mais Packmaster ne peut pas encore le générer — il télécharge un shell préconstruit au lieu d'en compiler un, et il n'existe pas encore de version préconstruite avec Steam activé.",
-			"apiHint": "Une fois qu'elle existera, le code de votre jeu communiquera avec elle via @drincs/roves-api/steam — succès, statistiques, DLC, overlay et boutique, via Steamworks."
+			"description": "Packmaster peut télécharger un shell compatible Steam au lieu de la version standard, pour que votre jeu puisse communiquer avec Steamworks.",
+			"enableLabel": "Activer Steam",
+			"appIdLabel": "ID d'application Steam",
+			"appIdPlaceholder": "480",
+			"appIdDescription": "Écrit dans un fichier steam_appid.txt à côté de l'exécutable du jeu — pour tester en dehors du client Steam réel. Steam le définira lui-même une fois votre jeu réellement publié là-bas.",
+			"apiHint": "Le code de votre jeu communique avec lui via @drincs/roves-api/steam — succès, statistiques, DLC, overlay et boutique, via Steamworks."
 		},
 		"compression": {
 			"title": "Compression du contenu",

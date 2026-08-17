@@ -14,20 +14,23 @@ use tokio::io::AsyncWriteExt;
 pub const TARGET_SHELL_VERSION: &str = "v0.1.0";
 
 /// `windows` | `macos` | `linux` — matches release.yml's own `matrix.os_name` and the
-/// `roves_shell_<os_name>.zip` asset naming.
-pub fn shell_asset_url(platform: &str) -> String {
+/// `roves_shell_<os_name>.zip`/`roves_shell_<os_name>_steam.zip` asset naming (the engine's
+/// own `matrix.asset_suffix`).
+pub fn shell_asset_url(platform: &str, steam: bool) -> String {
+    let suffix = if steam { "_steam" } else { "" };
     format!(
-        "https://github.com/DRincs-Productions/roves/releases/download/{TARGET_SHELL_VERSION}/roves_shell_{platform}.zip"
+        "https://github.com/DRincs-Productions/roves/releases/download/{TARGET_SHELL_VERSION}/roves_shell_{platform}{suffix}.zip"
     )
 }
 
 /// Real availability check (not just an assumption) that the shell release this build of
-/// Packmaster targets actually has a published asset for `platform` — a HEAD request against
-/// the real download URL, so a broken/retracted release surfaces as "can't distribute this"
-/// instead of a confusing failure partway through generation.
-pub async fn is_shell_available(platform: &str) -> bool {
+/// Packmaster targets actually has a published asset for `platform` (and Steam variant, if
+/// requested) — a HEAD request against the real download URL, so a broken/retracted release
+/// surfaces as "can't distribute this" instead of a confusing failure partway through
+/// generation.
+pub async fn is_shell_available(platform: &str, steam: bool) -> bool {
     reqwest::Client::new()
-        .head(shell_asset_url(platform))
+        .head(shell_asset_url(platform, steam))
         .send()
         .await
         .map(|response| response.status().is_success() || response.status().is_redirection())
@@ -43,6 +46,7 @@ pub async fn is_shell_available(platform: &str) -> bool {
 pub async fn ensure_shell(
     app: &AppHandle,
     platform: &str,
+    steam: bool,
     mut on_progress: impl FnMut(f64) + Send,
 ) -> Result<PathBuf, String> {
     let cache_dir = app
@@ -51,7 +55,11 @@ pub async fn ensure_shell(
         .map_err(|e| e.to_string())?
         .join("shells")
         .join(TARGET_SHELL_VERSION)
-        .join(platform);
+        .join(platform)
+        // Plain and Steam-enabled shells are different binaries entirely -- keying the cache
+        // by variant too means toggling Steam on/off never reuses (or clobbers) the wrong
+        // cached extraction.
+        .join(if steam { "steam" } else { "plain" });
     let extracted_root = cache_dir.join("roves");
     let marker = cache_dir.join(".complete");
     if marker.exists() && extracted_root.exists() {
@@ -65,7 +73,7 @@ pub async fn ensure_shell(
     tokio::fs::create_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
 
     let zip_path = cache_dir.join("shell.zip");
-    download_file(&shell_asset_url(platform), &zip_path, &mut on_progress).await?;
+    download_file(&shell_asset_url(platform, steam), &zip_path, &mut on_progress).await?;
     extract_zip(&zip_path, &cache_dir)?;
     tokio::fs::remove_file(&zip_path).await.ok();
     tokio::fs::write(&marker, b"1").await.map_err(|e| e.to_string())?;

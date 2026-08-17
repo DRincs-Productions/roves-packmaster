@@ -5,7 +5,11 @@ import { invoke } from "@tauri-apps/api/core";
 // targeted shell release's actual download URL per platform, not an assumption.
 export async function checkShellAvailability(
   platforms: string[],
+  steam: boolean,
 ): Promise<Record<string, boolean>> {
-  const pairs = await invoke<[string, boolean][]>("check_shell_availability", { platforms });
+  const pairs = await invoke<[string, boolean][]>("check_shell_availability", {
+    platforms,
+    steam,
+  });
   return Object.fromEntries(pairs);
 }

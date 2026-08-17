@@ -51,8 +51,12 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "The engine itself can be compiled with Steam support (--features steam), but Packmaster can't build that yet — it downloads a prebuilt shell instead of compiling one, and there's no Steam-enabled prebuilt release to grab yet.",
-			"apiHint": "Once there is, your game's own code talks to it through @drincs/roves-api/steam — achievements, stats, DLC, overlay, and store, via Steamworks."
+			"description": "Packmaster can download a Steam-enabled shell instead of the plain one, so your game can talk to Steamworks.",
+			"enableLabel": "Enable Steam",
+			"appIdLabel": "Steam App ID",
+			"appIdPlaceholder": "480",
+			"appIdDescription": "Written into a steam_appid.txt next to the game's executable — for testing outside the real Steam client. Steam sets this itself once your game is actually published there.",
+			"apiHint": "Your game's own code talks to it through @drincs/roves-api/steam — achievements, stats, DLC, overlay, and store, via Steamworks."
 		},
 		"compression": {
 			"title": "Content compression",

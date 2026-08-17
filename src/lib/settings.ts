@@ -23,8 +23,16 @@ export interface InstallerSettings {
   macos: InstallerPlatformSettings;
 }
 
+export interface SteamSettings {
+  enabled: boolean;
+  /** Steam App ID, digits only. Written into a `steam_appid.txt` next to the packaged
+   * game's executable when `enabled` (Valve's own convention for local testing outside the
+   * Steam client) -- see bundle.rs's `generate_release`. */
+  appId: string;
+}
+
 export interface PluginSettings {
-  steam: boolean;
+  steam: SteamSettings;
 }
 
 export interface CompressionSettings {
@@ -71,7 +79,7 @@ export const defaultSettings: PackmasterSettings = {
     macos: { enabled: false, formats: [] },
   },
   plugins: {
-    steam: false,
+    steam: { enabled: false, appId: "" },
   },
   compression: {
     enabled: true, // --content-compress=auto is the engine's own default
@@ -117,7 +125,7 @@ export async function loadSettings(): Promise<PackmasterSettings> {
       linux: { ...defaultSettings.installers.linux, ...stored.installers?.linux },
       macos: { ...defaultSettings.installers.macos, ...stored.installers?.macos },
     },
-    plugins: { ...defaultSettings.plugins, ...stored.plugins },
+    plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },
   };
 }

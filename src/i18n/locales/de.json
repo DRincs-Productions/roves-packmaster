@@ -51,8 +51,12 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "Die Engine selbst kann mit Steam-Unterstützung kompiliert werden (--features steam), aber Packmaster kann das noch nicht bauen — es lädt eine vorgefertigte Shell herunter, statt selbst eine zu kompilieren, und es gibt noch kein Steam-fähiges vorgefertigtes Release zum Herunterladen.",
-			"apiHint": "Sobald es das gibt, spricht der eigene Code deines Spiels darüber mit @drincs/roves-api/steam — Erfolge, Statistiken, DLC, Overlay und Store, über Steamworks."
+			"description": "Packmaster kann eine Steam-fähige Shell statt der normalen herunterladen, damit dein Spiel mit Steamworks kommunizieren kann.",
+			"enableLabel": "Steam aktivieren",
+			"appIdLabel": "Steam App-ID",
+			"appIdPlaceholder": "480",
+			"appIdDescription": "Wird in eine Datei steam_appid.txt neben der Spiel-Executable geschrieben — zum Testen außerhalb des echten Steam-Clients. Steam legt dies selbst fest, sobald dein Spiel dort tatsächlich veröffentlicht ist.",
+			"apiHint": "Der eigene Code deines Spiels spricht darüber mit @drincs/roves-api/steam — Erfolge, Statistiken, DLC, Overlay und Store, über Steamworks."
 		},
 		"compression": {
 			"title": "Inhaltskomprimierung",

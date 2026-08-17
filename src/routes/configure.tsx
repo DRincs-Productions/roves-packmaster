@@ -68,10 +68,14 @@ function ConfigureView() {
   }, []);
 
   // Real, live check ("is this actually distributable") against the targeted shell
-  // release's actual assets — not assumed just because it's a supported platform.
+  // release's actual assets — not assumed just because it's a supported platform. Re-run
+  // whenever the Steam toggle changes: a platform whose plain shell is published might not
+  // (yet) have a published Steam-enabled variant, and vice versa.
   useEffect(() => {
-    checkShellAvailability([...PORTABLE_PLATFORMS]).then(setAvailability);
-  }, []);
+    checkShellAvailability([...PORTABLE_PLATFORMS], settings.plugins.steam.enabled).then(
+      setAvailability,
+    );
+  }, [settings.plugins.steam.enabled]);
 
   // Derives name/version for this exact source folder. package.json's own version always
   // wins when present — a developer bumping it between builds shouldn't have to notice and
@@ -254,6 +258,37 @@ function ConfigureView() {
             <AccordionTrigger>{t("configure.steam.title")}</AccordionTrigger>
             <AccordionContent className="flex flex-col gap-3">
               <p className="text-muted-foreground text-sm">{t("configure.steam.description")}</p>
+              <div className="flex items-center justify-between gap-4">
+                <Label>{t("configure.steam.enableLabel")}</Label>
+                <Switch
+                  checked={settings.plugins.steam.enabled}
+                  onCheckedChange={(checked) =>
+                    updateSettings({
+                      plugins: { steam: { ...settings.plugins.steam, enabled: checked } },
+                    })
+                  }
+                />
+              </div>
+              {settings.plugins.steam.enabled && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="steam-app-id">{t("configure.steam.appIdLabel")}</Label>
+                  <p className="text-muted-foreground text-xs">
+                    {t("configure.steam.appIdDescription")}
+                  </p>
+                  <Input
+                    id="steam-app-id"
+                    inputMode="numeric"
+                    placeholder={t("configure.steam.appIdPlaceholder")}
+                    value={settings.plugins.steam.appId}
+                    onChange={(e) => {
+                      const digitsOnly = e.target.value.replace(/\D/g, "");
+                      updateSettings({
+                        plugins: { steam: { ...settings.plugins.steam, appId: digitsOnly } },
+                      });
+                    }}
+                  />
+                </div>
+              )}
               <p className="text-muted-foreground text-sm">{t("configure.steam.apiHint")}</p>
             </AccordionContent>
           </AccordionItem>

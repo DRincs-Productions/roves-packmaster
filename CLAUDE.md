@@ -115,12 +115,15 @@ without being able to try an option that can't work here.
   `check_installer_availability` is a real, live check for this (host OS + tool-on-PATH),
   not an assumption; `configure.tsx`'s installer cards disable themselves accordingly.
 
-**Why no Steam plugin still:** it needs something this download-a-prebuilt-shell approach
-doesn't have — a Steam-enabled prebuilt shell variant (the engine's own `v0.1.0` release is
-a single, default-features build). `configure.tsx`'s "Steam" panel is informational only
-(it explains this and points at `@drincs/roves-api/steam` for the actual game-side
-integration) — revisit once a Steam-enabled shell variant exists, rather than half-wiring
-a toggle that can't do anything yet.
+**Steam plugin:** the engine now publishes a Steam-enabled shell variant alongside the plain
+one (`roves_shell_<platform>_steam.zip` — see the engine repo's own `release.yml`/`CLAUDE.md`),
+so `configure.tsx`'s "Steam" panel is a real control now, not informational-only: a `Switch`
+(`settings.plugins.steam.enabled`) and an App ID `Input` (`settings.plugins.steam.appId`),
+matching the Compression section's own toggle+fields pattern. `shell.rs`'s
+`ensure_shell`/`is_shell_available` take a `steam: bool` and pick the matching asset (cached
+separately per variant); `bundle.rs`'s `generate_release` validates the App ID (non-empty,
+digits only) and writes it into a `steam_appid.txt` next to the packaged executable (Valve's
+own convention for testing outside the real Steam client) — see `write_steam_appid`.
 
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
 (portable output) on every push and publishes it to a rolling "test" GitHub Release,

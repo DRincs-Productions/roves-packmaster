@@ -39,10 +39,10 @@ fn emit_progress(app: &AppHandle, platform: &str, phase: &str, fraction: f64) {
 /// portable bundling works for any of the 3 platforms from any host, since it's just file
 /// assembly against a downloaded prebuilt binary, not a local compile).
 #[tauri::command]
-pub async fn check_shell_availability(platforms: Vec<String>) -> Vec<(String, bool)> {
+pub async fn check_shell_availability(platforms: Vec<String>, steam: bool) -> Vec<(String, bool)> {
     let mut results = Vec::with_capacity(platforms.len());
     for platform in platforms {
-        let available = shell::is_shell_available(&platform).await;
+        let available = shell::is_shell_available(&platform, steam).await;
         results.push((platform, available));
     }
     results
@@ -75,6 +75,12 @@ pub async fn generate_release(
         return Err("no platform selected".to_string());
     }
 
+    let steam = settings.plugins.steam.enabled;
+    let steam_app_id = settings.plugins.steam.app_id.trim().to_string();
+    if steam && (steam_app_id.is_empty() || !steam_app_id.chars().all(|c| c.is_ascii_digit())) {
+        return Err("Steam is enabled but the App ID isn't a valid positive number".to_string());
+    }
+
     let exe_dir = std::env::current_exe()
         .map_err(|e| e.to_string())?
         .parent()
@@ -94,9 +100,10 @@ pub async fn generate_release(
 
     for &platform in &platforms {
         emit_progress(&app, platform, "checking", 0.0);
-        if !shell::is_shell_available(platform).await {
+        if !shell::is_shell_available(platform, steam).await {
+            let variant = if steam { " Steam-enabled" } else { "" };
             return Err(format!(
-                "no published shell release found for {platform} (targeting {})",
+                "no published{variant} shell release found for {platform} (targeting {})",
                 shell::TARGET_SHELL_VERSION
             ));
         }
@@ -111,7 +118,7 @@ pub async fn generate_release(
             }
         }
 
-        let shell_root = shell::ensure_shell(&app, platform, |fraction| {
+        let shell_root = shell::ensure_shell(&app, platform, steam, |fraction| {
             emit_progress(&app, platform, "downloading", fraction);
         })
         .await?;
@@ -134,6 +141,9 @@ pub async fn generate_release(
         emit_progress(&app, platform, "packing", 0.4);
         packer::place_content(&content_dir, &content_root, &settings.compression, window_title.clone())?;
         packer::write_launch_json(&binary_dir, settings.compression.enabled, window_title.as_deref())?;
+        if steam {
+            write_steam_appid(&binary_dir, &steam_app_id)?;
+        }
 
         if settings.portable.get(platform) {
             emit_progress(&app, platform, "zipping", 0.7);
@@ -163,6 +173,15 @@ pub async fn generate_release(
 
 fn process_id() -> u32 {
     std::process::id()
+}
+
+/// Writes `steam_appid.txt` next to the packaged game's executable — Valve's own convention
+/// for `steamworks::Client::init()` (see the engine repo's `protocols/steam.rs`) to find the
+/// App ID when testing outside the real Steam client. Steam itself sets this automatically
+/// once the game is actually published and launched through it; this file only matters for
+/// local/direct-launch testing, but is harmless to ship either way.
+fn write_steam_appid(binary_dir: &Path, app_id: &str) -> Result<(), String> {
+    std::fs::write(binary_dir.join("steam_appid.txt"), app_id).map_err(|e| e.to_string())
 }
 
 fn sanitize_name(name: &str) -> String {
