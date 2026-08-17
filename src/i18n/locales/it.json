@@ -15,7 +15,7 @@
 		"browseDialogTitle": "Seleziona la cartella di output del tuo gioco",
 		"errorTitle": "Questa non sembra una cartella di output valida",
 		"errorDescription": "Packmaster non ha trovato un file {{indexHtml}} in questa cartella. Verifica di aver selezionato l'output della build (es. {{dist}}), non la cartella sorgente del progetto.",
-		"errorLooksLikeSource": "Questa cartella contiene ancora un {{packageJson}} — significa che è la cartella sorgente del progetto, non il suo output compilato. Esegui prima la build, poi seleziona la cartella {{dist}} che genera.",
+		"errorLooksLikeSource": "Questa cartella contiene ancora un {{packageJson}} — significa che è la cartella sorgente del progetto, non il suo output compilato. Esegui prima la build (es. {{command}}), poi seleziona la cartella {{dist}} che genera.",
 		"analyzing": "Controllo della cartella in corso…"
 	},
 	"configure": {

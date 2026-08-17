@@ -15,7 +15,7 @@
 		"browseDialogTitle": "Select your game's build output folder",
 		"errorTitle": "This doesn't look like a build output folder",
 		"errorDescription": "Packmaster couldn't find an {{indexHtml}} in this folder. Double-check you picked the built output (e.g. {{dist}}), not your project's source folder.",
-		"errorLooksLikeSource": "This folder still has a {{packageJson}} in it — that means it's your project's source folder, not its built output. Run your build first, then pick the {{dist}} folder it creates.",
+		"errorLooksLikeSource": "This folder still has a {{packageJson}} in it — that means it's your project's source folder, not its built output. Run your build first (e.g. {{command}}), then pick the {{dist}} folder it creates.",
 		"analyzing": "Checking this folder…"
 	},
 	"configure": {

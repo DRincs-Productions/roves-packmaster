@@ -15,7 +15,7 @@
 		"browseDialogTitle": "Build-Ausgabeordner deines Spiels auswählen",
 		"errorTitle": "Das sieht nicht nach einem gültigen Build-Ausgabeordner aus",
 		"errorDescription": "Packmaster konnte in diesem Ordner keine {{indexHtml}} finden. Stelle sicher, dass du die Build-Ausgabe (z. B. {{dist}}) und nicht den Quellordner deines Projekts ausgewählt hast.",
-		"errorLooksLikeSource": "Dieser Ordner enthält noch eine {{packageJson}} — das bedeutet, es ist der Quellordner deines Projekts, nicht dessen Build-Ausgabe. Führe zuerst deinen Build aus und wähle dann den dabei erzeugten Ordner {{dist}}.",
+		"errorLooksLikeSource": "Dieser Ordner enthält noch eine {{packageJson}} — das bedeutet, es ist der Quellordner deines Projekts, nicht dessen Build-Ausgabe. Führe zuerst deinen Build aus (z. B. {{command}}) und wähle dann den dabei erzeugten Ordner {{dist}}.",
 		"analyzing": "Ordner wird geprüft…"
 	},
 	"configure": {

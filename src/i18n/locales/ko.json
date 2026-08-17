@@ -15,7 +15,7 @@
 		"browseDialogTitle": "게임의 빌드 출력 폴더 선택",
 		"errorTitle": "유효한 빌드 출력 폴더가 아닌 것 같습니다",
 		"errorDescription": "이 폴더에서 {{indexHtml}}을(를) 찾을 수 없습니다. 프로젝트의 소스 폴더가 아니라 빌드 출력(예: {{dist}})을 선택했는지 확인하세요.",
-		"errorLooksLikeSource": "이 폴더에는 아직 {{packageJson}}이(가) 있습니다 — 즉 이 폴더는 프로젝트의 소스 폴더이며, 빌드 출력이 아닙니다. 먼저 빌드를 실행한 다음 생성된 {{dist}} 폴더를 선택하세요.",
+		"errorLooksLikeSource": "이 폴더에는 아직 {{packageJson}}이(가) 있습니다 — 즉 이 폴더는 프로젝트의 소스 폴더이며, 빌드 출력이 아닙니다. 먼저 빌드를 실행한 다음(예: {{command}}) 생성된 {{dist}} 폴더를 선택하세요.",
 		"analyzing": "폴더를 확인하는 중…"
 	},
 	"configure": {

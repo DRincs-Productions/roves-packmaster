@@ -15,7 +15,7 @@
 		"browseDialogTitle": "Sélectionnez le dossier de sortie de la compilation de votre jeu",
 		"errorTitle": "Cela ne ressemble pas à un dossier de sortie de compilation valide",
 		"errorDescription": "Packmaster n'a pas trouvé de fichier {{indexHtml}} dans ce dossier. Vérifiez que vous avez sélectionné la sortie de la compilation (par ex. {{dist}}), et non le dossier source de votre projet.",
-		"errorLooksLikeSource": "Ce dossier contient encore un {{packageJson}} — cela signifie qu'il s'agit du dossier source de votre projet, pas de sa sortie compilée. Lancez d'abord votre build, puis sélectionnez le dossier {{dist}} qu'il crée.",
+		"errorLooksLikeSource": "Ce dossier contient encore un {{packageJson}} — cela signifie qu'il s'agit du dossier source de votre projet, pas de sa sortie compilée. Lancez d'abord votre build (ex. {{command}}), puis sélectionnez le dossier {{dist}} qu'il crée.",
 		"analyzing": "Vérification de ce dossier…"
 	},
 	"configure": {

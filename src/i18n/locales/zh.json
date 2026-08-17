@@ -15,7 +15,7 @@
 		"browseDialogTitle": "选择你游戏的构建输出文件夹",
 		"errorTitle": "这似乎不是有效的构建输出文件夹",
 		"errorDescription": "Packmaster 在此文件夹中找不到 {{indexHtml}} 文件。请确认你选择的是构建输出（例如 {{dist}}），而不是项目的源代码文件夹。",
-		"errorLooksLikeSource": "这个文件夹中仍然有一个 {{packageJson}} —— 这说明它是项目的源代码文件夹，而不是构建输出。请先运行构建，然后选择生成的 {{dist}} 文件夹。",
+		"errorLooksLikeSource": "这个文件夹中仍然有一个 {{packageJson}} —— 这说明它是项目的源代码文件夹，而不是构建输出。请先运行构建（例如 {{command}}），然后选择生成的 {{dist}} 文件夹。",
 		"analyzing": "正在检查该文件夹…"
 	},
 	"configure": {

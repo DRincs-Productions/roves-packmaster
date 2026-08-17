@@ -113,6 +113,7 @@ function SourceView() {
                 : t("source.errorLooksLikeSource", {
                     packageJson: "package.json",
                     dist: "dist/",
+                    command: "npm run build",
                   })}
             </AlertDescription>
           </Alert>

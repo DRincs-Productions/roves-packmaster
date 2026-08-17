@@ -15,7 +15,7 @@
 		"browseDialogTitle": "Selecciona la carpeta de salida de la compilación de tu juego",
 		"errorTitle": "Esto no parece una carpeta de salida de compilación válida",
 		"errorDescription": "Packmaster no encontró un archivo {{indexHtml}} en esta carpeta. Comprueba que hayas seleccionado la salida de la compilación (p. ej. {{dist}}), no la carpeta fuente de tu proyecto.",
-		"errorLooksLikeSource": "Esta carpeta todavía tiene un {{packageJson}} — eso significa que es la carpeta fuente de tu proyecto, no su salida compilada. Ejecuta primero tu build y luego selecciona la carpeta {{dist}} que genera.",
+		"errorLooksLikeSource": "Esta carpeta todavía tiene un {{packageJson}} — eso significa que es la carpeta fuente de tu proyecto, no su salida compilada. Ejecuta primero tu build (p. ej. {{command}}) y luego selecciona la carpeta {{dist}} que genera.",
 		"analyzing": "Comprobando esta carpeta…"
 	},
 	"configure": {
