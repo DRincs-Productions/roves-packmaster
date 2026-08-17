@@ -1,3 +1,4 @@
+import { WarningCircle } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,10 @@ const INSTALLER_FORMATS: Record<Platform, { value: string; label: string }[]> = 
   macos: [{ value: "dmg", label: ".dmg" }],
 };
 
+// Mirrors bundle.rs's own generate_release check (non-empty, digits only) -- kept in sync
+// with that Rust-side validation rather than introduced independently.
+const isValidSteamAppId = (appId: string) => /^[0-9]+$/.test(appId.trim());
+
 function ConfigureView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -50,6 +56,8 @@ function ConfigureView() {
   > | null>(null);
   const [releaseInfo, setReleaseInfo] = useState({ name: "", version: "" });
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
+  const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam", "compression"]);
+  const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -118,6 +126,19 @@ function ConfigureView() {
   if (!settings.sourceDir) return null;
 
   const unavailablePlatforms = PORTABLE_PLATFORMS.filter((p) => availability?.[p] === false);
+  const steamAppIdInvalid =
+    settings.plugins.steam.enabled && !isValidSteamAppId(settings.plugins.steam.appId);
+
+  const handleGenerateClick = () => {
+    if (steamAppIdInvalid) {
+      setShowSteamAppIdError(true);
+      setOpenAccordionItems((current) =>
+        current.includes("steam") ? current : [...current, "steam"],
+      );
+      return;
+    }
+    navigate({ to: "/generating" });
+  };
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-6">
@@ -250,7 +271,11 @@ function ConfigureView() {
 
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t("configure.advanced.title")}</h2>
-        <Accordion className="gap-4" defaultValue={["compression"]}>
+        <Accordion
+          className="gap-4"
+          value={openAccordionItems}
+          onValueChange={setOpenAccordionItems}
+        >
           <AccordionItem
             value="steam"
             className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
@@ -278,6 +303,7 @@ function ConfigureView() {
                   <Input
                     id="steam-app-id"
                     inputMode="numeric"
+                    aria-invalid={showSteamAppIdError && steamAppIdInvalid}
                     placeholder={t("configure.steam.appIdPlaceholder")}
                     value={settings.plugins.steam.appId}
                     onChange={(e) => {
@@ -287,6 +313,9 @@ function ConfigureView() {
                       });
                     }}
                   />
+                  {showSteamAppIdError && steamAppIdInvalid && (
+                    <p className="text-destructive text-xs">{t("configure.steam.appIdError")}</p>
+                  )}
                 </div>
               )}
               <p className="text-muted-foreground text-sm">{t("configure.steam.apiHint")}</p>
@@ -405,12 +434,15 @@ function ConfigureView() {
         </Accordion>
       </div>
 
-      <Button
-        type="button"
-        size="lg"
-        className="self-end"
-        onClick={() => navigate({ to: "/generating" })}
-      >
+      {showSteamAppIdError && steamAppIdInvalid && (
+        <Alert variant="destructive">
+          <WarningCircle />
+          <AlertTitle>{t("configure.errors.title")}</AlertTitle>
+          <AlertDescription>{t("configure.steam.appIdError")}</AlertDescription>
+        </Alert>
+      )}
+
+      <Button type="button" size="lg" className="self-end" onClick={handleGenerateClick}>
         {t("configure.startButton")}
       </Button>
     </div>

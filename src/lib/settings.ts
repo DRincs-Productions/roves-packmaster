@@ -79,7 +79,9 @@ export const defaultSettings: PackmasterSettings = {
     macos: { enabled: false, formats: [] },
   },
   plugins: {
-    steam: { enabled: false, appId: "" },
+    // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default
+    // to try things with, rather than an empty field that always needs typing into first.
+    steam: { enabled: false, appId: "480" },
   },
   compression: {
     enabled: true, // --content-compress=auto is the engine's own default

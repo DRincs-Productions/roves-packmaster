@@ -49,6 +49,9 @@
 		"advanced": {
 			"title": "Avancé"
 		},
+		"errors": {
+			"title": "Corrigez les erreurs ci-dessous avant de générer"
+		},
 		"steam": {
 			"title": "Steam",
 			"description": "Packmaster peut télécharger un shell compatible Steam au lieu de la version standard, pour que votre jeu puisse communiquer avec Steamworks.",
@@ -56,6 +59,7 @@
 			"appIdLabel": "ID d'application Steam",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "Écrit dans un fichier steam_appid.txt à côté de l'exécutable du jeu — pour tester en dehors du client Steam réel. Steam le définira lui-même une fois votre jeu réellement publié là-bas.",
+			"appIdError": "Saisissez un ID d'application Steam valide (chiffres uniquement), ou désactivez Steam.",
 			"apiHint": "Le code de votre jeu communique avec lui via @drincs/roves-api/steam — succès, statistiques, DLC, overlay et boutique, via Steamworks."
 		},
 		"compression": {

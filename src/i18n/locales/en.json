@@ -49,6 +49,9 @@
 		"advanced": {
 			"title": "Advanced"
 		},
+		"errors": {
+			"title": "Fix the errors below before generating"
+		},
 		"steam": {
 			"title": "Steam",
 			"description": "Packmaster can download a Steam-enabled shell instead of the plain one, so your game can talk to Steamworks.",
@@ -56,6 +59,7 @@
 			"appIdLabel": "Steam App ID",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "Written into a steam_appid.txt next to the game's executable — for testing outside the real Steam client. Steam sets this itself once your game is actually published there.",
+			"appIdError": "Enter a valid Steam App ID (numbers only), or turn Steam off.",
 			"apiHint": "Your game's own code talks to it through @drincs/roves-api/steam — achievements, stats, DLC, overlay, and store, via Steamworks."
 		},
 		"compression": {

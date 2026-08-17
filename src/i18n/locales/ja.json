@@ -49,6 +49,9 @@
 		"advanced": {
 			"title": "詳細設定"
 		},
+		"errors": {
+			"title": "生成する前に以下のエラーを修正してください"
+		},
 		"steam": {
 			"title": "Steam",
 			"description": "Packmaster は通常のシェルの代わりに Steam 対応シェルをダウンロードできます。これによりゲームが Steamworks と通信できるようになります。",
@@ -56,6 +59,7 @@
 			"appIdLabel": "Steam アプリ ID",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "ゲームの実行ファイルの隣に steam_appid.txt として書き込まれます — 実際の Steam クライアント外でテストするためのものです。ゲームが実際に公開されると、Steam 自身がこれを設定します。",
+			"appIdError": "有効な Steam アプリ ID（数字のみ）を入力するか、Steam を無効にしてください。",
 			"apiHint": "ゲーム自身のコードは @drincs/roves-api/steam を通じてやり取りします — Steamworks による実績、統計、DLC、オーバーレイ、ストア機能です。"
 		},
 		"compression": {

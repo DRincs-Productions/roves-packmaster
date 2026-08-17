@@ -49,6 +49,9 @@
 		"advanced": {
 			"title": "Дополнительно"
 		},
+		"errors": {
+			"title": "Исправьте ошибки ниже перед генерацией"
+		},
 		"steam": {
 			"title": "Steam",
 			"description": "Packmaster может скачать оболочку с поддержкой Steam вместо обычной, чтобы ваша игра могла взаимодействовать со Steamworks.",
@@ -56,6 +59,7 @@
 			"appIdLabel": "Steam App ID",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "Записывается в файл steam_appid.txt рядом с исполняемым файлом игры — для тестирования вне реального клиента Steam. Сам Steam задаст это значение, когда игра будет опубликована там.",
+			"appIdError": "Введите действительный Steam App ID (только цифры) или отключите Steam.",
 			"apiHint": "Код вашей игры обращается к нему через @drincs/roves-api/steam — достижения, статистика, DLC, оверлей и магазин через Steamworks."
 		},
 		"compression": {
