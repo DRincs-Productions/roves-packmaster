@@ -112,7 +112,11 @@ export async function loadSettings(): Promise<PackmasterSettings> {
     ...stored,
     releaseInfoByPath: { ...defaultSettings.releaseInfoByPath, ...stored.releaseInfoByPath },
     portable: { ...defaultSettings.portable, ...stored.portable },
-    installers: { ...defaultSettings.installers, ...stored.installers },
+    installers: {
+      windows: { ...defaultSettings.installers.windows, ...stored.installers?.windows },
+      linux: { ...defaultSettings.installers.linux, ...stored.installers?.linux },
+      macos: { ...defaultSettings.installers.macos, ...stored.installers?.macos },
+    },
     plugins: { ...defaultSettings.plugins, ...stored.plugins },
     compression: { ...defaultSettings.compression, ...stored.compression },
   };
