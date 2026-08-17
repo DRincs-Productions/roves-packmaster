@@ -7,7 +7,10 @@
 		"core:default",
 		"core:app:allow-version",
 		"opener:default",
-		"opener:allow-open-path",
+		{
+			"identifier": "opener:allow-open-path",
+			"allow": [{ "path": "**" }]
+		},
 		"dialog:default",
 		"fs:default",
 		"fs:allow-read-dir",
