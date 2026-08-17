@@ -128,9 +128,20 @@ jobs:
           Compress-Archive -Path out/roves-packmaster -DestinationPath "out/$zip"
           echo "ZIP=out/$zip" >> $env:GITHUB_ENV
 
+      # Retries: the 3 matrix jobs all upload to the same "test" release concurrently, and
+      # `gh release upload --clobber` (delete-then-reupload) occasionally hits a transient
+      # conflict from another job's own delete/upload landing at the same moment -- confirmed
+      # by two real runs failing here (never at the build step itself) on unrelated,
+      # upload-unrelated commits, always on a subset of platforms, never all 3.
       - name: upload to "test" release
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "$TEST_RELEASE_TAG" "$ZIP" --clobber
+        run: |
+          for attempt in 1 2 3; do
+            gh release upload "$TEST_RELEASE_TAG" "$ZIP" --clobber && exit 0
+            echo "upload attempt $attempt failed, retrying in $((attempt * 10))s..." >&2
+            sleep $((attempt * 10))
+          done
+          exit 1
