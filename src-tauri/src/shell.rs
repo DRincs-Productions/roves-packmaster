@@ -72,9 +72,41 @@ pub async fn ensure_shell(
     }
     tokio::fs::create_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
 
+    let url = shell_asset_url(platform, steam);
     let zip_path = cache_dir.join("shell.zip");
-    download_file(&shell_asset_url(platform, steam), &zip_path, &mut on_progress).await?;
-    extract_zip(&zip_path, &cache_dir)?;
+    // The shell zip is 100+ MB -- a mid-stream connection drop (flaky wifi, a corporate
+    // TLS-inspecting proxy resetting a long-lived download) surfaces from reqwest as a
+    // generic "error decoding response body" with no further detail, and is exactly the
+    // kind of transient failure a retry fixes; a genuinely bad URL/404 fails immediately on
+    // the first attempt instead (see download_file's status check), so this doesn't mask
+    // real errors, just network flakiness.
+    const MAX_ATTEMPTS: u32 = 3;
+    let mut last_err = String::new();
+    for attempt in 1..=MAX_ATTEMPTS {
+        // Extraction is retried alongside the download, not just the download itself -- a
+        // connection that closes early without reqwest noticing produces a truncated-but-not-
+        // erroring zip, which only surfaces once `extract_zip` tries to read it.
+        let result = match download_file(&url, &zip_path, &mut on_progress).await {
+            Ok(()) => extract_zip(&zip_path, &cache_dir),
+            Err(e) => Err(e),
+        };
+        match result {
+            Ok(()) => {
+                last_err.clear();
+                break;
+            },
+            Err(e) => {
+                last_err = e;
+                tokio::fs::remove_file(&zip_path).await.ok();
+                if attempt < MAX_ATTEMPTS {
+                    tokio::time::sleep(std::time::Duration::from_secs(2 * attempt as u64)).await;
+                }
+            },
+        }
+    }
+    if !last_err.is_empty() {
+        return Err(format!("downloading shell after {MAX_ATTEMPTS} attempts: {last_err}"));
+    }
     tokio::fs::remove_file(&zip_path).await.ok();
     tokio::fs::write(&marker, b"1").await.map_err(|e| e.to_string())?;
 

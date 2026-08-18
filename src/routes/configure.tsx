@@ -56,7 +56,7 @@ function ConfigureView() {
   > | null>(null);
   const [releaseInfo, setReleaseInfo] = useState({ name: "", version: "" });
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
-  const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam", "compression"]);
+  const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam"]);
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
 
   // A direct navigation here (or a reload) with no source picked yet has
