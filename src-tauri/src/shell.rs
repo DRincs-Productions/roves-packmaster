@@ -13,14 +13,35 @@ use tokio::io::AsyncWriteExt;
 
 pub const TARGET_SHELL_VERSION: &str = "v0.2.0";
 
+/// The rolling, unversioned tag the *engine's own* `test.yml` publishes a fresh shell build
+/// to on every push to `main` (see that workflow's `TEST_RELEASE_TAG`) — distinct from a real
+/// tagged release, its asset content changes over time under the same tag name.
+const TEST_SHELL_TAG: &str = "test";
+
+/// True only when *this exact build of Packmaster* was itself produced by `roves-ui`'s own
+/// `test.yml` (which sets `PACKMASTER_TEST_BUILD=1` before `npm run tauri build` — see that
+/// workflow), never by inspecting anything at runtime: a shipped, tagged Packmaster release
+/// must behave identically regardless of whatever's in an end user's own environment.
+fn is_test_build() -> bool {
+    option_env!("PACKMASTER_TEST_BUILD").is_some()
+}
+
+/// The engine release tag this build of Packmaster targets: the exact, pinned
+/// `TARGET_SHELL_VERSION` for a real Packmaster release, so the same build always produces
+/// the same output and can safely cache what it downloads -- but the engine's own rolling
+/// `test` tag for a Packmaster *test* build, so testing Packmaster against engine changes
+/// doesn't require re-tagging an engine release for every iteration.
+pub fn target_shell_version() -> &'static str {
+    if is_test_build() { TEST_SHELL_TAG } else { TARGET_SHELL_VERSION }
+}
+
 /// `windows` | `macos` | `linux` — matches release.yml's own `matrix.os_name` and the
 /// `roves_shell_<os_name>.zip`/`roves_shell_<os_name>_steam.zip` asset naming (the engine's
 /// own `matrix.asset_suffix`).
 pub fn shell_asset_url(platform: &str, steam: bool) -> String {
     let suffix = if steam { "_steam" } else { "" };
-    format!(
-        "https://github.com/DRincs-Productions/roves/releases/download/{TARGET_SHELL_VERSION}/roves_shell_{platform}{suffix}.zip"
-    )
+    let version = target_shell_version();
+    format!("https://github.com/DRincs-Productions/roves/releases/download/{version}/roves_shell_{platform}{suffix}.zip")
 }
 
 /// Real availability check (not just an assumption) that the shell release this build of
@@ -54,7 +75,7 @@ pub async fn ensure_shell(
         .app_cache_dir()
         .map_err(|e| e.to_string())?
         .join("shells")
-        .join(TARGET_SHELL_VERSION)
+        .join(target_shell_version())
         .join(platform)
         // Plain and Steam-enabled shells are different binaries entirely -- keying the cache
         // by variant too means toggling Steam on/off never reuses (or clobbers) the wrong
@@ -62,7 +83,11 @@ pub async fn ensure_shell(
         .join(if steam { "steam" } else { "plain" });
     let extracted_root = cache_dir.join("roves");
     let marker = cache_dir.join(".complete");
-    if marker.exists() && extracted_root.exists() {
+    // A test build's shell lives under the engine's rolling `test` tag, whose actual asset
+    // content changes over time under that same tag name -- reusing a cached extraction here
+    // would silently test against a stale engine build. A real, tagged Packmaster release
+    // targets an immutable, pinned tag instead, where caching has no such staleness risk.
+    if !is_test_build() && marker.exists() && extracted_root.exists() {
         on_progress(1.0);
         return Ok(extracted_root);
     }

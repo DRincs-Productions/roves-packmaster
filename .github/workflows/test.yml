@@ -82,8 +82,17 @@ jobs:
 
       # rustup ships preinstalled on all 3 GitHub-hosted runner images; no pinned toolchain
       # here (unlike the main engine repo) so the default stable channel is used as-is.
+      #
+      # PACKMASTER_TEST_BUILD makes this exact build download the engine's own rolling `test`
+      # shell tag (always the latest, cache bypassed) instead of the pinned
+      # TARGET_SHELL_VERSION a real Packmaster release targets -- see shell.rs's
+      # `is_test_build`/`target_shell_version`. Baked in at compile time via `option_env!`, not
+      # read at runtime, so a real release build can't be made to behave like a test build by
+      # anything in an end user's own environment.
       - name: build Packmaster (portable, no installer)
         shell: bash
+        env:
+          PACKMASTER_TEST_BUILD: '1'
         run: |
           if [ "${{ matrix.os_name }}" = "macos" ]; then
             npm run tauri build -- --bundles app

@@ -95,6 +95,13 @@ without being able to try an option that can't work here.
   one. `TARGET_SHELL_VERSION` here **must** stay in sync with `src/lib/shell-version.ts`'s
   constant of the same name — see the engine repo's own `CLAUDE.md`, "Cutting a versioned
   release" section, which is the authoritative place this sync obligation is documented.
+  That pinned, cached target only applies to a *real* Packmaster build, though —
+  `is_test_build()`/`target_shell_version()` make a build compiled with
+  `PACKMASTER_TEST_BUILD=1` (this project's own `test.yml`, never a real tagged release)
+  target the engine's rolling `test` tag instead, with the on-disk cache bypassed
+  entirely — a test build of Packmaster should always reflect the latest engine changes,
+  not something re-tagging an engine release just to test against; a real release must
+  stay reproducible, which caching an immutable, pinned tag has no risk to.
 - **`packer.rs`** places the user's content into the downloaded shell — either packed (by
   linking the engine repo's `roves-content-packer` crate directly as a Cargo library
   dependency, so packing happens in-process, no separate toolchain or sidecar binary
