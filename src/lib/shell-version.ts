@@ -1,7 +1,7 @@
 // The Roves engine shell version this build of Packmaster currently targets — see the
 // engine repo's own CLAUDE.md ("Cutting a versioned release" section), which requires
 // bumping this constant every time a new shell version is published.
-export const TARGET_SHELL_VERSION = "v0.1.1";
+export const TARGET_SHELL_VERSION = "v0.2.0";
 
 const LATEST_RELEASE_API_URL =
   "https://api.github.com/repos/DRincs-Productions/roves/releases/latest";

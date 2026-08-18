@@ -11,7 +11,7 @@ use futures_util::StreamExt;
 use tauri::{AppHandle, Manager};
 use tokio::io::AsyncWriteExt;
 
-pub const TARGET_SHELL_VERSION: &str = "v0.1.1";
+pub const TARGET_SHELL_VERSION: &str = "v0.2.0";
 
 /// `windows` | `macos` | `linux` — matches release.yml's own `matrix.os_name` and the
 /// `roves_shell_<os_name>.zip`/`roves_shell_<os_name>_steam.zip` asset naming (the engine's
