@@ -101,9 +101,14 @@
 		"macos": "macOS",
 		"linux": "Linux"
 	},
-	"shellUpdate": {
-		"title": "有新版本的引擎外壳可用",
-		"description": "Packmaster 目前面向的是 Roves 引擎外壳 {{current}}，但已发布 {{latest}}。",
-		"link": "查看最新发行版"
+	"info": {
+		"trigger": "关于 Roves Packmaster",
+		"description": "Roves 是一个基于网页的游戏引擎，可将你的游戏发布为真正的桌面应用，而不是浏览器标签页。Packmaster 就是为你打包它的工具。",
+		"packmasterVersion": "Packmaster 版本",
+		"shellVersion": "引擎外壳版本",
+		"shellStatus": "状态",
+		"updateAvailable": "有可用更新",
+		"upToDate": "已是最新",
+		"downloadLatest": "下载最新版本"
 	}
 }

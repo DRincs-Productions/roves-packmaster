@@ -101,9 +101,14 @@
 		"macos": "macOS",
 		"linux": "Linux"
 	},
-	"shellUpdate": {
-		"title": "Доступна новая версия оболочки",
-		"description": "Packmaster сейчас ориентирован на оболочку Roves {{current}}, но уже опубликована {{latest}}.",
-		"link": "Посмотреть последний релиз"
+	"info": {
+		"trigger": "О Roves Packmaster",
+		"description": "Roves — это веб-игровой движок, который распространяет вашу игру как настоящее desktop-приложение, а не как вкладку браузера. Packmaster — это инструмент, который упаковывает её для вас.",
+		"packmasterVersion": "Версия Packmaster",
+		"shellVersion": "Версия оболочки",
+		"shellStatus": "Статус",
+		"updateAvailable": "Доступно обновление",
+		"upToDate": "Актуальная версия",
+		"downloadLatest": "Скачать последнюю версию"
 	}
 }

@@ -8,6 +8,8 @@ const LATEST_RELEASE_API_URL =
 
 export const ROVES_RELEASES_URL = "https://github.com/DRincs-Productions/roves/releases/latest";
 
+export const ROVES_WEBSITE_URL = "https://roves.pixi-vn.com";
+
 export interface ShellVersionCheckResult {
   current: string;
   latest: string;

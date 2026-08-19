@@ -212,7 +212,8 @@ function ConfigureView() {
             })}
           </div>
           {unavailablePlatforms.length > 0 && (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-destructive flex items-center gap-1.5 text-xs">
+              <WarningCircle className="size-3.5 shrink-0" weight="fill" />
               {t("configure.portable.shellUnavailable", {
                 platforms: unavailablePlatforms.map((p) => t(`system.${p}`)).join(", "),
               })}

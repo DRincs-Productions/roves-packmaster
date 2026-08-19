@@ -101,9 +101,14 @@
 		"macos": "macOS",
 		"linux": "Linux"
 	},
-	"shellUpdate": {
-		"title": "新しいシェルバージョンが利用可能です",
-		"description": "Packmaster は現在 Roves シェル {{current}} を対象としていますが、{{latest}} が公開されています。",
-		"link": "最新のリリースを見る"
+	"info": {
+		"trigger": "Roves Packmaster について",
+		"description": "Roves は、ゲームをブラウザのタブではなく本物のデスクトップアプリとして配布する、Web ベースのゲームエンジンです。Packmaster はそれをパッケージ化するツールです。",
+		"packmasterVersion": "Packmaster のバージョン",
+		"shellVersion": "シェルのバージョン",
+		"shellStatus": "状態",
+		"updateAvailable": "更新があります",
+		"upToDate": "最新です",
+		"downloadLatest": "最新バージョンをダウンロード"
 	}
 }
