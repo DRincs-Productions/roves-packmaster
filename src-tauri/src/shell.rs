@@ -13,11 +13,6 @@ use tokio::io::AsyncWriteExt;
 
 pub const TARGET_SHELL_VERSION: &str = "v0.2.0";
 
-/// The rolling, unversioned tag the *engine's own* `test.yml` publishes a fresh shell build
-/// to on every push to `main` (see that workflow's `TEST_RELEASE_TAG`) — distinct from a real
-/// tagged release, its asset content changes over time under the same tag name.
-const TEST_SHELL_TAG: &str = "test";
-
 /// True only when *this exact build of Packmaster* was itself produced by `roves-ui`'s own
 /// `test.yml` (which sets `PACKMASTER_TEST_BUILD=1` before `npm run tauri build` — see that
 /// workflow), never by inspecting anything at runtime: a shipped, tagged Packmaster release
@@ -26,13 +21,17 @@ fn is_test_build() -> bool {
     option_env!("PACKMASTER_TEST_BUILD").is_some()
 }
 
-/// The engine release tag this build of Packmaster targets: the exact, pinned
-/// `TARGET_SHELL_VERSION` for a real Packmaster release, so the same build always produces
-/// the same output and can safely cache what it downloads -- but the engine's own rolling
-/// `test` tag for a Packmaster *test* build, so testing Packmaster against engine changes
-/// doesn't require re-tagging an engine release for every iteration.
+/// The engine release tag this build of Packmaster targets -- always the exact, pinned
+/// `TARGET_SHELL_VERSION`. A prior version of this pointed a Packmaster *test* build at the
+/// engine's own rolling `test` tag instead, on the assumption that tag also published a bare
+/// `roves_shell_<platform>.zip` the way a real release does -- it doesn't: the engine's
+/// `test.yml` publishes `servoshell-test_<os>-<mode>.zip`, a full smoke-test bundle with the
+/// `servo-test-page` game baked in, under a completely different naming convention. Pointing
+/// at "test" therefore found nothing published for any platform. Reverted to the one tag that
+/// actually carries a bare shell asset until the engine repo publishes a real rolling one (see
+/// this project's own CLAUDE.md for the follow-up this needs).
 pub fn target_shell_version() -> &'static str {
-    if is_test_build() { TEST_SHELL_TAG } else { TARGET_SHELL_VERSION }
+    TARGET_SHELL_VERSION
 }
 
 /// `windows` | `macos` | `linux` — matches release.yml's own `matrix.os_name` and the

@@ -95,13 +95,17 @@ without being able to try an option that can't work here.
   one. `TARGET_SHELL_VERSION` here **must** stay in sync with `src/lib/shell-version.ts`'s
   constant of the same name — see the engine repo's own `CLAUDE.md`, "Cutting a versioned
   release" section, which is the authoritative place this sync obligation is documented.
-  That pinned, cached target only applies to a *real* Packmaster build, though —
-  `is_test_build()`/`target_shell_version()` make a build compiled with
-  `PACKMASTER_TEST_BUILD=1` (this project's own `test.yml`, never a real tagged release)
-  target the engine's rolling `test` tag instead, with the on-disk cache bypassed
-  entirely — a test build of Packmaster should always reflect the latest engine changes,
-  not something re-tagging an engine release just to test against; a real release must
-  stay reproducible, which caching an immutable, pinned tag has no risk to.
+  `target_shell_version()` always returns this pinned tag, for both a real Packmaster
+  release *and* a test build (`PACKMASTER_TEST_BUILD=1`, this project's own `test.yml`) —
+  an earlier version pointed a test build at the engine's own rolling `test` tag instead,
+  which broke every platform: that tag only ever published `servoshell-test_<os>-<mode>.zip`
+  (`test.yml`'s own smoke-test bundle, `servo-test-page` baked in), never a bare
+  `roves_shell_<platform>.zip`. **Follow-up still needed**: the engine repo would need to
+  publish a real rolling bare-shell asset (e.g. from its own `release.yml` logic, run on
+  every push under the `test` tag) before a Packmaster test build can actually target
+  "always the latest engine build" for real — `is_test_build()` only bypasses the on-disk
+  shell cache for now (see `ensure_shell`), which is real and correct on its own, but
+  doesn't by itself make a test build track engine changes without a version bump.
 - **`packer.rs`** places the user's content into the downloaded shell — either packed (by
   linking the engine repo's `roves-content-packer` crate directly as a Cargo library
   dependency, so packing happens in-process, no separate toolchain or sidecar binary
