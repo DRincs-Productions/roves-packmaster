@@ -104,7 +104,7 @@ pub async fn generate_release(
             let variant = if steam { " Steam-enabled" } else { "" };
             return Err(format!(
                 "no published{variant} shell release found for {platform} (targeting {})",
-                shell::target_shell_version()
+                shell::resolve_shell_version().await
             ));
         }
         let installer_settings = settings.installers.get(platform);

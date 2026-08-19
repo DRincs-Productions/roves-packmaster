@@ -13,6 +13,9 @@ use tokio::io::AsyncWriteExt;
 
 pub const TARGET_SHELL_VERSION: &str = "v0.2.0";
 
+const LATEST_RELEASE_API_URL: &str =
+    "https://api.github.com/repos/DRincs-Productions/roves/releases/latest";
+
 /// True only when *this exact build of Packmaster* was itself produced by `roves-ui`'s own
 /// `test.yml` (which sets `PACKMASTER_TEST_BUILD=1` before `npm run tauri build` — see that
 /// workflow), never by inspecting anything at runtime: a shipped, tagged Packmaster release
@@ -21,25 +24,49 @@ fn is_test_build() -> bool {
     option_env!("PACKMASTER_TEST_BUILD").is_some()
 }
 
-/// The engine release tag this build of Packmaster targets -- always the exact, pinned
-/// `TARGET_SHELL_VERSION`. A prior version of this pointed a Packmaster *test* build at the
-/// engine's own rolling `test` tag instead, on the assumption that tag also published a bare
-/// `roves_shell_<platform>.zip` the way a real release does -- it doesn't: the engine's
-/// `test.yml` publishes `servoshell-test_<os>-<mode>.zip`, a full smoke-test bundle with the
-/// `servo-test-page` game baked in, under a completely different naming convention. Pointing
-/// at "test" therefore found nothing published for any platform. Reverted to the one tag that
-/// actually carries a bare shell asset until the engine repo publishes a real rolling one (see
-/// this project's own CLAUDE.md for the follow-up this needs).
-pub fn target_shell_version() -> &'static str {
-    TARGET_SHELL_VERSION
+/// A real, tagged Packmaster release always targets the exact pinned `TARGET_SHELL_VERSION`,
+/// so the same build reliably produces the same output and can safely cache what it
+/// downloads. A *test* build instead targets whichever tag GitHub currently reports as the
+/// engine repo's latest release — test builds are rebuilt on every push anyway, so there's
+/// no reproducibility to protect, and always following "latest" means testing Packmaster
+/// against a newly cut engine release doesn't need a `TARGET_SHELL_VERSION` bump here just to
+/// notice it. Falls back to `TARGET_SHELL_VERSION` if the lookup itself fails (offline,
+/// GitHub API rate-limited, etc.) — same "best-effort, never block on this" reasoning as the
+/// frontend's own `shell-version.ts`, `checkForNewShellVersion`.
+///
+/// (An earlier version of this pointed a test build at the engine's own rolling `test` tag
+/// instead, assuming it published a bare `roves_shell_<platform>.zip` the way a real release
+/// does — it doesn't, so that found nothing published for any platform. "Latest real
+/// release" is what actually exists to target.)
+pub async fn resolve_shell_version() -> String {
+    if !is_test_build() {
+        return TARGET_SHELL_VERSION.to_string();
+    }
+    fetch_latest_release_tag().await.unwrap_or_else(|| TARGET_SHELL_VERSION.to_string())
+}
+
+async fn fetch_latest_release_tag() -> Option<String> {
+    // GitHub's API rejects an unauthenticated request with no User-Agent header at all.
+    let text = reqwest::Client::new()
+        .get(LATEST_RELEASE_API_URL)
+        .header("User-Agent", "roves-packmaster")
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?
+        .text()
+        .await
+        .ok()?;
+    let json: serde_json::Value = serde_json::from_str(&text).ok()?;
+    json.get("tag_name")?.as_str().map(str::to_string)
 }
 
 /// `windows` | `macos` | `linux` — matches release.yml's own `matrix.os_name` and the
 /// `roves_shell_<os_name>.zip`/`roves_shell_<os_name>_steam.zip` asset naming (the engine's
 /// own `matrix.asset_suffix`).
-pub fn shell_asset_url(platform: &str, steam: bool) -> String {
+pub fn shell_asset_url(platform: &str, steam: bool, version: &str) -> String {
     let suffix = if steam { "_steam" } else { "" };
-    let version = target_shell_version();
     format!("https://github.com/DRincs-Productions/roves/releases/download/{version}/roves_shell_{platform}{suffix}.zip")
 }
 
@@ -49,8 +76,9 @@ pub fn shell_asset_url(platform: &str, steam: bool) -> String {
 /// surfaces as "can't distribute this" instead of a confusing failure partway through
 /// generation.
 pub async fn is_shell_available(platform: &str, steam: bool) -> bool {
+    let version = resolve_shell_version().await;
     reqwest::Client::new()
-        .head(shell_asset_url(platform, steam))
+        .head(shell_asset_url(platform, steam, &version))
         .send()
         .await
         .map(|response| response.status().is_success() || response.status().is_redirection())
@@ -69,12 +97,13 @@ pub async fn ensure_shell(
     steam: bool,
     mut on_progress: impl FnMut(f64) + Send,
 ) -> Result<PathBuf, String> {
+    let version = resolve_shell_version().await;
     let cache_dir = app
         .path()
         .app_cache_dir()
         .map_err(|e| e.to_string())?
         .join("shells")
-        .join(target_shell_version())
+        .join(&version)
         .join(platform)
         // Plain and Steam-enabled shells are different binaries entirely -- keying the cache
         // by variant too means toggling Steam on/off never reuses (or clobbers) the wrong
@@ -82,10 +111,11 @@ pub async fn ensure_shell(
         .join(if steam { "steam" } else { "plain" });
     let extracted_root = cache_dir.join("roves");
     let marker = cache_dir.join(".complete");
-    // A test build's shell lives under the engine's rolling `test` tag, whose actual asset
-    // content changes over time under that same tag name -- reusing a cached extraction here
-    // would silently test against a stale engine build. A real, tagged Packmaster release
-    // targets an immutable, pinned tag instead, where caching has no such staleness risk.
+    // A test build always targets whichever tag is currently "latest" (see
+    // resolve_shell_version) -- reusing a cached extraction here would silently keep testing
+    // against whatever was latest the first time this ran, even after a newer engine release
+    // ships. A real, tagged Packmaster release targets an immutable, pinned tag instead,
+    // where caching has no such staleness risk.
     if !is_test_build() && marker.exists() && extracted_root.exists() {
         on_progress(1.0);
         return Ok(extracted_root);
@@ -96,7 +126,7 @@ pub async fn ensure_shell(
     }
     tokio::fs::create_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
 
-    let url = shell_asset_url(platform, steam);
+    let url = shell_asset_url(platform, steam, &version);
     let zip_path = cache_dir.join("shell.zip");
     // The shell zip is 100+ MB -- a mid-stream connection drop (flaky wifi, a corporate
     // TLS-inspecting proxy resetting a long-lived download) surfaces from reqwest as a
