@@ -149,7 +149,20 @@ pub async fn generate_release(
         if settings.portable.get(platform) {
             emit_progress(&app, platform, "zipping", 0.7);
             let zip_path = release_dir.join(format!("{zip_stem}_{platform}.zip"));
-            zip_dir_as(&staging_dir, &package_name, &zip_path)?;
+            if platform == "macos" {
+                // macOS's own `.app` bundle is already the single, self-contained,
+                // double-click-to-run thing a player needs -- Finder never shows what's
+                // inside it. Wrapping it in another folder (as the shared `else` branch
+                // below does for Windows/Linux, where staging_dir holds many loose
+                // files that really do need one) only adds a pointless extra folder to
+                // open first. Zip play.app's own contents directly under a
+                // `<package_name>.app/` prefix instead -- same renamed-to-the-game's-
+                // name treatment the other platforms already get, at the zip root.
+                let app_dir = staging_dir.join("play.app");
+                zip_dir_as(&app_dir, &format!("{package_name}.app"), &zip_path)?;
+            } else {
+                zip_dir_as(&staging_dir, &package_name, &zip_path)?;
+            }
         }
 
         if installer_settings.enabled {
@@ -257,4 +270,42 @@ fn zip_dir_as(src: &Path, folder_name: &str, zip_path: &Path) -> Result<(), Stri
     }
     writer.finish().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression test for a real complaint: the macOS portable zip used to wrap play.app in
+    // an extra <game-name>/ folder (the right call for Windows/Linux, where staging_dir holds
+    // many loose files -- but play.app is already the single, self-contained,
+    // double-click-to-run thing a player needs on macOS, and Finder never shows what's inside
+    // it). Confirms the zip now puts <game-name>.app directly at the archive root instead.
+    #[test]
+    fn macos_zip_has_no_extra_wrapper_folder_around_the_app_bundle() {
+        let staging_dir = tempfile::tempdir().unwrap();
+        let app_dir = staging_dir.path().join("play.app");
+        let macos_dir = app_dir.join("Contents").join("MacOS");
+        std::fs::create_dir_all(&macos_dir).unwrap();
+        std::fs::write(macos_dir.join("play"), b"fake binary").unwrap();
+
+        let zip_path = staging_dir.path().join("out.zip");
+        zip_dir_as(&app_dir, "My Game.app", &zip_path).unwrap();
+
+        let file = std::fs::File::open(&zip_path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut names: Vec<String> = (0..archive.len())
+            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .collect();
+        names.sort();
+
+        assert_eq!(
+            names,
+            vec![
+                "My Game.app/Contents/".to_string(),
+                "My Game.app/Contents/MacOS/".to_string(),
+                "My Game.app/Contents/MacOS/play".to_string(),
+            ]
+        );
+    }
 }

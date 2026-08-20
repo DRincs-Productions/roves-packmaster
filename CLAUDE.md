@@ -127,7 +127,11 @@ without being able to try an option that can't work here.
   guards against regressing.
 - **`bundle.rs`** orchestrates both per selected platform (and per format, for installers —
   see below), emits `bundle-progress` events the frontend listens for, and zips the
-  portable output.
+  portable output. macOS's portable zip is a special case: `play.app` (already the single,
+  self-contained, double-click-to-run thing a player needs — Finder never shows what's
+  inside it) gets zipped as `<game name>.app` directly at the archive root, not wrapped in
+  an extra folder the way Windows/Linux's many loose files genuinely need — see `bundle.rs`'s
+  own test for the exact resulting archive layout this guards against regressing.
 - **`installer.rs`** wraps the same staging dir `bundle.rs` already assembled into a real
   `.msi`/`.dmg`/`.deb`, porting `post_build_commands.py`'s `_wrap_windows_msi`/
   `_wrap_macos_dmg`/`_bundle_linux_deb` (and `support/windows/roves-bundle.wxs.mako` for
