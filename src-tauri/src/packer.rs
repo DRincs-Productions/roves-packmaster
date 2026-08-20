@@ -21,10 +21,19 @@ use crate::settings::CompressionSettings;
 /// checks for exactly this file before letting a folder be picked at all).
 pub const HTML_FILE: &str = "index.html";
 
-/// Packs (or plain-copies) `content_dir` into `dest` — always `dest` itself, no nested
-/// subfolder, so the same relative path ("" when packed, `HTML_FILE` when not) works
-/// identically across Windows/Linux (content flat next to the binary) and macOS (content in
-/// `Contents/Resources/`, see `bundle_launch.rs`'s `content_root`).
+/// A real game's content — 5-10+ loose files when uncompressed, or the packed archives
+/// (`__root__.pack`, `manifest.json`, etc.) plus `steam_appid.txt` when compressed — used to
+/// land flat next to the binary, right alongside the engine's own DLLs/dylibs. Both go into
+/// this subfolder instead: `bundle_launch.rs`'s `content_dir`/`url` (see `write_launch_json`
+/// below) are read as an arbitrary path relative to `content_root`, so this needs no engine
+/// change at all -- just pointing that path at a real subfolder name instead of "".
+pub const CONTENT_SUBDIR: &str = "content";
+
+/// Packs (or plain-copies) `content_dir` into `dest`, which the caller is expected to have
+/// already pointed at `content_root.join(CONTENT_SUBDIR)` — see that constant's own doc
+/// comment for why this isn't `content_root` directly. The subfolder itself is the same
+/// across Windows/Linux (next to the binary) and macOS (inside `Contents/Resources/`, see
+/// `bundle_launch.rs`'s `content_root`) — only where that shared subfolder sits differs.
 pub fn place_content(
     content_dir: &Path,
     dest: &Path,
@@ -94,13 +103,78 @@ pub fn write_launch_json(binary_dir: &Path, packed: bool, window_title: Option<&
 
     let mut launch = serde_json::Map::new();
     if packed {
-        // "" -- content lives directly at content_root, no subfolder (see place_content).
-        launch.insert("content_dir".to_string(), serde_json::Value::String(String::new()));
+        launch.insert("content_dir".to_string(), serde_json::Value::String(CONTENT_SUBDIR.to_string()));
     } else {
-        launch.insert("url".to_string(), serde_json::Value::String(HTML_FILE.to_string()));
+        let url = format!("{CONTENT_SUBDIR}/{HTML_FILE}");
+        launch.insert("url".to_string(), serde_json::Value::String(url));
     }
     launch.insert("args".to_string(), serde_json::json!(args));
 
     let text = serde_json::to_vec_pretty(&serde_json::Value::Object(launch)).map_err(|e| e.to_string())?;
     fs::write(binary_dir.join("launch.json"), text).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn compression(enabled: bool) -> CompressionSettings {
+        CompressionSettings {
+            enabled,
+            level: 1,
+            max_pack_size: "500M".to_string(),
+            exclude: Vec::new(),
+            boot_include: Vec::new(),
+        }
+    }
+
+    fn fake_content_dir() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(HTML_FILE), b"<html></html>").unwrap();
+        fs::write(dir.path().join("style.css"), b"body {}").unwrap();
+        dir
+    }
+
+    // Regression test for the bug reported twice against a real bundle: packed content
+    // (.pack files, manifest.json) or a loose content copy landing flat in binary_dir,
+    // right alongside the engine's own DLLs/dylibs, instead of tucked into CONTENT_SUBDIR.
+    #[test]
+    fn packed_content_lands_in_content_subdir_not_binary_dir_root() {
+        let content_dir = fake_content_dir();
+        let binary_dir = tempfile::tempdir().unwrap();
+        let dest = binary_dir.path().join(CONTENT_SUBDIR);
+
+        place_content(content_dir.path(), &dest, &compression(true), None).unwrap();
+        write_launch_json(binary_dir.path(), true, None).unwrap();
+
+        let mut root_entries: Vec<_> = fs::read_dir(binary_dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        root_entries.sort();
+        assert_eq!(root_entries, vec![CONTENT_SUBDIR.to_string(), "launch.json".to_string()]);
+        assert!(dest.is_dir(), "packed content should land in {dest:?}");
+        assert!(fs::read_dir(&dest).unwrap().next().is_some(), "content subdir should be non-empty");
+
+        let launch: serde_json::Value =
+            serde_json::from_slice(&fs::read(binary_dir.path().join("launch.json")).unwrap()).unwrap();
+        assert_eq!(launch["content_dir"], CONTENT_SUBDIR);
+    }
+
+    #[test]
+    fn loose_content_lands_in_content_subdir_not_binary_dir_root() {
+        let content_dir = fake_content_dir();
+        let binary_dir = tempfile::tempdir().unwrap();
+        let dest = binary_dir.path().join(CONTENT_SUBDIR);
+
+        place_content(content_dir.path(), &dest, &compression(false), None).unwrap();
+        write_launch_json(binary_dir.path(), false, None).unwrap();
+
+        assert!(dest.join(HTML_FILE).is_file(), "loose index.html should land in {dest:?}");
+        assert!(!binary_dir.path().join(HTML_FILE).exists(), "index.html must not leak into binary_dir root");
+
+        let launch: serde_json::Value =
+            serde_json::from_slice(&fs::read(binary_dir.path().join("launch.json")).unwrap()).unwrap();
+        assert_eq!(launch["url"], format!("{CONTENT_SUBDIR}/{HTML_FILE}"));
+    }
 }

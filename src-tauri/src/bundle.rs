@@ -139,7 +139,8 @@ pub async fn generate_release(
         };
 
         emit_progress(&app, platform, "packing", 0.4);
-        packer::place_content(&content_dir, &content_root, &settings.compression, window_title.clone())?;
+        let content_dest = content_root.join(packer::CONTENT_SUBDIR);
+        packer::place_content(&content_dir, &content_dest, &settings.compression, window_title.clone())?;
         packer::write_launch_json(&binary_dir, settings.compression.enabled, window_title.as_deref())?;
         if steam {
             write_steam_appid(&binary_dir, &steam_app_id)?;

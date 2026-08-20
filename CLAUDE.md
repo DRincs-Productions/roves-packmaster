@@ -116,6 +116,15 @@ without being able to try an option that can't work here.
   one, since the two must keep producing bundles the shipped engine binary can actually
   launch (see `ports/servoshell/desktop/bundle_launch.rs` for the runtime contract:
   `launch.json`'s schema, and where packed content must live relative to the binary).
+  Content (the `.pack`/`manifest.json` archives, or the loose files when uncompressed)
+  lands in a `content/` subfolder (`packer::CONTENT_SUBDIR`) rather than flat next to the
+  binary — `bundle_launch.rs`'s `content_dir`/`url` fields are read as an arbitrary
+  relative path already, so this needed no engine-side change, only pointing that path at
+  a real subfolder instead of `""`. Keeps the bundle root down to just the engine's own
+  files (play.exe/play, diagnose.bat/sh, launch.json, DLLs/dylibs) plus `steam_appid.txt`
+  when Steam is enabled (has to stay flat — Valve's own convention for testing outside the
+  real Steam client) — see `packer.rs`'s own tests for the exact file-layout contract this
+  guards against regressing.
 - **`bundle.rs`** orchestrates both per selected platform (and per format, for installers —
   see below), emits `bundle-progress` events the frontend listens for, and zips the
   portable output.

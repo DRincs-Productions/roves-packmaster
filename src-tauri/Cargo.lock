@@ -3179,6 +3179,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-os",
  "tauri-plugin-store",
+ "tempfile",
  "tokio",
  "uuid",
  "walkdir",
