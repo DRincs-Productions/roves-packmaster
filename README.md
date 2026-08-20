@@ -13,7 +13,7 @@ engine repo's [README](../README.md)) instead of compiling one, and packs your c
 it by linking the engine's `roves-content-packer` crate directly as a Rust library (see
 `src-tauri/src/bundle.rs`). Building *Packmaster itself* is the only place a Rust toolchain
 is still needed — see "Development" below, or grab a build from this repo's own [rolling
-test release](https://github.com/DRincs-Productions/roves-ui/releases/tag/test) instead.
+test release](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/test) instead.
 
 ## Status
 
@@ -74,7 +74,7 @@ npm run tauri dev
 `.github/workflows/test.yml` builds Packmaster (portable output — `--no-bundle` on
 Windows/Linux, `--bundles app` on macOS, mirroring this project's own portable-only scope)
 on every push, and publishes it to a rolling, unversioned ["test"
-release](https://github.com/DRincs-Productions/roves-ui/releases/tag/test) — its assets are
+release](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/test) — its assets are
 overwritten on every run, the same pattern the main engine repo's own `test.yml` uses. Grab
 a build from there if you don't have (or don't want to set up) a local Rust/Tauri
 toolchain.
@@ -82,9 +82,9 @@ toolchain.
 ## Real, versioned releases
 
 Tagged `v<major>.<minor>.<patch>` releases (e.g.
-[`v0.1.0`](https://github.com/DRincs-Productions/roves-ui/releases/tag/v0.1.0)) are built by
+[`v0.1.0`](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/v0.1.0)) are built by
 `.github/workflows/release.yml` and published to their own, stable [GitHub
-Releases](https://github.com/DRincs-Productions/roves-ui/releases) page — unlike the rolling
+Releases](https://github.com/DRincs-Productions/roves-packmaster/releases) page — unlike the rolling
 "test" build above, these target a pinned engine shell version and never change once
 published. Prefer one of these over the "test" build for anything other than trying out a
 change that hasn't shipped yet.
