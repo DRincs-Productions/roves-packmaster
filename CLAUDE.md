@@ -155,3 +155,13 @@ own convention for testing outside the real Steam client) — see `write_steam_a
 mirroring the main engine repo's own `test.yml` — see this project's own README for
 details. Prefer this over asking whoever's iterating on Packmaster to have a working
 Rust/Tauri toolchain on hand.
+
+**Cutting a real, versioned release:** `.github/workflows/release.yml` (triggered by pushing
+a `v<major>.<minor>.<patch>` tag) builds and publishes a real Packmaster release — same
+build steps as `test.yml`, but without `PACKMASTER_TEST_BUILD` set, so it targets `shell.rs`'s
+pinned `TARGET_SHELL_VERSION` for a reproducible result, and publishes to a real tagged
+GitHub Release instead of the rolling "test" one. Mirrors the engine repo's own
+`release.yml`/its "Cutting a versioned release" `CLAUDE.md` section — same tag-push trigger,
+same delete-and-republish retry procedure if a run fails. Bump `package.json`'s and
+`src-tauri/{Cargo.toml,tauri.conf.json}`'s `version` fields to match before tagging — they
+don't update themselves.

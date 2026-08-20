@@ -79,6 +79,16 @@ overwritten on every run, the same pattern the main engine repo's own `test.yml`
 a build from there if you don't have (or don't want to set up) a local Rust/Tauri
 toolchain.
 
+## Real, versioned releases
+
+Tagged `v<major>.<minor>.<patch>` releases (e.g.
+[`v0.1.0`](https://github.com/DRincs-Productions/roves-ui/releases/tag/v0.1.0)) are built by
+`.github/workflows/release.yml` and published to their own, stable [GitHub
+Releases](https://github.com/DRincs-Productions/roves-ui/releases) page — unlike the rolling
+"test" build above, these target a pinned engine shell version and never change once
+published. Prefer one of these over the "test" build for anything other than trying out a
+change that hasn't shipped yet.
+
 ## Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)

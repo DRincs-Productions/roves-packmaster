@@ -1,0 +1,156 @@
+name: 'Release'
+
+# Builds and publishes a real, versioned Packmaster release — distinct from test.yml's
+# rolling "test" build (unversioned, rebuilt on every push, no PACKMASTER_TEST_BUILD env var
+# set here so this targets shell.rs's pinned TARGET_SHELL_VERSION rather than whatever the
+# engine's own latest release happens to be). Mirrors the engine repo's own release.yml —
+# see that workflow's own comments for the reasoning behind each step; this one follows the
+# same shape deliberately.
+#
+# Triggered by pushing a tag matching v<major>.<minor>.<patch> (e.g. v0.1.0). Retry a failed
+# release the same way the engine repo's own CLAUDE.md documents: delete the GitHub Release
+# (or let create-release's own self-heal handle it) and the git tag, fix, then re-tag and
+# re-push.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  # ── Create (or, on a retried tag, replace) the GitHub Release before the matrix starts ──
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: create the GitHub Release for this tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Self-healing for the retry procedure: if this exact tag was deleted and
+          # re-pushed after a previous failed attempt, a stale Release object (with
+          # partial/no artifacts) may still exist even though the git tag itself is fresh.
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+
+          cat > notes.md <<'EOF'
+          Roves Packmaster: a desktop GUI for packaging a web-built game into
+          [Roves](https://github.com/DRincs-Productions/roves) distributions — no Rust or
+          Python needed. Portable only for now — no installer.
+
+          Downloads the engine's own prebuilt shell at first use; doesn't bundle one.
+          EOF
+
+          gh release create "${{ github.ref_name }}" \
+            --title "Roves Packmaster ${{ github.ref_name }}" \
+            --notes-file notes.md
+
+  # ── Build the real release bundle and publish it, once per platform ───────────────────
+  build-and-publish:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            os_name: 'windows'
+          - platform: 'macos-latest'
+            os_name: 'macos'
+          - platform: 'ubuntu-24.04'
+            os_name: 'linux'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Tauri v2's own Linux prerequisites (webkit2gtk for the webview, appindicator/rsvg for
+      # tray/icon support, patchelf for its own AppImage tooling even though this workflow
+      # doesn't use it) — see https://v2.tauri.app/start/prerequisites/.
+      - name: install Tauri's Linux system dependencies
+        if: matrix.os_name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            libssl-dev
+
+      - name: npm install
+        run: npm install
+
+      # rustup ships preinstalled on all 3 GitHub-hosted runner images; no pinned toolchain
+      # here (unlike the main engine repo) so the default stable channel is used as-is. No
+      # PACKMASTER_TEST_BUILD here (unlike test.yml) — this targets shell.rs's pinned
+      # TARGET_SHELL_VERSION, for a real, reproducible release.
+      - name: build Packmaster (portable, no installer)
+        shell: bash
+        run: |
+          if [ "${{ matrix.os_name }}" = "macos" ]; then
+            npm run tauri build -- --bundles app
+          else
+            npm run tauri build -- --no-bundle
+          fi
+
+      - name: stage build output
+        shell: bash
+        run: |
+          mkdir -p out/roves-packmaster
+          case "${{ matrix.os_name }}" in
+            windows)
+              cp src-tauri/target/release/roves-packmaster.exe out/roves-packmaster/
+              ;;
+            linux)
+              cp src-tauri/target/release/roves-packmaster out/roves-packmaster/
+              ;;
+            macos)
+              cp -r "src-tauri/target/release/bundle/macos/Roves Packmaster.app" out/roves-packmaster/
+              ;;
+          esac
+          if [ -z "$(ls -A out/roves-packmaster)" ]; then
+            echo "::error::no build output staged — contents of src-tauri/target/release:"
+            find src-tauri/target/release -maxdepth 2
+            exit 1
+          fi
+
+      - name: zip bundle (Linux/macOS)
+        if: matrix.os_name != 'windows'
+        run: |
+          ZIP="roves-packmaster_${{ matrix.os_name }}.zip"
+          cd out
+          zip -r "$ZIP" roves-packmaster
+          echo "ZIP=out/$ZIP" >> "$GITHUB_ENV"
+
+      - name: zip bundle (Windows)
+        if: matrix.os_name == 'windows'
+        shell: pwsh
+        run: |
+          $zip = "roves-packmaster_windows.zip"
+          Compress-Archive -Path out/roves-packmaster -DestinationPath "out/$zip"
+          echo "ZIP=out/$zip" >> $env:GITHUB_ENV
+
+      # Retries: the 3 matrix jobs all upload to the same release concurrently, and
+      # `gh release upload` occasionally hits a transient conflict — same pattern already
+      # confirmed in test.yml's own identical retry loop.
+      - name: upload to the release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for attempt in 1 2 3; do
+            gh release upload "${{ github.ref_name }}" "$ZIP" --clobber && exit 0
+            echo "upload attempt $attempt failed, retrying in $((attempt * 10))s..." >&2
+            sleep $((attempt * 10))
+          done
+          exit 1
