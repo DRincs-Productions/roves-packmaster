@@ -27,6 +27,7 @@
 			"description": "Werden verwendet, um die von Packmaster generierten Dateien zu benennen.",
 			"nameLabel": "Spielname",
 			"namePlaceholder": "Mein Spiel",
+			"nameFromPackageJson": "Aus der package.json deines Projekts übernommen — ändere ihn dort, um dies zu ändern.",
 			"versionLabel": "Version",
 			"versionFromPackageJson": "Aus der package.json deines Projekts übernommen — ändere sie dort, um dies zu ändern."
 		},
@@ -109,6 +110,8 @@
 		"shellStatus": "Status",
 		"updateAvailable": "Update verfügbar",
 		"upToDate": "Aktuell",
-		"downloadLatest": "Neueste Version herunterladen"
+		"downloadLatest": "Neueste Version herunterladen",
+		"cacheSize": "Heruntergeladene Shells",
+		"clearCache": "Cache leeren"
 	}
 }

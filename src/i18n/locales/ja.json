@@ -27,6 +27,7 @@
 			"description": "Packmaster が生成するファイルの名前付けに使用されます。",
 			"nameLabel": "ゲーム名",
 			"namePlaceholder": "マイゲーム",
+			"nameFromPackageJson": "プロジェクトの package.json から取得しています — 変更するにはそちらを編集してください。",
 			"versionLabel": "バージョン",
 			"versionFromPackageJson": "プロジェクトの package.json から取得しています — 変更するにはそちらを編集してください。"
 		},
@@ -109,6 +110,8 @@
 		"shellStatus": "状態",
 		"updateAvailable": "更新があります",
 		"upToDate": "最新です",
-		"downloadLatest": "最新バージョンをダウンロード"
+		"downloadLatest": "最新バージョンをダウンロード",
+		"cacheSize": "ダウンロード済みのシェル",
+		"clearCache": "キャッシュを削除"
 	}
 }

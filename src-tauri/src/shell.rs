@@ -201,3 +201,38 @@ fn extract_zip(zip_path: &Path, dest_dir: &Path) -> Result<(), String> {
         .extract(dest_dir)
         .map_err(|e| format!("extracting shell zip: {e}"))
 }
+
+fn shells_cache_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_cache_dir().map_err(|e| e.to_string())?.join("shells"))
+}
+
+/// Total on-disk size of every cached shell extraction, across every version/platform/variant
+/// ever downloaded (`ensure_shell` keys each one by version — see that function's own cache_dir
+/// — so this walks all of them, not just whatever `resolve_shell_version` currently targets).
+pub fn cache_size(app: &AppHandle) -> Result<u64, String> {
+    let dir = shells_cache_dir(app)?;
+    if !dir.exists() {
+        return Ok(0);
+    }
+    let mut total = 0u64;
+    for entry in walkdir::WalkDir::new(&dir) {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if entry.file_type().is_file() {
+            total += entry.metadata().map_err(|e| e.to_string())?.len();
+        }
+    }
+    Ok(total)
+}
+
+/// Removes every cached shell extraction outright, regardless of version -- the next
+/// `ensure_shell` call for any version just re-downloads fresh. Not scoped to "only the
+/// stale/unused ones": simplest correct behavior, and a stale version already never gets
+/// served (see `ensure_shell`'s version-keyed cache_dir) -- this only reclaims disk space,
+/// it isn't needed for correctness.
+pub fn clear_cache(app: &AppHandle) -> Result<(), String> {
+    let dir = shells_cache_dir(app)?;
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}

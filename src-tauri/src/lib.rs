@@ -15,6 +15,16 @@ fn check_installer_availability(platforms: Vec<String>) -> Vec<(String, bool, Op
         .collect()
 }
 
+#[tauri::command]
+fn shell_cache_size(app: tauri::AppHandle) -> Result<u64, String> {
+    shell::cache_size(&app)
+}
+
+#[tauri::command]
+fn clear_shell_cache(app: tauri::AppHandle) -> Result<(), String> {
+    shell::clear_cache(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -26,7 +36,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bundle::generate_release,
             bundle::check_shell_availability,
-            check_installer_availability
+            check_installer_availability,
+            shell_cache_size,
+            clear_shell_cache
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

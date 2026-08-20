@@ -27,6 +27,7 @@
 			"description": "用于为 Packmaster 生成的文件命名。",
 			"nameLabel": "游戏名称",
 			"namePlaceholder": "我的游戏",
+			"nameFromPackageJson": "取自你项目的 package.json——如需更改，请在那里修改。",
 			"versionLabel": "版本",
 			"versionFromPackageJson": "取自你项目的 package.json——如需更改，请在那里修改。"
 		},
@@ -109,6 +110,8 @@
 		"shellStatus": "状态",
 		"updateAvailable": "有可用更新",
 		"upToDate": "已是最新",
-		"downloadLatest": "下载最新版本"
+		"downloadLatest": "下载最新版本",
+		"cacheSize": "已下载的引擎外壳",
+		"clearCache": "清除缓存"
 	}
 }

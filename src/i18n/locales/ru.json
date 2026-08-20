@@ -27,6 +27,7 @@
 			"description": "Используется для именования файлов, создаваемых Packmaster.",
 			"nameLabel": "Название игры",
 			"namePlaceholder": "Моя игра",
+			"nameFromPackageJson": "Взято из package.json вашего проекта — измените там, чтобы изменить здесь.",
 			"versionLabel": "Версия",
 			"versionFromPackageJson": "Взято из package.json вашего проекта — измените там, чтобы изменить здесь."
 		},
@@ -109,6 +110,8 @@
 		"shellStatus": "Статус",
 		"updateAvailable": "Доступно обновление",
 		"upToDate": "Актуальная версия",
-		"downloadLatest": "Скачать последнюю версию"
+		"downloadLatest": "Скачать последнюю версию",
+		"cacheSize": "Загруженные оболочки",
+		"clearCache": "Очистить кэш"
 	}
 }

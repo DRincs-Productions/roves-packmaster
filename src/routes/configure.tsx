@@ -55,6 +55,7 @@ function ConfigureView() {
     InstallerAvailability
   > | null>(null);
   const [releaseInfo, setReleaseInfo] = useState({ name: "", version: "" });
+  const [nameFromPackageJson, setNameFromPackageJson] = useState(false);
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
   const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam"]);
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
@@ -85,10 +86,12 @@ function ConfigureView() {
     );
   }, [settings.plugins.steam.enabled]);
 
-  // Derives name/version for this exact source folder. package.json's own version always
-  // wins when present — a developer bumping it between builds shouldn't have to notice and
-  // re-type it here — while the name, and the version when no package.json exists, fall
-  // back to whatever was remembered for this same folder last time. Both stay editable.
+  // Derives name/version for this exact source folder. package.json's own value always wins
+  // when present, for both fields — a developer bumping it (or renaming their package)
+  // between builds shouldn't have to notice and re-type it here, and the field becomes
+  // read-only below in that case so there's no illusion it can be edited from here at all.
+  // With no package.json value, both fall back to whatever was remembered for this same
+  // folder last time, and stay editable.
   //
   // Only re-derive when the folder itself changes — settings.releaseInfoByPath and
   // updateSettings are read via closure on purpose (this effect is what writes the former);
@@ -102,10 +105,11 @@ function ConfigureView() {
       if (cancelled) return;
       const remembered = settings.releaseInfoByPath[sourceDir];
       const next = {
-        name: remembered?.name || pkg?.name || "",
+        name: pkg?.name || remembered?.name || "",
         version: pkg?.version || remembered?.version || "",
       };
       setReleaseInfo(next);
+      setNameFromPackageJson(Boolean(pkg?.name));
       setVersionFromPackageJson(Boolean(pkg?.version));
       updateSettings({ releaseInfoByPath: { ...settings.releaseInfoByPath, [sourceDir]: next } });
     });
@@ -168,8 +172,14 @@ function ConfigureView() {
               id="game-name"
               value={releaseInfo.name}
               placeholder={t("configure.releaseInfo.namePlaceholder")}
+              disabled={nameFromPackageJson}
               onChange={(e) => updateReleaseInfo({ name: e.target.value })}
             />
+            {nameFromPackageJson && (
+              <p className="text-muted-foreground text-xs">
+                {t("configure.releaseInfo.nameFromPackageJson")}
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="game-version">{t("configure.releaseInfo.versionLabel")}</Label>
@@ -177,6 +187,7 @@ function ConfigureView() {
               id="game-version"
               value={releaseInfo.version}
               placeholder="1.0.0"
+              disabled={versionFromPackageJson}
               onChange={(e) => updateReleaseInfo({ version: e.target.value })}
             />
             {versionFromPackageJson && (

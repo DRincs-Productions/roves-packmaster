@@ -27,6 +27,7 @@
 			"description": "Packmaster가 생성하는 파일의 이름을 지정하는 데 사용됩니다.",
 			"nameLabel": "게임 이름",
 			"namePlaceholder": "내 게임",
+			"nameFromPackageJson": "프로젝트의 package.json에서 가져왔습니다 — 변경하려면 거기서 수정하세요.",
 			"versionLabel": "버전",
 			"versionFromPackageJson": "프로젝트의 package.json에서 가져왔습니다 — 변경하려면 거기서 수정하세요."
 		},
@@ -109,6 +110,8 @@
 		"shellStatus": "상태",
 		"updateAvailable": "업데이트 사용 가능",
 		"upToDate": "최신 상태",
-		"downloadLatest": "최신 버전 다운로드"
+		"downloadLatest": "최신 버전 다운로드",
+		"cacheSize": "다운로드된 셸",
+		"clearCache": "캐시 지우기"
 	}
 }
