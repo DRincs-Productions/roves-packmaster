@@ -11,7 +11,7 @@ use futures_util::StreamExt;
 use tauri::{AppHandle, Manager};
 use tokio::io::AsyncWriteExt;
 
-pub const TARGET_SHELL_VERSION: &str = "v0.3.0";
+pub const TARGET_SHELL_VERSION: &str = "v0.4.0";
 
 const LATEST_RELEASE_API_URL: &str =
     "https://api.github.com/repos/DRincs-Productions/roves/releases/latest";
