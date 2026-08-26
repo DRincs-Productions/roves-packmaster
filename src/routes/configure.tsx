@@ -1,5 +1,6 @@
-import { WarningCircle } from "@phosphor-icons/react";
+import { Image, WarningCircle } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InstallerCard } from "@/components/installer-card";
@@ -132,6 +133,20 @@ function ConfigureView() {
   const unavailablePlatforms = PORTABLE_PLATFORMS.filter((p) => availability?.[p] === false);
   const steamAppIdInvalid =
     settings.plugins.steam.enabled && !isValidSteamAppId(settings.plugins.steam.appId);
+
+  const handleBrowseIcon = async (kind: "png" | "ico") => {
+    const path = await open({
+      directory: false,
+      multiple: false,
+      title: t(kind === "png" ? "configure.icon.browsePngTitle" : "configure.icon.browseIcoTitle"),
+      filters: [{ name: kind.toUpperCase(), extensions: [kind] }],
+    });
+    if (typeof path === "string") {
+      updateSettings({
+        icon: { ...settings.icon, [kind === "png" ? "pngPath" : "icoPath"]: path },
+      });
+    }
+  };
 
   const handleGenerateClick = () => {
     if (steamAppIdInvalid) {
@@ -441,6 +456,70 @@ function ConfigureView() {
                   </div>
                 </>
               )}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem
+            value="icon"
+            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+          >
+            <AccordionTrigger>{t("configure.icon.title")}</AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-4">
+              <p className="text-muted-foreground text-sm">{t("configure.icon.description")}</p>
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("configure.icon.pngLabel")}</Label>
+                <p className="text-muted-foreground text-xs">
+                  {t("configure.icon.pngDescription")}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => handleBrowseIcon("png")}>
+                    <Image />
+                    {t("configure.icon.browse")}
+                  </Button>
+                  {settings.icon.pngPath && (
+                    <span className="truncate text-muted-foreground text-xs">
+                      {settings.icon.pngPath}
+                    </span>
+                  )}
+                  {settings.icon.pngPath && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSettings({ icon: { ...settings.icon, pngPath: null } })}
+                    >
+                      {t("configure.icon.clear")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("configure.icon.icoLabel")}</Label>
+                <p className="text-muted-foreground text-xs">
+                  {t("configure.icon.icoDescription")}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => handleBrowseIcon("ico")}>
+                    <Image />
+                    {t("configure.icon.browse")}
+                  </Button>
+                  {settings.icon.icoPath && (
+                    <span className="truncate text-muted-foreground text-xs">
+                      {settings.icon.icoPath}
+                    </span>
+                  )}
+                  {settings.icon.icoPath && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSettings({ icon: { ...settings.icon, icoPath: null } })}
+                    >
+                      {t("configure.icon.clear")}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "Motifs glob, un par ligne, pour les fichiers supplémentaires nécessaires dès le lancement du jeu (en plus de votre fichier HTML et de ce qu'il référence directement).",
 			"bootIncludePlaceholder": "ex. splash.png"
 		},
+		"icon": {
+			"title": "Icône du jeu",
+			"description": "Donnez à votre jeu sa propre icône de fenêtre/barre des tâches et .exe au lieu de l'image de marque par défaut de Roves. Appliqué après l'empaquetage — aucune compilation nécessaire.",
+			"pngLabel": "Icône de fenêtre/barre des tâches (PNG)",
+			"pngDescription": "Pas encore pris en charge sur macOS — son icône Dock/application n'a pas de remplacement à l'exécution.",
+			"icoLabel": "Icône .exe Windows (ICO multi-tailles)",
+			"icoDescription": "Windows uniquement. Corrige directement la ressource icône du play.exe empaqueté.",
+			"browse": "Choisir un fichier…",
+			"browsePngTitle": "Choisissez une icône de fenêtre/barre des tâches (PNG)",
+			"browseIcoTitle": "Choisissez une icône .exe Windows (ICO)",
+			"clear": "Effacer"
+		},
 		"startButton": "Générer la version"
 	},
 	"generating": {

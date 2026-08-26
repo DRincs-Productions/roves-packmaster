@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::installer;
 use crate::packer;
@@ -145,6 +145,7 @@ pub async fn generate_release(
         if steam {
             write_steam_appid(&binary_dir, &steam_app_id)?;
         }
+        apply_icon(&app, &binary_dir, platform, &settings.icon).await?;
 
         if settings.portable.get(platform) {
             emit_progress(&app, platform, "zipping", 0.7);
@@ -196,6 +197,69 @@ fn process_id() -> u32 {
 /// local/direct-launch testing, but is harmless to ship either way.
 fn write_steam_appid(binary_dir: &Path, app_id: &str) -> Result<(), String> {
     std::fs::write(binary_dir.join("steam_appid.txt"), app_id).map_err(|e| e.to_string())
+}
+
+/// Applies the user's custom game icon, if any, exactly the same way and to the exact same
+/// locations as the engine's own `mach bundle --icon-png`/`--icon-ico` (see
+/// `python/servo/post_build_commands.py` in the engine repo, and its own
+/// CUSTOMIZATIONS.md "Runtime + post-build game icon" entry) — `binary_dir` is this
+/// platform's exact analogue of that Python code's `stage_dir`/`Contents/MacOS`/`lib_dir`.
+/// `ports/servoshell/desktop/headed_window.rs`'s `runtime_window_icon_bytes` is what actually
+/// reads the PNG back at launch; there's no Packmaster-specific runtime code to keep in sync.
+async fn apply_icon(
+    app: &AppHandle,
+    binary_dir: &Path,
+    platform: &str,
+    icon: &crate::settings::IconSettings,
+) -> Result<(), String> {
+    if let Some(png_path) = &icon.png_path {
+        if platform == "macos" {
+            // Silently skipped, mirroring the engine's own --icon-png warning-and-ignore on
+            // macOS -- its Dock/app icon has no runtime override yet, so there's nothing
+            // this could actually change there.
+        } else {
+            std::fs::copy(png_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
+        }
+    }
+    if let Some(ico_path) = &icon.ico_path {
+        if platform == "windows" {
+            let exe_path = binary_dir.join("play.exe");
+            patch_windows_exe_icon(app, &exe_path, ico_path).await?;
+        }
+    }
+    Ok(())
+}
+
+const RCEDIT_URL: &str = "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe";
+
+/// Downloads (once; cached under this app's cache dir) `rcedit-x64.exe` and uses it to patch
+/// `exe_path`'s own icon resource in place — see the engine repo's own
+/// `python/servo/post_build_commands.py`, `_ensure_rcedit`/`_patch_windows_exe_icon`, which
+/// this mirrors exactly (same tool, same pinned release, same reasoning: rcedit is what
+/// Electron itself uses to give a prebuilt shell a different icon per app, no recompile
+/// needed).
+async fn patch_windows_exe_icon(app: &AppHandle, exe_path: &Path, ico_path: &str) -> Result<(), String> {
+    let cache_dir = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("tools");
+    let rcedit_path = cache_dir.join("rcedit-x64.exe");
+    if !rcedit_path.exists() {
+        std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+        let response = reqwest::get(RCEDIT_URL).await.map_err(|e| format!("downloading rcedit: {e}"))?;
+        if !response.status().is_success() {
+            return Err(format!("downloading rcedit: HTTP {}", response.status()));
+        }
+        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+        std::fs::write(&rcedit_path, &bytes).map_err(|e| e.to_string())?;
+    }
+    let status = std::process::Command::new(&rcedit_path)
+        .arg(exe_path)
+        .arg("--set-icon")
+        .arg(ico_path)
+        .status()
+        .map_err(|e| format!("running rcedit: {e}"))?;
+    if !status.success() {
+        return Err(format!("rcedit exited with {status}"));
+    }
+    Ok(())
 }
 
 fn sanitize_name(name: &str) -> String {

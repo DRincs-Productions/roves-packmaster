@@ -43,6 +43,16 @@ export interface CompressionSettings {
   bootInclude: string[];
 }
 
+export interface IconSettings {
+  /** Window/taskbar icon (PNG), copied next to the packaged binary -- see bundle.rs's
+   * `apply_icon`. Not supported on macOS yet (its own Dock/app icon has no runtime override
+   * -- see the engine repo's own CUSTOMIZATIONS.md). */
+  pngPath: string | null;
+  /** Windows-only: the packaged play.exe's own icon resource, patched in place via rcedit
+   * after bundling -- see bundle.rs's `apply_icon`. Ignored on other platforms. */
+  icoPath: string | null;
+}
+
 export interface ReleaseInfo {
   name: string;
   version: string;
@@ -59,6 +69,7 @@ export interface PackmasterSettings {
   installers: InstallerSettings;
   plugins: PluginSettings;
   compression: CompressionSettings;
+  icon: IconSettings;
 }
 
 // Mirrors `mach bundle`'s own defaults (see the engine's
@@ -89,6 +100,10 @@ export const defaultSettings: PackmasterSettings = {
     maxPackSize: "500M",
     exclude: [],
     bootInclude: [],
+  },
+  icon: {
+    pngPath: null,
+    icoPath: null,
   },
 };
 
@@ -129,6 +144,7 @@ export async function loadSettings(): Promise<PackmasterSettings> {
     },
     plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },
+    icon: { ...defaultSettings.icon, ...stored.icon },
   };
 }
 

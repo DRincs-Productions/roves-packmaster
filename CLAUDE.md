@@ -150,6 +150,19 @@ separately per variant); `bundle.rs`'s `generate_release` validates the App ID (
 digits only) and writes it into a `steam_appid.txt` next to the packaged executable (Valve's
 own convention for testing outside the real Steam client) — see `write_steam_appid`.
 
+**Game icon:** mirrors the engine's own `mach bundle --icon-png`/`--icon-ico` (see that
+repo's own CUSTOMIZATIONS.md, "Runtime + post-build game icon" entry) rather than
+reimplementing anything independently — `configure.tsx`'s "Game icon" accordion picks a
+PNG/ICO via `@tauri-apps/plugin-dialog`'s `open()` (`settings.icon.pngPath`/`icoPath`), and
+`bundle.rs`'s `apply_icon` (called from `generate_release`, same spot as
+`write_steam_appid`) copies the PNG next to the packaged binary — read back at launch by the
+engine's own `runtime_window_icon_bytes`, nothing Packmaster-specific to keep in sync there —
+and, on Windows only, patches the bundled `play.exe`'s icon resource via `rcedit`
+(`patch_windows_exe_icon`), downloaded once and cached under this app's own cache dir,
+exactly the same tool/pinned release/reasoning as the engine's own `_ensure_rcedit`. Not
+supported on macOS yet — silently skipped, matching the engine's own base-mode behavior —
+since there's no `.icns`/Dock-icon runtime-override mechanism anywhere in this codebase yet.
+
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
 (portable output) on every push and publishes it to a rolling "test" GitHub Release,
 mirroring the main engine repo's own `test.yml` — see this project's own README for

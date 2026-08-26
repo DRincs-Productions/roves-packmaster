@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "Glob patterns, one per line, for extra files needed as soon as your game starts (beyond your HTML file and whatever it directly references).",
 			"bootIncludePlaceholder": "e.g. splash.png"
 		},
+		"icon": {
+			"title": "Game icon",
+			"description": "Give your game its own window/taskbar and .exe icon instead of Roves' default branding. Applied after packaging — no compile step needed.",
+			"pngLabel": "Window/taskbar icon (PNG)",
+			"pngDescription": "Not supported on macOS yet — its own Dock/app icon has no runtime override.",
+			"icoLabel": "Windows .exe icon (multi-size ICO)",
+			"icoDescription": "Windows only. Patches the packaged play.exe's own icon resource in place.",
+			"browse": "Choose file…",
+			"browsePngTitle": "Choose a window/taskbar icon (PNG)",
+			"browseIcoTitle": "Choose a Windows .exe icon (ICO)",
+			"clear": "Clear"
+		},
 		"startButton": "Generate release"
 	},
 	"generating": {

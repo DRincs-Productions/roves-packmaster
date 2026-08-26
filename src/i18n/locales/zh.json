@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "每行一个 glob 模式，用于游戏启动时立即需要的额外文件（除了 HTML 文件及其直接引用的内容）。",
 			"bootIncludePlaceholder": "例如 splash.png"
 		},
+		"icon": {
+			"title": "游戏图标",
+			"description": "为你的游戏设置专属的窗口/任务栏图标和 .exe 图标，替代 Roves 的默认品牌图标。在打包后应用 — 无需重新编译。",
+			"pngLabel": "窗口/任务栏图标 (PNG)",
+			"pngDescription": "macOS 上暂不支持 — 其程序坞/应用图标没有运行时覆盖机制。",
+			"icoLabel": "Windows .exe 图标（多尺寸 ICO）",
+			"icoDescription": "仅限 Windows。直接修补打包后 play.exe 的图标资源。",
+			"browse": "选择文件…",
+			"browsePngTitle": "选择窗口/任务栏图标 (PNG)",
+			"browseIcoTitle": "选择 Windows .exe 图标 (ICO)",
+			"clear": "清除"
+		},
 		"startButton": "生成发行版"
 	},
 	"generating": {

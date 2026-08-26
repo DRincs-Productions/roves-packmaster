@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "Pattern glob, uno per riga, per file extra necessari appena il gioco si avvia (oltre al file HTML e a ciò che referenzia direttamente).",
 			"bootIncludePlaceholder": "es. splash.png"
 		},
+		"icon": {
+			"title": "Icona del gioco",
+			"description": "Assegna al tuo gioco un'icona finestra/taskbar e .exe personalizzata invece del branding predefinito di Roves. Applicata dopo il packaging — nessuna compilazione necessaria.",
+			"pngLabel": "Icona finestra/taskbar (PNG)",
+			"pngDescription": "Non ancora supportata su macOS — la sua icona Dock/app non ha un override a runtime.",
+			"icoLabel": "Icona .exe di Windows (ICO multi-dimensione)",
+			"icoDescription": "Solo Windows. Applica una patch alla risorsa icona del play.exe pacchettizzato.",
+			"browse": "Scegli file…",
+			"browsePngTitle": "Scegli un'icona finestra/taskbar (PNG)",
+			"browseIcoTitle": "Scegli un'icona .exe di Windows (ICO)",
+			"clear": "Cancella"
+		},
 		"startButton": "Genera release"
 	},
 	"generating": {

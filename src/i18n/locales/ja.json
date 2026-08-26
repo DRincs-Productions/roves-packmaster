@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "1行に1つの glob パターン。HTML ファイルとその直接参照ファイル以外に、ゲーム起動直後に必要な追加ファイル用です。",
 			"bootIncludePlaceholder": "例: splash.png"
 		},
+		"icon": {
+			"title": "ゲームアイコン",
+			"description": "Roves のデフォルトブランディングの代わりに、ゲーム専用のウィンドウ/タスクバーアイコンと .exe アイコンを設定します。パッケージング後に適用され、再コンパイルは不要です。",
+			"pngLabel": "ウィンドウ/タスクバーアイコン (PNG)",
+			"pngDescription": "macOS ではまだサポートされていません — Dock/アプリアイコンにはランタイムでの上書き機能がありません。",
+			"icoLabel": "Windows .exe アイコン (マルチサイズ ICO)",
+			"icoDescription": "Windows のみ。パッケージ化された play.exe のアイコンリソースをその場でパッチします。",
+			"browse": "ファイルを選択…",
+			"browsePngTitle": "ウィンドウ/タスクバーアイコン (PNG) を選択",
+			"browseIcoTitle": "Windows .exe アイコン (ICO) を選択",
+			"clear": "クリア"
+		},
 		"startButton": "リリースを生成"
 	},
 	"generating": {

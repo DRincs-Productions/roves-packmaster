@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "한 줄에 하나씩 입력하는 glob 패턴입니다. HTML 파일과 그것이 직접 참조하는 항목 외에 게임 시작 즉시 필요한 추가 파일용입니다.",
 			"bootIncludePlaceholder": "예: splash.png"
 		},
+		"icon": {
+			"title": "게임 아이콘",
+			"description": "Roves의 기본 브랜딩 대신 게임 고유의 창/작업 표시줄 아이콘과 .exe 아이콘을 지정하세요. 패키징 후 적용되며 컴파일 과정이 필요 없습니다.",
+			"pngLabel": "창/작업 표시줄 아이콘 (PNG)",
+			"pngDescription": "아직 macOS에서는 지원되지 않습니다 — Dock/앱 아이콘에는 런타임 재정의 기능이 없습니다.",
+			"icoLabel": "Windows .exe 아이콘 (다중 크기 ICO)",
+			"icoDescription": "Windows 전용입니다. 패키징된 play.exe의 아이콘 리소스를 직접 패치합니다.",
+			"browse": "파일 선택…",
+			"browsePngTitle": "창/작업 표시줄 아이콘 (PNG) 선택",
+			"browseIcoTitle": "Windows .exe 아이콘 (ICO) 선택",
+			"clear": "지우기"
+		},
 		"startButton": "릴리스 생성"
 	},
 	"generating": {

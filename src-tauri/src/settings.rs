@@ -51,12 +51,20 @@ pub struct CompressionSettings {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct IconSettings {
+    pub png_path: Option<String>,
+    pub ico_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PackmasterSettings {
     pub source_dir: Option<String>,
     pub portable: PortableSettings,
     pub installers: InstallerSettings,
     pub plugins: PluginSettings,
     pub compression: CompressionSettings,
+    pub icon: IconSettings,
 }
 
 impl PortableSettings {

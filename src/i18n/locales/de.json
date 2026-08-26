@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "Glob-Muster, eines pro Zeile, für zusätzliche Dateien, die sofort beim Spielstart benötigt werden (zusätzlich zu deiner HTML-Datei und dem, worauf sie direkt verweist).",
 			"bootIncludePlaceholder": "z. B. splash.png"
 		},
+		"icon": {
+			"title": "Spielsymbol",
+			"description": "Geben Sie Ihrem Spiel ein eigenes Fenster-/Taskleisten- und .exe-Symbol anstelle des Standard-Brandings von Roves. Wird nach dem Packaging angewendet — kein Kompilieren erforderlich.",
+			"pngLabel": "Fenster-/Taskleistensymbol (PNG)",
+			"pngDescription": "Unter macOS noch nicht unterstützt — das Dock-/App-Symbol hat keine Laufzeit-Überschreibung.",
+			"icoLabel": "Windows-.exe-Symbol (ICO mit mehreren Größen)",
+			"icoDescription": "Nur Windows. Patcht die Symbolressource der gepackten play.exe direkt.",
+			"browse": "Datei auswählen…",
+			"browsePngTitle": "Fenster-/Taskleistensymbol (PNG) auswählen",
+			"browseIcoTitle": "Windows-.exe-Symbol (ICO) auswählen",
+			"clear": "Löschen"
+		},
 		"startButton": "Release generieren"
 	},
 	"generating": {

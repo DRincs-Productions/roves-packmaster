@@ -78,6 +78,18 @@
 			"bootIncludeDescription": "Patrones glob, uno por línea, para archivos adicionales necesarios en cuanto se inicia tu juego (además de tu archivo HTML y lo que referencia directamente).",
 			"bootIncludePlaceholder": "p. ej. splash.png"
 		},
+		"icon": {
+			"title": "Icono del juego",
+			"description": "Dale a tu juego su propio icono de ventana/barra de tareas y .exe en lugar de la marca predeterminada de Roves. Se aplica después del empaquetado, sin necesidad de compilar.",
+			"pngLabel": "Icono de ventana/barra de tareas (PNG)",
+			"pngDescription": "Aún no es compatible con macOS — su propio icono de Dock/app no tiene una sobrescritura en tiempo de ejecución.",
+			"icoLabel": "Icono .exe de Windows (ICO multitamaño)",
+			"icoDescription": "Solo Windows. Parchea el recurso de icono del play.exe empaquetado in situ.",
+			"browse": "Elegir archivo…",
+			"browsePngTitle": "Elige un icono de ventana/barra de tareas (PNG)",
+			"browseIcoTitle": "Elige un icono .exe de Windows (ICO)",
+			"clear": "Borrar"
+		},
 		"startButton": "Generar versión"
 	},
 	"generating": {
