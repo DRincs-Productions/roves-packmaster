@@ -145,7 +145,7 @@ pub async fn generate_release(
         if steam {
             write_steam_appid(&binary_dir, &steam_app_id)?;
         }
-        apply_icon(&app, &binary_dir, platform, &settings.icon).await?;
+        apply_icon(&app, &binary_dir, &content_dir, platform, &settings.icon).await?;
 
         if settings.portable.get(platform) {
             emit_progress(&app, platform, "zipping", 0.7);
@@ -206,13 +206,29 @@ fn write_steam_appid(binary_dir: &Path, app_id: &str) -> Result<(), String> {
 /// platform's exact analogue of that Python code's `stage_dir`/`Contents/MacOS`/`lib_dir`.
 /// `ports/servoshell/desktop/headed_window.rs`'s `runtime_window_icon_bytes` is what actually
 /// reads the PNG back at launch; there's no Packmaster-specific runtime code to keep in sync.
+///
+/// Neither setting explicitly chosen? Auto-detects an `icon.png`/`icon.ico` sitting directly
+/// in `content_dir` before falling back to Roves' own branding -- mirrors
+/// `post_build_commands.py`'s own identical default (see that function's own comment for
+/// why: many bundlers already emit one there for their own PWA manifest). An explicit
+/// `settings.icon` path always wins over this.
 async fn apply_icon(
     app: &AppHandle,
     binary_dir: &Path,
+    content_dir: &Path,
     platform: &str,
     icon: &crate::settings::IconSettings,
 ) -> Result<(), String> {
-    if let Some(png_path) = &icon.png_path {
+    let png_path = icon.png_path.clone().or_else(|| {
+        let candidate = content_dir.join("icon.png");
+        candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
+    });
+    let ico_path = icon.ico_path.clone().or_else(|| {
+        let candidate = content_dir.join("icon.ico");
+        candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
+    });
+
+    if let Some(png_path) = &png_path {
         if platform == "macos" {
             // Silently skipped, mirroring the engine's own --icon-png warning-and-ignore on
             // macOS -- its Dock/app icon has no runtime override yet, so there's nothing
@@ -221,7 +237,7 @@ async fn apply_icon(
             std::fs::copy(png_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
         }
     }
-    if let Some(ico_path) = &icon.ico_path {
+    if let Some(ico_path) = &ico_path {
         if platform == "windows" {
             let exe_path = binary_dir.join("play.exe");
             patch_windows_exe_icon(app, &exe_path, ico_path).await?;
