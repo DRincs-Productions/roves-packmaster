@@ -162,6 +162,12 @@ and, on Windows only, patches the bundled `play.exe`'s icon resource via `rcedit
 exactly the same tool/pinned release/reasoning as the engine's own `_ensure_rcedit`. Not
 supported on macOS yet — silently skipped, matching the engine's own base-mode behavior —
 since there's no `.icns`/Dock-icon runtime-override mechanism anywhere in this codebase yet.
+If neither `settings.icon.pngPath` nor `icoPath` is set, `apply_icon` auto-detects an
+`icon.png`/`icon.ico` sitting directly in the user's content directory before falling back
+to Roves' own branding — mirrors the engine's own identical `mach bundle` default (see the
+engine's CUSTOMIZATIONS.md, 2026-08-27 entry) so a game whose bundler already emits one for
+its own PWA manifest gets its own icon for free with no setting needed. An explicitly picked
+file in the "Game icon" accordion always overrides this.
 
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
 (portable output) on every push and publishes it to a rolling "test" GitHub Release,
