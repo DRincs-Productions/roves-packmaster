@@ -225,6 +225,14 @@ async fn apply_icon(
     });
     let ico_path = icon.ico_path.clone().or_else(|| {
         let candidate = content_dir.join("icon.ico");
+        if candidate.is_file() {
+            return Some(candidate.to_string_lossy().into_owned());
+        }
+        // icon.ico is rare -- favicon.ico is what virtually every bundler actually emits
+        // (confirmed: pixi-vn-react-template has this, not icon.ico), and is itself
+        // already a valid multi-size .ico rcedit can patch in directly, so it's worth
+        // trying before giving up and keeping Roves' own default icon.
+        let candidate = content_dir.join("favicon.ico");
         candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
     });
 
