@@ -1,4 +1,4 @@
-# Roves Packmaster (roves-ui)
+# Roves Packmaster (roves-packmaster)
 
 A Vite + React + Tauri desktop app that gives game developers a GUI for packaging their
 built web content into Roves distributions (portable binaries, `.msi`/`.deb`/`.dmg`

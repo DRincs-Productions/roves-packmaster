@@ -5,7 +5,7 @@ description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
-# roves-ui lives inside the main Roves engine repo's own directory tree, which has its own
+# roves-packmaster lives inside the main Roves engine repo's own directory tree, which has its own
 # Cargo workspace (see ../../Cargo.toml) — an empty [workspace] table here tells Cargo this
 # crate is its own workspace root instead of trying to join that unrelated one.
 [workspace]
@@ -36,7 +36,7 @@ serde_json = "1"
 # compiling one (no Rust/Python toolchain needed on a game developer's machine), then packs
 # their content into it in-process by linking the engine repo's own content-packer crate as
 # a library — see the engine repo's CLAUDE.md, "Cutting a versioned release" section, on why
-# roves-ui/roves-action must track a specific shell tag.
+# roves-packmaster/roves-action must track a specific shell tag.
 roves-content-packer = { git = "https://github.com/DRincs-Productions/roves", tag = "v0.1.0" }
 glob = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }

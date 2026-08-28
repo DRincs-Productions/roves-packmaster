@@ -2,7 +2,7 @@
 //! point of Packmaster is that a game developer using it needs no Rust/Python toolchain (see
 //! this project's own README/CLAUDE.md). See the engine repo's own CLAUDE.md, "Cutting a
 //! versioned release" section: `TARGET_SHELL_VERSION` here must be bumped in step with
-//! `roves-ui`'s frontend `src/lib/shell-version.ts` constant of the same name whenever a new
+//! `roves-packmaster`'s frontend `src/lib/shell-version.ts` constant of the same name whenever a new
 //! shell version is published.
 
 use std::path::{Path, PathBuf};
@@ -16,7 +16,7 @@ pub const TARGET_SHELL_VERSION: &str = "v0.4.3";
 const LATEST_RELEASE_API_URL: &str =
     "https://api.github.com/repos/DRincs-Productions/roves/releases/latest";
 
-/// True only when *this exact build of Packmaster* was itself produced by `roves-ui`'s own
+/// True only when *this exact build of Packmaster* was itself produced by `roves-packmaster`'s own
 /// `test.yml` (which sets `PACKMASTER_TEST_BUILD=1` before `npm run tauri build` — see that
 /// workflow), never by inspecting anything at runtime: a shipped, tagged Packmaster release
 /// must behave identically regardless of whatever's in an end user's own environment.
