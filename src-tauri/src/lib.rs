@@ -1,3 +1,4 @@
+mod android;
 mod bundle;
 mod installer;
 mod packer;
@@ -13,6 +14,11 @@ fn check_installer_availability(platforms: Vec<String>) -> Vec<(String, bool, Op
             (platform, available, reason)
         })
         .collect()
+}
+
+#[tauri::command]
+fn check_android_availability() -> (bool, Option<String>) {
+    android::check_android_availability()
 }
 
 #[tauri::command]
@@ -37,6 +43,7 @@ pub fn run() {
             bundle::generate_release,
             bundle::check_shell_availability,
             check_installer_availability,
+            check_android_availability,
             shell_cache_size,
             clear_shell_cache
         ])

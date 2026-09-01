@@ -21,7 +21,19 @@ type Status = "running" | "done" | "error";
 // progress bar, not a strict linear percentage.
 interface BundleProgressEvent {
   platform: string;
-  phase: "checking" | "downloading" | "assembling" | "packing" | "zipping" | "done";
+  phase:
+    | "checking"
+    | "downloading"
+    | "assembling"
+    | "packing"
+    | "zipping"
+    | "packaging"
+    | "downloading-jre"
+    | "downloading-sdk"
+    | "downloading-ndk"
+    | "downloading-project"
+    | "downloading-native"
+    | "done";
   fraction: number;
 }
 
@@ -48,6 +60,7 @@ function GeneratingView() {
       settings.portable.windows,
       settings.portable.linux,
       settings.portable.macos,
+      settings.mobile.android.enabled,
     ].filter(Boolean).length;
 
     async function run() {

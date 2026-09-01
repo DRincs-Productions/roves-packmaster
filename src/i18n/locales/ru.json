@@ -90,7 +90,32 @@
 			"browseIcoTitle": "Выберите значок .exe для Windows (ICO)",
 			"clear": "Очистить"
 		},
-		"startButton": "Создать релиз"
+		"startButton": "Создать релиз",
+		"mobile": {
+			"title": "Мобильные",
+			"description": "Собрать отладочный .apk для Android вместе с версией для настольных систем. Экспериментально: пока только Linux/macOS, создаётся .apk с отладочной подписью, непригодный для публикации в Play Store.",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "Дополнительные настройки",
+			"description": "Общие для всех включённых мобильных платформ (пока только Android).",
+			"useWebManifestLabel": "Использовать данные из веб-манифеста приложения",
+			"useWebManifestFound": "Найден файл {{file}} в папке сборки — будут использованы его название и ориентация. Отключите, чтобы задать их вручную.",
+			"useWebManifestNotFound": "В папке сборки не найден manifest.webmanifest, manifest.json или site.webmanifest — задайте эти значения вручную ниже или добавьте манифест в проект.",
+			"appNameLabel": "Название приложения",
+			"appNamePlaceholder": "Моя игра",
+			"orientationLabel": "Ориентация экрана",
+			"orientationOptions": {
+				"any": "Любая",
+				"natural": "Стандартная",
+				"landscape": "Альбомная (любое направление)",
+				"landscape_primary": "Альбомная (зафиксирована)",
+				"landscape_secondary": "Альбомная (зафиксирована, перевёрнута)",
+				"portrait": "Портретная (любое направление)",
+				"portrait_primary": "Портретная (зафиксирована)",
+				"portrait_secondary": "Портретная (зафиксирована, перевёрнута)"
+			}
+		}
 	},
 	"generating": {
 		"title": "Создание релиза…",
@@ -100,7 +125,13 @@
 			"assembling": "Сборка пакета для {{platform}}…",
 			"packing": "Упаковка контента для {{platform}}…",
 			"zipping": "Упаковка сборки {{platform}}…",
-			"done": "{{platform}} готово"
+			"done": "{{platform}} готово",
+			"packaging": "Создание установщика {{platform}}…",
+			"downloading-jre": "Загрузка Java-среды для Android…",
+			"downloading-sdk": "Загрузка Android SDK…",
+			"downloading-ndk": "Загрузка Android NDK…",
+			"downloading-project": "Загрузка проекта сборки Android…",
+			"downloading-native": "Загрузка скомпилированной библиотеки движка…"
 		},
 		"doneTitle": "Релиз готов",
 		"doneDescription": "Packmaster сохранил всё в папку {{folder}}.",
@@ -112,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "О Roves Packmaster",

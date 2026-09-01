@@ -90,7 +90,32 @@
 			"browseIcoTitle": "Choisissez une icône .exe Windows (ICO)",
 			"clear": "Effacer"
 		},
-		"startButton": "Générer la version"
+		"startButton": "Générer la version",
+		"mobile": {
+			"title": "Mobile",
+			"description": "Génère un .apk de débogage pour Android en plus de ta version bureau. Expérimental : pour l'instant Linux/macOS uniquement, et produit un .apk signé en mode débogage, non publiable sur le Play Store.",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "Paramètres avancés",
+			"description": "Partagés entre toutes les plateformes mobiles activées (pour l'instant, seulement Android).",
+			"useWebManifestLabel": "Utiliser les infos de ton manifeste d'application web",
+			"useWebManifestFound": "{{file}} trouvé dans le dossier de build — son nom et son orientation seront utilisés. Désactive cette option pour les définir manuellement.",
+			"useWebManifestNotFound": "Aucun manifest.webmanifest, manifest.json ou site.webmanifest trouvé dans le dossier de build — définis-les manuellement ci-dessous, ou ajoute-en un à ton projet.",
+			"appNameLabel": "Nom de l'application",
+			"appNamePlaceholder": "Mon jeu",
+			"orientationLabel": "Orientation de l'écran",
+			"orientationOptions": {
+				"any": "Quelconque",
+				"natural": "Naturelle",
+				"landscape": "Paysage (les deux sens)",
+				"landscape_primary": "Paysage (verrouillée)",
+				"landscape_secondary": "Paysage (verrouillée, inversée)",
+				"portrait": "Portrait (les deux sens)",
+				"portrait_primary": "Portrait (verrouillée)",
+				"portrait_secondary": "Portrait (verrouillée, inversée)"
+			}
+		}
 	},
 	"generating": {
 		"title": "Génération de votre version…",
@@ -100,7 +125,13 @@
 			"assembling": "Assemblage du paquet {{platform}}…",
 			"packing": "Empaquetage de votre contenu pour {{platform}}…",
 			"zipping": "Empaquetage de la version {{platform}}…",
-			"done": "{{platform}} terminé"
+			"done": "{{platform}} terminé",
+			"packaging": "Création de l'installateur {{platform}}…",
+			"downloading-jre": "Téléchargement d'un runtime Java pour Android…",
+			"downloading-sdk": "Téléchargement du SDK Android…",
+			"downloading-ndk": "Téléchargement du NDK Android…",
+			"downloading-project": "Téléchargement du projet de build Android…",
+			"downloading-native": "Téléchargement de la bibliothèque moteur compilée…"
 		},
 		"doneTitle": "Votre version est prête",
 		"doneDescription": "Packmaster a tout enregistré dans le dossier {{folder}}.",
@@ -112,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "À propos de Roves Packmaster",

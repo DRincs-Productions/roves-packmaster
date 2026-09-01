@@ -43,6 +43,44 @@ export interface CompressionSettings {
   bootInclude: string[];
 }
 
+export type MobileOrientation =
+  | "any"
+  | "natural"
+  | "landscape"
+  | "landscape-primary"
+  | "landscape-secondary"
+  | "portrait"
+  | "portrait-primary"
+  | "portrait-secondary";
+
+/** Just the "is this platform included in the release" toggle -- see MobileAdvancedSettings
+ * for the settings shared across every mobile platform. */
+export interface MobilePlatformSettings {
+  enabled: boolean;
+}
+
+/** Shared across every mobile platform (Android today, iOS later) rather than duplicated per
+ * platform -- a game's app name and screen orientation don't differ by mobile platform.
+ * Mirrors the engine's own `--android-app-name`/`--android-orientation` `mach bundle` flags.
+ * Manual values here are only actually used when configure.tsx's "use info from your web app
+ * manifest" switch is off, or for a field the manifest itself doesn't set -- that switch isn't
+ * persisted here (see configure.tsx's own comment): whether a project has a web app manifest
+ * is a per-project fact, not a global preference, so it's re-derived every time the source
+ * folder changes instead of being remembered across unrelated projects.
+ *
+ * Deliberately no status-bar-color/theme-color setting: a game is expected to run edge-to-
+ * edge with no visible status bar at all (a player can still pull it down like on any other
+ * Android app), so there's nothing to theme -- this isn't a configurable option. */
+export interface MobileAdvancedSettings {
+  appName: string;
+  orientation: MobileOrientation | "";
+}
+
+export interface MobileSettings {
+  android: MobilePlatformSettings;
+  advanced: MobileAdvancedSettings;
+}
+
 export interface IconSettings {
   /** Window/taskbar icon (PNG), copied next to the packaged binary -- see bundle.rs's
    * `apply_icon`. Not supported on macOS yet (its own Dock/app icon has no runtime override
@@ -67,6 +105,7 @@ export interface PackmasterSettings {
   releaseInfoByPath: Record<string, ReleaseInfo>;
   portable: PortableSettings;
   installers: InstallerSettings;
+  mobile: MobileSettings;
   plugins: PluginSettings;
   compression: CompressionSettings;
   icon: IconSettings;
@@ -88,6 +127,10 @@ export const defaultSettings: PackmasterSettings = {
     windows: { enabled: false, formats: [] },
     linux: { enabled: false, formats: [] },
     macos: { enabled: false, formats: [] },
+  },
+  mobile: {
+    android: { enabled: false },
+    advanced: { appName: "", orientation: "" },
   },
   plugins: {
     // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default
@@ -141,6 +184,10 @@ export async function loadSettings(): Promise<PackmasterSettings> {
       windows: { ...defaultSettings.installers.windows, ...stored.installers?.windows },
       linux: { ...defaultSettings.installers.linux, ...stored.installers?.linux },
       macos: { ...defaultSettings.installers.macos, ...stored.installers?.macos },
+    },
+    mobile: {
+      android: { ...defaultSettings.mobile.android, ...stored.mobile?.android },
+      advanced: { ...defaultSettings.mobile.advanced, ...stored.mobile?.advanced },
     },
     plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },

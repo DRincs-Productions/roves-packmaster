@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::android;
 use crate::installer;
 use crate::packer;
 use crate::settings::PackmasterSettings;
@@ -71,7 +72,7 @@ pub async fn generate_release(
         .into_iter()
         .filter(|&p| settings.portable.get(p) || settings.installers.get(p).enabled)
         .collect();
-    if platforms.is_empty() {
+    if platforms.is_empty() && !settings.mobile.android.enabled {
         return Err("no platform selected".to_string());
     }
 
@@ -181,6 +182,35 @@ pub async fn generate_release(
 
         std::fs::remove_dir_all(&staging_dir).ok();
         emit_progress(&app, platform, "done", 1.0);
+    }
+
+    if settings.mobile.android.enabled {
+        emit_progress(&app, "android", "checking", 0.0);
+        let (available, reason) = android::check_android_availability();
+        if !available {
+            return Err(reason.unwrap_or_else(|| "Android isn't available on this machine".to_string()));
+        }
+
+        // Same auto-detect-from-content_dir default as desktop's own `apply_icon` (an
+        // explicit `settings.icon.png_path` always wins) -- Android has no `.ico` equivalent
+        // to also check, since its launcher icon is PNG either way.
+        let icon_png = settings.icon.png_path.clone().or_else(|| {
+            let candidate = content_dir.join("icon.png");
+            candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
+        });
+        let options = android::AndroidBuildOptions {
+            content_dir: &content_dir,
+            icon_png: icon_png.as_deref().map(Path::new),
+            app_name_override: &settings.mobile.advanced.app_name,
+            orientation_override: &settings.mobile.advanced.orientation,
+        };
+        let apk_path = android::build_apk(&app, &options, |phase, fraction| {
+            emit_progress(&app, "android", phase, fraction);
+        })
+        .await?;
+        let dest = release_dir.join(format!("{zip_stem}_android.apk"));
+        std::fs::copy(&apk_path, &dest).map_err(|e| e.to_string())?;
+        emit_progress(&app, "android", "done", 1.0);
     }
 
     Ok(release_dir.to_string_lossy().into_owned())

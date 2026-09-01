@@ -90,7 +90,32 @@
 			"browseIcoTitle": "Windows .exe 아이콘 (ICO) 선택",
 			"clear": "지우기"
 		},
-		"startButton": "릴리스 생성"
+		"startButton": "릴리스 생성",
+		"mobile": {
+			"title": "모바일",
+			"description": "데스크톱 릴리스와 함께 Android용 디버그 .apk를 빌드합니다. 실험적 기능: 현재는 Linux/macOS에서만 지원되며, 디버그 서명된 .apk가 생성됩니다(Play 스토어에 게시 불가).",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "고급 설정",
+			"description": "활성화된 모든 모바일 플랫폼에서 공유됩니다 (현재는 Android만 해당).",
+			"useWebManifestLabel": "웹 앱 매니페스트의 정보 사용",
+			"useWebManifestFound": "빌드 출력에서 {{file}}을(를) 찾았습니다 — 이름과 화면 방향을 사용합니다. 수동으로 설정하려면 꺼주세요.",
+			"useWebManifestNotFound": "빌드 출력에서 manifest.webmanifest, manifest.json, site.webmanifest를 찾을 수 없습니다 — 아래에서 직접 설정하거나 프로젝트에 매니페스트를 추가하세요.",
+			"appNameLabel": "앱 이름",
+			"appNamePlaceholder": "내 게임",
+			"orientationLabel": "화면 방향",
+			"orientationOptions": {
+				"any": "제한 없음",
+				"natural": "기본 방향",
+				"landscape": "가로 (양방향)",
+				"landscape_primary": "가로 (고정)",
+				"landscape_secondary": "가로 (고정, 반전)",
+				"portrait": "세로 (양방향)",
+				"portrait_primary": "세로 (고정)",
+				"portrait_secondary": "세로 (고정, 반전)"
+			}
+		}
 	},
 	"generating": {
 		"title": "릴리스를 생성하는 중…",
@@ -100,7 +125,13 @@
 			"assembling": "{{platform}} 패키지 조립 중…",
 			"packing": "{{platform}}용 콘텐츠 패킹 중…",
 			"zipping": "{{platform}} 빌드 패키징 중…",
-			"done": "{{platform}} 완료"
+			"done": "{{platform}} 완료",
+			"packaging": "{{platform}} 설치 프로그램을 만드는 중…",
+			"downloading-jre": "Android용 Java 런타임을 다운로드하는 중…",
+			"downloading-sdk": "Android SDK를 다운로드하는 중…",
+			"downloading-ndk": "Android NDK를 다운로드하는 중…",
+			"downloading-project": "Android 빌드 프로젝트를 다운로드하는 중…",
+			"downloading-native": "컴파일된 엔진 라이브러리를 다운로드하는 중…"
 		},
 		"doneTitle": "릴리스가 준비되었습니다",
 		"doneDescription": "Packmaster가 모든 내용을 {{folder}} 폴더에 저장했습니다.",
@@ -112,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "Roves Packmaster 정보",

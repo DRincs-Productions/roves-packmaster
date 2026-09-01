@@ -90,7 +90,32 @@
 			"browseIcoTitle": "选择 Windows .exe 图标 (ICO)",
 			"clear": "清除"
 		},
-		"startButton": "生成发行版"
+		"startButton": "生成发行版",
+		"mobile": {
+			"title": "移动端",
+			"description": "在生成桌面版的同时，构建一个用于 Android 的调试 .apk。实验性功能：目前仅支持 Linux/macOS，生成的是调试签名的 .apk，无法发布到 Play 商店。",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "高级设置",
+			"description": "在所有已启用的移动平台间共享（目前仅 Android）。",
+			"useWebManifestLabel": "使用你的 Web 应用清单中的信息",
+			"useWebManifestFound": "在构建输出中找到了 {{file}}——将使用其中的名称和方向。关闭此项可手动设置。",
+			"useWebManifestNotFound": "在构建输出中未找到 manifest.webmanifest、manifest.json 或 site.webmanifest——请在下方手动设置，或为项目添加一个清单文件。",
+			"appNameLabel": "应用名称",
+			"appNamePlaceholder": "我的游戏",
+			"orientationLabel": "屏幕方向",
+			"orientationOptions": {
+				"any": "任意",
+				"natural": "自然方向",
+				"landscape": "横屏（任意方向）",
+				"landscape_primary": "横屏（锁定）",
+				"landscape_secondary": "横屏（锁定，反向）",
+				"portrait": "竖屏（任意方向）",
+				"portrait_primary": "竖屏（锁定）",
+				"portrait_secondary": "竖屏（锁定，反向）"
+			}
+		}
 	},
 	"generating": {
 		"title": "正在生成你的发行版…",
@@ -100,7 +125,13 @@
 			"assembling": "正在组装 {{platform}} 软件包…",
 			"packing": "正在为 {{platform}} 打包内容…",
 			"zipping": "正在打包 {{platform}} 版本…",
-			"done": "{{platform}} 已完成"
+			"done": "{{platform}} 已完成",
+			"packaging": "正在创建 {{platform}} 安装程序……",
+			"downloading-jre": "正在下载 Android 所需的 Java 运行时……",
+			"downloading-sdk": "正在下载 Android SDK……",
+			"downloading-ndk": "正在下载 Android NDK……",
+			"downloading-project": "正在下载 Android 构建项目……",
+			"downloading-native": "正在下载已编译的引擎库……"
 		},
 		"doneTitle": "发行版已就绪",
 		"doneDescription": "Packmaster 已将所有内容保存到 {{folder}} 文件夹。",
@@ -112,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "关于 Roves Packmaster",

@@ -47,6 +47,11 @@
 			"macos": "macOS",
 			"typeLabel": "Installer format"
 		},
+		"mobile": {
+			"title": "Mobile",
+			"description": "Build a debug .apk for Android alongside your desktop release. Experimental: Linux/macOS only for now, and produces a debug-signed .apk, not something you can publish to the Play Store.",
+			"android": "Android"
+		},
 		"advanced": {
 			"title": "Advanced"
 		},
@@ -90,7 +95,27 @@
 			"browseIcoTitle": "Choose a Windows .exe icon (ICO)",
 			"clear": "Clear"
 		},
-		"startButton": "Generate release"
+		"startButton": "Generate release",
+		"mobileAdvanced": {
+			"title": "Advanced settings",
+			"description": "Shared across every enabled mobile platform (for now, just Android).",
+			"useWebManifestLabel": "Use info from your web app manifest",
+			"useWebManifestFound": "Found {{file}} in your build output — using its name and orientation. Turn this off to set them manually instead.",
+			"useWebManifestNotFound": "No manifest.webmanifest, manifest.json, or site.webmanifest found in your build output — set these manually below, or add one to your project.",
+			"appNameLabel": "App name",
+			"appNamePlaceholder": "My Game",
+			"orientationLabel": "Screen orientation",
+			"orientationOptions": {
+				"any": "Any",
+				"natural": "Natural",
+				"landscape": "Landscape (either direction)",
+				"landscape_primary": "Landscape (locked)",
+				"landscape_secondary": "Landscape (locked, reversed)",
+				"portrait": "Portrait (either direction)",
+				"portrait_primary": "Portrait (locked)",
+				"portrait_secondary": "Portrait (locked, reversed)"
+			}
+		}
 	},
 	"generating": {
 		"title": "Generating your release…",
@@ -100,7 +125,13 @@
 			"assembling": "Assembling the {{platform}} package…",
 			"packing": "Packing your content for {{platform}}…",
 			"zipping": "Packaging the {{platform}} build…",
-			"done": "{{platform}} done"
+			"done": "{{platform}} done",
+			"packaging": "Packaging the {{platform}} installer…",
+			"downloading-jre": "Downloading a Java runtime for Android…",
+			"downloading-sdk": "Downloading the Android SDK…",
+			"downloading-ndk": "Downloading the Android NDK…",
+			"downloading-project": "Downloading the Android build project…",
+			"downloading-native": "Downloading the compiled engine library…"
 		},
 		"doneTitle": "Your release is ready",
 		"doneDescription": "Packmaster saved everything to the {{folder}} folder.",
@@ -112,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "About Roves Packmaster",
