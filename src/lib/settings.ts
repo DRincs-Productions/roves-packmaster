@@ -81,14 +81,15 @@ export interface MobileSettings {
   advanced: MobileAdvancedSettings;
 }
 
+/** A single source icon (PNG), applied everywhere it's possible to apply it -- see
+ * bundle.rs's own `apply_icon`/`icon.rs`. Used as-is for the Windows/Linux runtime window
+ * icon; a `.ico`/`.icns` are derived from it for the packaged Windows `.exe`'s own icon
+ * resource and the macOS `.app`'s Dock icon, respectively -- previously two separate
+ * settings (a PNG here, a pre-made `.ico` for Windows), and macOS had no icon override at
+ * all. `null` means auto-detect an `icon.png` sitting directly in the project's build
+ * output, same as `mach bundle`'s own default. */
 export interface IconSettings {
-  /** Window/taskbar icon (PNG), copied next to the packaged binary -- see bundle.rs's
-   * `apply_icon`. Not supported on macOS yet (its own Dock/app icon has no runtime override
-   * -- see the engine repo's own CUSTOMIZATIONS.md). */
-  pngPath: string | null;
-  /** Windows-only: the packaged play.exe's own icon resource, patched in place via rcedit
-   * after bundling -- see bundle.rs's `apply_icon`. Ignored on other platforms. */
-  icoPath: string | null;
+  path: string | null;
 }
 
 export interface ReleaseInfo {
@@ -145,8 +146,7 @@ export const defaultSettings: PackmasterSettings = {
     bootInclude: [],
   },
   icon: {
-    pngPath: null,
-    icoPath: null,
+    path: null,
   },
 };
 

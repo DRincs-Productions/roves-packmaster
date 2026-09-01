@@ -9,23 +9,17 @@ lato engine collegato (es. Android).
 
 ## 1. Un'unica icona selezionabile in "Informazioni sulla release", con auto-detect dal progetto
 
-**Stato:** noto, non ancora iniziato — richiesto esplicitamente il 2026-09-01, da fare in un
-giro successivo (non toccare ora).
-
-Oggi la card "Icona del gioco" (`configure.tsx`, accordion `icon` nella sezione "Avanzate")
-ha **due** picker separati — PNG (finestra/taskbar) e ICO (icona `.exe` di Windows) — dentro
-`src/lib/settings.ts`'s `IconSettings`. Da fare:
-
-- Ridurre a **una sola icona selezionabile** nella sezione "Informazioni sulla release" (in
-  cima alla pagina, non più dentro l'accordion "Avanzate") — probabilmente un solo campo PNG,
-  dato che l'ICO di Windows è un caso più di nicchia (vedi punto sotto sulle differenze).
-- Se il progetto ha già un'icona rilevabile (stesso auto-detect già usato lato engine —
-  `icon.png`/`favicon.ico` in `--content-dir`, vedi `CUSTOMIZATIONS.md` del motore, voce
-  2026-08-27), va **mostrata automaticamente** appena si seleziona la cartella sorgente,
-  senza che l'utente debba aprirla lui stesso da un file picker.
-- Da decidere: se l'ICO Windows sparisce del tutto dalla UI (mach bundle lo supporta comunque
-  via `--icon-ico`, resterebbe solo non esposto in Packmaster) o resta come opzione avanzata
-  separata per chi lo vuole specificamente.
+**Stato: fatto (2026-09-02).** `configure.tsx` ora ha un solo campo icona (PNG) dentro
+"Informazioni sulla release", con auto-detect di `icon.png` dalla cartella sorgente mostrato
+automaticamente (non serve più aprire il file picker per vederlo). `settings.ts`/`settings.rs`
+consolidati a `IconSettings { path }`. L'ICO di Windows non è sparito dalla UI: non serve più
+fornirlo a parte, perché `src-tauri/src/icon.rs` lo **genera da solo** dalla stessa PNG
+(`generate_ico`), insieme a un `.icns` per macOS (`generate_icns`) — vedi il `CLAUDE.md` di
+questo repo, sezione "Game icon", per il dettaglio completo di dove viene applicata l'icona
+piattaforma per piattaforma. macOS non è più un gap: prima non c'era alcun meccanismo di
+icona per il Dock, ora c'è. Non verificato con una build reale (nessun ambiente per compilare
+in questa sessione — vedi il commit per il disclaimer, stessa cautela già usata per il
+backend Android).
 
 ## Note
 

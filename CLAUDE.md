@@ -150,24 +150,28 @@ separately per variant); `bundle.rs`'s `generate_release` validates the App ID (
 digits only) and writes it into a `steam_appid.txt` next to the packaged executable (Valve's
 own convention for testing outside the real Steam client) — see `write_steam_appid`.
 
-**Game icon:** mirrors the engine's own `mach bundle --icon-png`/`--icon-ico` (see that
-repo's own CUSTOMIZATIONS.md, "Runtime + post-build game icon" entry) rather than
-reimplementing anything independently — `configure.tsx`'s "Game icon" accordion picks a
-PNG/ICO via `@tauri-apps/plugin-dialog`'s `open()` (`settings.icon.pngPath`/`icoPath`), and
-`bundle.rs`'s `apply_icon` (called from `generate_release`, same spot as
-`write_steam_appid`) copies the PNG next to the packaged binary — read back at launch by the
-engine's own `runtime_window_icon_bytes`, nothing Packmaster-specific to keep in sync there —
-and, on Windows only, patches the bundled `play.exe`'s icon resource via `rcedit`
-(`patch_windows_exe_icon`), downloaded once and cached under this app's own cache dir,
-exactly the same tool/pinned release/reasoning as the engine's own `_ensure_rcedit`. Not
-supported on macOS yet — silently skipped, matching the engine's own base-mode behavior —
-since there's no `.icns`/Dock-icon runtime-override mechanism anywhere in this codebase yet.
-If neither `settings.icon.pngPath` nor `icoPath` is set, `apply_icon` auto-detects an
-`icon.png`/`icon.ico` sitting directly in the user's content directory before falling back
-to Roves' own branding — mirrors the engine's own identical `mach bundle` default (see the
-engine's CUSTOMIZATIONS.md, 2026-08-27 entry) so a game whose bundler already emits one for
-its own PWA manifest gets its own icon for free with no setting needed. An explicitly picked
-file in the "Game icon" accordion always overrides this.
+**Game icon:** a single source PNG (`settings.icon.path`), picked in the "Release info" card
+(not a separate accordion — consolidated 2026-09-02, see `TODO.md` #1's resolution) via
+`@tauri-apps/plugin-dialog`'s `open()`, applied everywhere it's actually possible to apply it
+— see `bundle.rs`'s own `apply_icon` doc comment for the exact per-platform list. Windows/
+Linux: copied next to the packaged binary as `icon.png`, read back at launch by the engine's
+own `runtime_window_icon_bytes` — mirrors the engine's `mach bundle --icon-png` default,
+nothing Packmaster-specific to keep in sync there. Windows additionally: `icon.rs`'s
+`generate_ico` derives a real multi-size `.ico` from that same PNG (no separate `.ico` input
+needed anymore), which `patch_windows_exe_icon` patches into the packaged `play.exe`'s own
+icon resource via `rcedit` (downloaded once, cached under this app's own cache dir — same
+tool/pinned release/reasoning as the engine's own `_ensure_rcedit`). **macOS is now
+supported** (previously a known gap — no `.icns`/Dock-icon mechanism existed anywhere in this
+codebase): `icon.rs`'s `generate_icns` derives a real `.icns` from the same source PNG and
+`apply_icon` overwrites `play.app/Contents/Resources/servo.icns` with it directly — no
+`Info.plist` edit needed, since `CFBundleIconFile` already points at that exact filename.
+Android: the same resolved icon path is passed straight through to `android.rs`'s
+`AndroidBuildOptions.icon_png`, which replaces `res/mipmap/servo.*`. If `settings.icon.path`
+isn't set, `apply_icon`/`configure.tsx` both auto-detect an `icon.png` sitting directly in the
+user's content directory before falling back to Roves' own branding — mirrors the engine's
+own identical `mach bundle` default (see the engine's CUSTOMIZATIONS.md, 2026-08-27 entry) so
+a game whose bundler already emits one for its own PWA manifest gets its own icon for free
+with no setting needed. An explicitly picked file always overrides this.
 
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
 (portable output) on every push and publishes it to a rolling "test" GitHub Release,

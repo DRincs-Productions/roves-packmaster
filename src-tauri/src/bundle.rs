@@ -11,6 +11,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::android;
+use crate::icon;
 use crate::installer;
 use crate::packer;
 use crate::settings::PackmasterSettings;
@@ -146,7 +147,7 @@ pub async fn generate_release(
         if steam {
             write_steam_appid(&binary_dir, &steam_app_id)?;
         }
-        apply_icon(&app, &binary_dir, &content_dir, platform, &settings.icon).await?;
+        apply_icon(&app, &binary_dir, &content_root, &content_dir, platform, &settings.icon).await?;
 
         if settings.portable.get(platform) {
             emit_progress(&app, platform, "zipping", 0.7);
@@ -191,16 +192,11 @@ pub async fn generate_release(
             return Err(reason.unwrap_or_else(|| "Android isn't available on this machine".to_string()));
         }
 
-        // Same auto-detect-from-content_dir default as desktop's own `apply_icon` (an
-        // explicit `settings.icon.png_path` always wins) -- Android has no `.ico` equivalent
-        // to also check, since its launcher icon is PNG either way.
-        let icon_png = settings.icon.png_path.clone().or_else(|| {
-            let candidate = content_dir.join("icon.png");
-            candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
-        });
+        // Same one-icon resolution as desktop's own `apply_icon` -- see `resolve_icon_path`.
+        let icon_path = resolve_icon_path(&settings.icon, &content_dir);
         let options = android::AndroidBuildOptions {
             content_dir: &content_dir,
-            icon_png: icon_png.as_deref().map(Path::new),
+            icon_png: icon_path.as_deref().map(Path::new),
             app_name_override: &settings.mobile.advanced.app_name,
             orientation_override: &settings.mobile.advanced.orientation,
         };
@@ -229,57 +225,70 @@ fn write_steam_appid(binary_dir: &Path, app_id: &str) -> Result<(), String> {
     std::fs::write(binary_dir.join("steam_appid.txt"), app_id).map_err(|e| e.to_string())
 }
 
-/// Applies the user's custom game icon, if any, exactly the same way and to the exact same
-/// locations as the engine's own `mach bundle --icon-png`/`--icon-ico` (see
-/// `python/servo/post_build_commands.py` in the engine repo, and its own
-/// CUSTOMIZATIONS.md "Runtime + post-build game icon" entry) — `binary_dir` is this
-/// platform's exact analogue of that Python code's `stage_dir`/`Contents/MacOS`/`lib_dir`.
-/// `ports/servoshell/desktop/headed_window.rs`'s `runtime_window_icon_bytes` is what actually
-/// reads the PNG back at launch; there's no Packmaster-specific runtime code to keep in sync.
+/// The single icon to actually use: an explicit `settings.icon.path` always wins, else
+/// auto-detect `icon.png` sitting directly in `content_dir` -- many bundlers already emit one
+/// there for their own PWA manifest (confirmed: `pixi-vn-react-template`'s own `dist/` has
+/// exactly this), same default `post_build_commands.py`'s own `mach bundle` uses. Shared
+/// between desktop's `apply_icon` below and the Android backend's own icon handling
+/// (`generate_release`'s android block), so "one setting" really is one resolution, not two
+/// copies that could drift.
+fn resolve_icon_path(icon: &crate::settings::IconSettings, content_dir: &Path) -> Option<String> {
+    icon.path.clone().or_else(|| {
+        let candidate = content_dir.join("icon.png");
+        candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
+    })
+}
+
+/// Applies the user's single game icon (see `resolve_icon_path`), to every location it's
+/// actually possible to apply it on `platform`:
 ///
-/// Neither setting explicitly chosen? Auto-detects an `icon.png`/`icon.ico` sitting directly
-/// in `content_dir` before falling back to Roves' own branding -- mirrors
-/// `post_build_commands.py`'s own identical default (see that function's own comment for
-/// why: many bundlers already emit one there for their own PWA manifest). An explicit
-/// `settings.icon` path always wins over this.
+/// - **Windows/Linux**: copied as `icon.png` next to the binary — read back at every launch
+///   by `ports/servoshell/desktop/headed_window.rs`'s `runtime_window_icon_bytes` (the window/
+///   taskbar icon), no compile step needed, works identically on a prebuilt or freshly
+///   compiled binary. Mirrors the engine's own `mach bundle --icon-png`.
+/// - **Windows only, additionally**: derives a multi-size `.ico` from the same source PNG
+///   (`icon.rs`'s `generate_ico`) and patches it into the packaged `play.exe`'s own icon
+///   resource via `rcedit` — this is what Explorer/the taskbar-before-launch/Alt-Tab actually
+///   show for the `.exe` file itself, a separate thing from the runtime window icon above.
+///   Mirrors the engine's own `mach bundle --icon-ico`, except the `.ico` is generated here
+///   instead of being a second file the user has to supply themselves.
+/// - **macOS**: there's no runtime window-icon API at all — the Dock/app icon is baked into
+///   the `.app` bundle's own `Info.plist` (`CFBundleIconFile`, pointing at `servo.icns`
+///   inside `Contents/Resources/`) at packaging time. Solved the same way as Windows' `.ico`:
+///   derive a real `.icns` from the same source PNG (`icon.rs`'s `generate_icns`) and
+///   overwrite that exact file — no `Info.plist` edit needed, since it already points at that
+///   filename. (This used to be an unsupported gap — see the engine's own CUSTOMIZATIONS.md,
+///   "Runtime + post-build game icon" entry, "macOS is a known, deliberate gap" — solvable
+///   once something could actually generate an `.icns`, which `icon.rs` now does.)
 async fn apply_icon(
     app: &AppHandle,
     binary_dir: &Path,
+    resources_dir: &Path,
     content_dir: &Path,
     platform: &str,
-    icon: &crate::settings::IconSettings,
+    icon_settings: &crate::settings::IconSettings,
 ) -> Result<(), String> {
-    let png_path = icon.png_path.clone().or_else(|| {
-        let candidate = content_dir.join("icon.png");
-        candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
-    });
-    let ico_path = icon.ico_path.clone().or_else(|| {
-        let candidate = content_dir.join("icon.ico");
-        if candidate.is_file() {
-            return Some(candidate.to_string_lossy().into_owned());
-        }
-        // icon.ico is rare -- favicon.ico is what virtually every bundler actually emits
-        // (confirmed: pixi-vn-react-template has this, not icon.ico), and is itself
-        // already a valid multi-size .ico rcedit can patch in directly, so it's worth
-        // trying before giving up and keeping Roves' own default icon.
-        let candidate = content_dir.join("favicon.ico");
-        candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
-    });
+    let Some(icon_path) = resolve_icon_path(icon_settings, content_dir) else {
+        return Ok(());
+    };
+    let icon_path = Path::new(&icon_path);
 
-    if let Some(png_path) = &png_path {
-        if platform == "macos" {
-            // Silently skipped, mirroring the engine's own --icon-png warning-and-ignore on
-            // macOS -- its Dock/app icon has no runtime override yet, so there's nothing
-            // this could actually change there.
-        } else {
-            std::fs::copy(png_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
-        }
-    }
-    if let Some(ico_path) = &ico_path {
-        if platform == "windows" {
+    match platform {
+        "macos" => {
+            icon::generate_icns(icon_path, &resources_dir.join("servo.icns"))?;
+        },
+        "windows" => {
+            std::fs::copy(icon_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
+            let generated_ico =
+                std::env::temp_dir().join(format!("roves-packmaster-icon-{}.ico", process_id()));
+            icon::generate_ico(icon_path, &generated_ico)?;
             let exe_path = binary_dir.join("play.exe");
-            patch_windows_exe_icon(app, &exe_path, ico_path).await?;
-        }
+            patch_windows_exe_icon(app, &exe_path, &generated_ico.to_string_lossy()).await?;
+            std::fs::remove_file(&generated_ico).ok();
+        },
+        _ => {
+            std::fs::copy(icon_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
+        },
     }
     Ok(())
 }

@@ -29,7 +29,10 @@
 			"namePlaceholder": "マイゲーム",
 			"nameFromPackageJson": "プロジェクトの package.json から取得しています — 変更するにはそちらを編集してください。",
 			"versionLabel": "バージョン",
-			"versionFromPackageJson": "プロジェクトの package.json から取得しています — 変更するにはそちらを編集してください。"
+			"versionFromPackageJson": "プロジェクトの package.json から取得しています — 変更するにはそちらを編集してください。",
+			"iconLabel": "ゲームアイコン",
+			"iconDescription": "ウィンドウ/タスクバーアイコン（Windows/Linux）、パッケージ化された .exe 自体のアイコン（Windows）、アプリアイコン（macOS）、ランチャーアイコン（Android）に適用されます — Roves のデフォルトのブランディングの代わりに使用されます。",
+			"iconAutoDetected": "ビルド出力から自動検出されました — 別のものを選択すると上書きされます。"
 		},
 		"portable": {
 			"title": "ポータブル版",
@@ -79,16 +82,9 @@
 			"bootIncludePlaceholder": "例: splash.png"
 		},
 		"icon": {
-			"title": "ゲームアイコン",
-			"description": "Roves のデフォルトブランディングの代わりに、ゲーム専用のウィンドウ/タスクバーアイコンと .exe アイコンを設定します。パッケージング後に適用され、再コンパイルは不要です。",
-			"pngLabel": "ウィンドウ/タスクバーアイコン (PNG)",
-			"pngDescription": "macOS ではまだサポートされていません — Dock/アプリアイコンにはランタイムでの上書き機能がありません。",
-			"icoLabel": "Windows .exe アイコン (マルチサイズ ICO)",
-			"icoDescription": "Windows のみ。パッケージ化された play.exe のアイコンリソースをその場でパッチします。",
 			"browse": "ファイルを選択…",
-			"browsePngTitle": "ウィンドウ/タスクバーアイコン (PNG) を選択",
-			"browseIcoTitle": "Windows .exe アイコン (ICO) を選択",
-			"clear": "クリア"
+			"clear": "クリア",
+			"browseTitle": "ゲームアイコンを選択（PNG）"
 		},
 		"startButton": "リリースを生成",
 		"mobile": {

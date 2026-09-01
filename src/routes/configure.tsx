@@ -1,6 +1,7 @@
 import { Image, WarningCircle } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { open } from "@tauri-apps/plugin-dialog";
+import { exists } from "@tauri-apps/plugin-fs";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InstallerCard } from "@/components/installer-card";
@@ -92,6 +93,7 @@ function ConfigureView() {
     available: boolean;
     reason: string | null;
   } | null>(null);
+  const [detectedIconPath, setDetectedIconPath] = useState<string | null>(null);
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -177,6 +179,23 @@ function ConfigureView() {
     };
   }, [settings.sourceDir]);
 
+  // Same auto-detect default as bundle.rs's own `resolve_icon_path` -- an `icon.png` sitting
+  // directly in the build output, shown here (not silently applied) so it's obvious an icon
+  // is already going to be used even before an explicit one is ever picked.
+  useEffect(() => {
+    const sourceDir = settings.sourceDir;
+    if (!sourceDir) return;
+    let cancelled = false;
+    const separator = sourceDir.includes("\\") ? "\\" : "/";
+    const candidate = `${sourceDir}${sourceDir.endsWith(separator) ? "" : separator}icon.png`;
+    exists(candidate).then((found) => {
+      if (!cancelled) setDetectedIconPath(found ? candidate : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.sourceDir]);
+
   const updateReleaseInfo = (patch: Partial<{ name: string; version: string }>) => {
     if (!settings.sourceDir) return;
     const next = { ...releaseInfo, ...patch };
@@ -204,17 +223,15 @@ function ConfigureView() {
     ? ((webManifestInfo?.orientation as MobileOrientation | undefined) ?? "")
     : settings.mobile.advanced.orientation;
 
-  const handleBrowseIcon = async (kind: "png" | "ico") => {
+  const handleBrowseIcon = async () => {
     const path = await open({
       directory: false,
       multiple: false,
-      title: t(kind === "png" ? "configure.icon.browsePngTitle" : "configure.icon.browseIcoTitle"),
-      filters: [{ name: kind.toUpperCase(), extensions: [kind] }],
+      title: t("configure.icon.browseTitle"),
+      filters: [{ name: "PNG", extensions: ["png"] }],
     });
     if (typeof path === "string") {
-      updateSettings({
-        icon: { ...settings.icon, [kind === "png" ? "pngPath" : "icoPath"]: path },
-      });
+      updateSettings({ icon: { path } });
     }
   };
 
@@ -278,6 +295,38 @@ function ConfigureView() {
             {versionFromPackageJson && (
               <p className="text-muted-foreground text-xs">
                 {t("configure.releaseInfo.versionFromPackageJson")}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("configure.releaseInfo.iconLabel")}</Label>
+            <p className="text-muted-foreground text-xs">
+              {t("configure.releaseInfo.iconDescription")}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" onClick={handleBrowseIcon}>
+                <Image />
+                {t("configure.icon.browse")}
+              </Button>
+              {(settings.icon.path || detectedIconPath) && (
+                <span className="truncate text-muted-foreground text-xs">
+                  {settings.icon.path ?? detectedIconPath}
+                </span>
+              )}
+              {settings.icon.path && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateSettings({ icon: { path: null } })}
+                >
+                  {t("configure.icon.clear")}
+                </Button>
+              )}
+            </div>
+            {!settings.icon.path && detectedIconPath && (
+              <p className="text-muted-foreground text-xs">
+                {t("configure.releaseInfo.iconAutoDetected")}
               </p>
             )}
           </div>
@@ -645,70 +694,6 @@ function ConfigureView() {
                   </div>
                 </>
               )}
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem
-            value="icon"
-            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
-          >
-            <AccordionTrigger>{t("configure.icon.title")}</AccordionTrigger>
-            <AccordionContent className="flex flex-col gap-4">
-              <p className="text-muted-foreground text-sm">{t("configure.icon.description")}</p>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("configure.icon.pngLabel")}</Label>
-                <p className="text-muted-foreground text-xs">
-                  {t("configure.icon.pngDescription")}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={() => handleBrowseIcon("png")}>
-                    <Image />
-                    {t("configure.icon.browse")}
-                  </Button>
-                  {settings.icon.pngPath && (
-                    <span className="truncate text-muted-foreground text-xs">
-                      {settings.icon.pngPath}
-                    </span>
-                  )}
-                  {settings.icon.pngPath && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateSettings({ icon: { ...settings.icon, pngPath: null } })}
-                    >
-                      {t("configure.icon.clear")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("configure.icon.icoLabel")}</Label>
-                <p className="text-muted-foreground text-xs">
-                  {t("configure.icon.icoDescription")}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={() => handleBrowseIcon("ico")}>
-                    <Image />
-                    {t("configure.icon.browse")}
-                  </Button>
-                  {settings.icon.icoPath && (
-                    <span className="truncate text-muted-foreground text-xs">
-                      {settings.icon.icoPath}
-                    </span>
-                  )}
-                  {settings.icon.icoPath && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateSettings({ icon: { ...settings.icon, icoPath: null } })}
-                    >
-                      {t("configure.icon.clear")}
-                    </Button>
-                  )}
-                </div>
-              </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

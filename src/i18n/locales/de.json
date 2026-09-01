@@ -29,7 +29,10 @@
 			"namePlaceholder": "Mein Spiel",
 			"nameFromPackageJson": "Aus der package.json deines Projekts übernommen — ändere ihn dort, um dies zu ändern.",
 			"versionLabel": "Version",
-			"versionFromPackageJson": "Aus der package.json deines Projekts übernommen — ändere sie dort, um dies zu ändern."
+			"versionFromPackageJson": "Aus der package.json deines Projekts übernommen — ändere sie dort, um dies zu ändern.",
+			"iconLabel": "Spielsymbol",
+			"iconDescription": "Wird für das Fenster-/Taskleistensymbol (Windows/Linux), das eigene Symbol der gepackten .exe (Windows), das App-Symbol (macOS) und das Launcher-Symbol (Android) verwendet — anstelle des Standard-Brandings von Roves.",
+			"iconAutoDetected": "Automatisch aus deinem Build-Ordner erkannt — wähle ein anderes, um es zu überschreiben."
 		},
 		"portable": {
 			"title": "Portabel",
@@ -79,16 +82,9 @@
 			"bootIncludePlaceholder": "z. B. splash.png"
 		},
 		"icon": {
-			"title": "Spielsymbol",
-			"description": "Geben Sie Ihrem Spiel ein eigenes Fenster-/Taskleisten- und .exe-Symbol anstelle des Standard-Brandings von Roves. Wird nach dem Packaging angewendet — kein Kompilieren erforderlich.",
-			"pngLabel": "Fenster-/Taskleistensymbol (PNG)",
-			"pngDescription": "Unter macOS noch nicht unterstützt — das Dock-/App-Symbol hat keine Laufzeit-Überschreibung.",
-			"icoLabel": "Windows-.exe-Symbol (ICO mit mehreren Größen)",
-			"icoDescription": "Nur Windows. Patcht die Symbolressource der gepackten play.exe direkt.",
 			"browse": "Datei auswählen…",
-			"browsePngTitle": "Fenster-/Taskleistensymbol (PNG) auswählen",
-			"browseIcoTitle": "Windows-.exe-Symbol (ICO) auswählen",
-			"clear": "Löschen"
+			"clear": "Löschen",
+			"browseTitle": "Ein Spielsymbol auswählen (PNG)"
 		},
 		"startButton": "Release generieren",
 		"mobile": {

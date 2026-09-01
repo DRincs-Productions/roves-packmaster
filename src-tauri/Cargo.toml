@@ -56,6 +56,14 @@ uuid = { version = "1", features = ["v4", "v5"] }
 tar = "0.4"
 flate2 = "1"
 
+# Single-icon-in, everywhere-out icon generation (see src/icon.rs): derives the Windows .ico
+# and macOS .icns the platform-native packaging steps need from the one PNG a game developer
+# picks, instead of asking them to supply pre-made .ico/.icns files themselves. PNG-decode
+# and resize only -- both .ico/.icns containers are hand-written (see that module), storing
+# plain PNG-encoded frames directly (a well-supported convention on both formats since
+# Windows Vista / macOS 10.7), so no `ico`/`icns`-writing crate is needed either.
+image = { version = "0.25", default-features = false, features = ["png"] }
+
 [dev-dependencies]
 tempfile = "3"
 

@@ -1,5 +1,6 @@
 mod android;
 mod bundle;
+mod icon;
 mod installer;
 mod packer;
 mod settings;

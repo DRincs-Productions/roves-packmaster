@@ -29,7 +29,10 @@
 			"namePlaceholder": "Mon jeu",
 			"nameFromPackageJson": "Repris du package.json de votre projet — modifiez-le là-bas pour le changer.",
 			"versionLabel": "Version",
-			"versionFromPackageJson": "Reprise du package.json de votre projet — modifiez-la là-bas pour la changer."
+			"versionFromPackageJson": "Reprise du package.json de votre projet — modifiez-la là-bas pour la changer.",
+			"iconLabel": "Icône du jeu",
+			"iconDescription": "Appliquée à l'icône de la fenêtre/barre des tâches (Windows/Linux), à l'icône propre du .exe empaqueté (Windows), à l'icône de l'application (macOS) et à l'icône du lanceur (Android) — à la place de l'image de marque par défaut de Roves.",
+			"iconAutoDetected": "Détectée automatiquement dans le dossier de build — choisis-en une autre pour la remplacer."
 		},
 		"portable": {
 			"title": "Portable",
@@ -79,16 +82,9 @@
 			"bootIncludePlaceholder": "ex. splash.png"
 		},
 		"icon": {
-			"title": "Icône du jeu",
-			"description": "Donnez à votre jeu sa propre icône de fenêtre/barre des tâches et .exe au lieu de l'image de marque par défaut de Roves. Appliqué après l'empaquetage — aucune compilation nécessaire.",
-			"pngLabel": "Icône de fenêtre/barre des tâches (PNG)",
-			"pngDescription": "Pas encore pris en charge sur macOS — son icône Dock/application n'a pas de remplacement à l'exécution.",
-			"icoLabel": "Icône .exe Windows (ICO multi-tailles)",
-			"icoDescription": "Windows uniquement. Corrige directement la ressource icône du play.exe empaqueté.",
 			"browse": "Choisir un fichier…",
-			"browsePngTitle": "Choisissez une icône de fenêtre/barre des tâches (PNG)",
-			"browseIcoTitle": "Choisissez une icône .exe Windows (ICO)",
-			"clear": "Effacer"
+			"clear": "Effacer",
+			"browseTitle": "Choisir une icône pour le jeu (PNG)"
 		},
 		"startButton": "Générer la version",
 		"mobile": {

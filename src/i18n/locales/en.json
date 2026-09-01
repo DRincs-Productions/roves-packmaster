@@ -29,7 +29,10 @@
 			"namePlaceholder": "My Game",
 			"nameFromPackageJson": "Taken from your project's package.json — edit it there to change it.",
 			"versionLabel": "Version",
-			"versionFromPackageJson": "Taken from your project's package.json — edit it there to change it."
+			"versionFromPackageJson": "Taken from your project's package.json — edit it there to change it.",
+			"iconLabel": "Game icon",
+			"iconDescription": "Applied to the window/taskbar icon (Windows/Linux), the packaged .exe's own icon (Windows), the app icon (macOS), and the launcher icon (Android) — instead of Roves' default branding.",
+			"iconAutoDetected": "Auto-detected from your build output — pick a different one to override it."
 		},
 		"portable": {
 			"title": "Portable",
@@ -84,16 +87,9 @@
 			"bootIncludePlaceholder": "e.g. splash.png"
 		},
 		"icon": {
-			"title": "Game icon",
-			"description": "Give your game its own window/taskbar and .exe icon instead of Roves' default branding. Applied after packaging — no compile step needed.",
-			"pngLabel": "Window/taskbar icon (PNG)",
-			"pngDescription": "Not supported on macOS yet — its own Dock/app icon has no runtime override.",
-			"icoLabel": "Windows .exe icon (multi-size ICO)",
-			"icoDescription": "Windows only. Patches the packaged play.exe's own icon resource in place.",
 			"browse": "Choose file…",
-			"browsePngTitle": "Choose a window/taskbar icon (PNG)",
-			"browseIcoTitle": "Choose a Windows .exe icon (ICO)",
-			"clear": "Clear"
+			"clear": "Clear",
+			"browseTitle": "Choose a game icon (PNG)"
 		},
 		"startButton": "Generate release",
 		"mobileAdvanced": {

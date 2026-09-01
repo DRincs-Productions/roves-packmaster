@@ -49,11 +49,14 @@ pub struct CompressionSettings {
     pub boot_include: Vec<String>,
 }
 
+/// A single source icon, applied everywhere it's possible to apply it -- see `bundle.rs`'s
+/// own `apply_icon` and `icon.rs` for what "everywhere possible" means per platform, and why
+/// it used to be two separate settings (a PNG for the runtime window icon, a pre-made `.ico`
+/// for the packaged `.exe`'s own icon resource) instead of one.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IconSettings {
-    pub png_path: Option<String>,
-    pub ico_path: Option<String>,
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
