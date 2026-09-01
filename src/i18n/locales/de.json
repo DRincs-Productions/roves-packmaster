@@ -90,7 +90,34 @@
 			"browseIcoTitle": "Windows-.exe-Symbol (ICO) auswählen",
 			"clear": "Löschen"
 		},
-		"startButton": "Release generieren"
+		"startButton": "Release generieren",
+		"mobile": {
+			"title": "Mobil",
+			"android": {
+				"title": "Android",
+				"description": "Erstellt zusätzlich zu deiner Desktop-Version eine Debug-.apk für Android.",
+				"comingSoonNotice": "Android-Bundling ist in Packmaster noch nicht verfügbar — diese Einstellungen werden für später gespeichert, aber das Aktivieren fügt deiner generierten Version noch nichts hinzu.",
+				"advancedTitle": "Erweiterte Einstellungen",
+				"useWebManifestLabel": "Informationen aus deinem Web-App-Manifest verwenden",
+				"useWebManifestFound": "{{file}} in deinem Build-Ordner gefunden — Name, Ausrichtung und Statusleistenfarbe daraus werden verwendet. Deaktiviere dies, um sie manuell festzulegen.",
+				"useWebManifestNotFound": "Keine manifest.webmanifest, manifest.json oder site.webmanifest in deinem Build-Ordner gefunden — lege sie unten manuell fest oder füge deinem Projekt eine hinzu.",
+				"appNameLabel": "App-Name",
+				"appNamePlaceholder": "Mein Spiel",
+				"orientationLabel": "Bildschirmausrichtung",
+				"orientationOptions": {
+					"any": "Beliebig",
+					"natural": "Natürlich",
+					"landscape": "Querformat (beide Richtungen)",
+					"landscape_primary": "Querformat (fixiert)",
+					"landscape_secondary": "Querformat (fixiert, umgekehrt)",
+					"portrait": "Hochformat (beide Richtungen)",
+					"portrait_primary": "Hochformat (fixiert)",
+					"portrait_secondary": "Hochformat (fixiert, umgekehrt)"
+				},
+				"themeColorLabel": "Statusleistenfarbe",
+				"themeColorPlaceholder": "#ffffff"
+			}
+		}
 	},
 	"generating": {
 		"title": "Release wird generiert…",

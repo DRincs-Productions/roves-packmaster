@@ -43,6 +43,34 @@ export interface CompressionSettings {
   bootInclude: string[];
 }
 
+export type AndroidOrientation =
+  | "any"
+  | "natural"
+  | "landscape"
+  | "landscape-primary"
+  | "landscape-secondary"
+  | "portrait"
+  | "portrait-primary"
+  | "portrait-secondary";
+
+export interface AndroidSettings {
+  enabled: boolean;
+  /** Manual overrides, mirroring the engine's own `--android-app-name`/`--android-orientation`/
+   * `--android-theme-color` `mach bundle` flags. Only actually used when configure.tsx's
+   * "use info from your web app manifest" switch is off, or for a field the manifest itself
+   * doesn't set -- that switch isn't persisted here (see configure.tsx's own comment): whether
+   * a project has a web app manifest is a per-project fact, not a global preference, so it's
+   * re-derived every time the source folder changes instead of being remembered across
+   * unrelated projects. */
+  appName: string;
+  orientation: AndroidOrientation | "";
+  themeColor: string;
+}
+
+export interface MobileSettings {
+  android: AndroidSettings;
+}
+
 export interface IconSettings {
   /** Window/taskbar icon (PNG), copied next to the packaged binary -- see bundle.rs's
    * `apply_icon`. Not supported on macOS yet (its own Dock/app icon has no runtime override
@@ -67,6 +95,7 @@ export interface PackmasterSettings {
   releaseInfoByPath: Record<string, ReleaseInfo>;
   portable: PortableSettings;
   installers: InstallerSettings;
+  mobile: MobileSettings;
   plugins: PluginSettings;
   compression: CompressionSettings;
   icon: IconSettings;
@@ -88,6 +117,14 @@ export const defaultSettings: PackmasterSettings = {
     windows: { enabled: false, formats: [] },
     linux: { enabled: false, formats: [] },
     macos: { enabled: false, formats: [] },
+  },
+  mobile: {
+    android: {
+      enabled: false,
+      appName: "",
+      orientation: "",
+      themeColor: "",
+    },
   },
   plugins: {
     // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default
@@ -141,6 +178,9 @@ export async function loadSettings(): Promise<PackmasterSettings> {
       windows: { ...defaultSettings.installers.windows, ...stored.installers?.windows },
       linux: { ...defaultSettings.installers.linux, ...stored.installers?.linux },
       macos: { ...defaultSettings.installers.macos, ...stored.installers?.macos },
+    },
+    mobile: {
+      android: { ...defaultSettings.mobile.android, ...stored.mobile?.android },
     },
     plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },

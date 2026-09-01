@@ -90,7 +90,34 @@
 			"browseIcoTitle": "Windows .exe 아이콘 (ICO) 선택",
 			"clear": "지우기"
 		},
-		"startButton": "릴리스 생성"
+		"startButton": "릴리스 생성",
+		"mobile": {
+			"title": "모바일",
+			"android": {
+				"title": "Android",
+				"description": "데스크톱 릴리스와 함께 Android용 디버그 .apk를 빌드합니다.",
+				"comingSoonNotice": "Android 번들링은 아직 Packmaster에서 지원되지 않습니다 — 이 설정은 향후 지원을 위해 저장되지만, 지금 활성화해도 생성되는 릴리스에는 아무것도 추가되지 않습니다.",
+				"advancedTitle": "고급 설정",
+				"useWebManifestLabel": "웹 앱 매니페스트의 정보 사용",
+				"useWebManifestFound": "빌드 출력에서 {{file}}을(를) 찾았습니다 — 여기에 있는 이름, 화면 방향, 상태 표시줄 색상을 사용합니다. 수동으로 설정하려면 꺼주세요.",
+				"useWebManifestNotFound": "빌드 출력에서 manifest.webmanifest, manifest.json, site.webmanifest를 찾을 수 없습니다 — 아래에서 직접 설정하거나 프로젝트에 매니페스트를 추가하세요.",
+				"appNameLabel": "앱 이름",
+				"appNamePlaceholder": "내 게임",
+				"orientationLabel": "화면 방향",
+				"orientationOptions": {
+					"any": "제한 없음",
+					"natural": "기본 방향",
+					"landscape": "가로 (양방향)",
+					"landscape_primary": "가로 (고정)",
+					"landscape_secondary": "가로 (고정, 반전)",
+					"portrait": "세로 (양방향)",
+					"portrait_primary": "세로 (고정)",
+					"portrait_secondary": "세로 (고정, 반전)"
+				},
+				"themeColorLabel": "상태 표시줄 색상",
+				"themeColorPlaceholder": "#ffffff"
+			}
+		}
 	},
 	"generating": {
 		"title": "릴리스를 생성하는 중…",

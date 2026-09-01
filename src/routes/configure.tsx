@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AndroidCard } from "@/components/android-card";
 import { InstallerCard } from "@/components/installer-card";
 import { type Platform, PlatformToggle } from "@/components/platform-toggle";
 import {
@@ -25,6 +26,7 @@ import {
 import { readParentPackageJson } from "@/lib/release-info";
 import { useSettings } from "@/lib/settings-context";
 import { checkShellAvailability } from "@/lib/shell-availability";
+import { readWebManifest } from "@/lib/web-manifest";
 
 export const Route = createFileRoute("/configure")({
   component: ConfigureView,
@@ -60,6 +62,8 @@ function ConfigureView() {
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
   const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam"]);
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
+  const [webManifestFile, setWebManifestFile] = useState<string | null>(null);
+  const [useWebManifest, setUseWebManifest] = useState(true);
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -113,6 +117,25 @@ function ConfigureView() {
       setNameFromPackageJson(Boolean(pkg?.name));
       setVersionFromPackageJson(Boolean(pkg?.version));
       updateSettings({ releaseInfoByPath: { ...settings.releaseInfoByPath, [sourceDir]: next } });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.sourceDir]);
+
+  // Whether a project has its own web app manifest is a per-project fact, not a persisted
+  // global preference (see settings.ts's AndroidSettings comment) -- re-derived fresh every
+  // time the source folder changes, defaulting the switch to "on" whenever one is found,
+  // exactly as requested. The user can still flip it off within this session (e.g. to type
+  // manual overrides even though a manifest exists), it just isn't remembered afterward.
+  useEffect(() => {
+    const sourceDir = settings.sourceDir;
+    if (!sourceDir) return;
+    let cancelled = false;
+    readWebManifest(sourceDir).then((manifest) => {
+      if (cancelled) return;
+      setWebManifestFile(manifest?.file ?? null);
+      setUseWebManifest(Boolean(manifest));
     });
     return () => {
       cancelled = true;
@@ -293,6 +316,35 @@ function ConfigureView() {
               }
             />
           ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">{t("configure.mobile.title")}</h2>
+        </div>
+        <div className="flex gap-3">
+          <AndroidCard
+            enabled={settings.mobile.android.enabled}
+            onEnabledChange={(enabled) =>
+              updateSettings({ mobile: { android: { ...settings.mobile.android, enabled } } })
+            }
+            webManifestFile={webManifestFile}
+            useWebManifest={useWebManifest}
+            onUseWebManifestChange={setUseWebManifest}
+            appName={settings.mobile.android.appName}
+            onAppNameChange={(appName) =>
+              updateSettings({ mobile: { android: { ...settings.mobile.android, appName } } })
+            }
+            orientation={settings.mobile.android.orientation}
+            onOrientationChange={(orientation) =>
+              updateSettings({ mobile: { android: { ...settings.mobile.android, orientation } } })
+            }
+            themeColor={settings.mobile.android.themeColor}
+            onThemeColorChange={(themeColor) =>
+              updateSettings({ mobile: { android: { ...settings.mobile.android, themeColor } } })
+            }
+          />
         </div>
       </div>
 

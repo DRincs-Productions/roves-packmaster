@@ -47,6 +47,33 @@
 			"macos": "macOS",
 			"typeLabel": "Installer format"
 		},
+		"mobile": {
+			"title": "Mobile",
+			"android": {
+				"title": "Android",
+				"description": "Build a debug .apk for Android alongside your desktop release.",
+				"comingSoonNotice": "Android bundling isn't available in Packmaster yet — these settings are saved for when it lands, but enabling this won't add anything to your generated release yet.",
+				"advancedTitle": "Advanced settings",
+				"useWebManifestLabel": "Use info from your web app manifest",
+				"useWebManifestFound": "Found {{file}} in your build output — using its name, orientation, and status bar color. Turn this off to set them manually instead.",
+				"useWebManifestNotFound": "No manifest.webmanifest, manifest.json, or site.webmanifest found in your build output — set these manually below, or add one to your project.",
+				"appNameLabel": "App name",
+				"appNamePlaceholder": "My Game",
+				"orientationLabel": "Screen orientation",
+				"orientationOptions": {
+					"any": "Any",
+					"natural": "Natural",
+					"landscape": "Landscape (either direction)",
+					"landscape_primary": "Landscape (locked)",
+					"landscape_secondary": "Landscape (locked, reversed)",
+					"portrait": "Portrait (either direction)",
+					"portrait_primary": "Portrait (locked)",
+					"portrait_secondary": "Portrait (locked, reversed)"
+				},
+				"themeColorLabel": "Status bar color",
+				"themeColorPlaceholder": "#ffffff"
+			}
+		},
 		"advanced": {
 			"title": "Advanced"
 		},

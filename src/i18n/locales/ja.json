@@ -90,7 +90,34 @@
 			"browseIcoTitle": "Windows .exe アイコン (ICO) を選択",
 			"clear": "クリア"
 		},
-		"startButton": "リリースを生成"
+		"startButton": "リリースを生成",
+		"mobile": {
+			"title": "モバイル",
+			"android": {
+				"title": "Android",
+				"description": "デスクトップ版と一緒に、Android 向けのデバッグ用 .apk を生成します。",
+				"comingSoonNotice": "Android のバンドルは Packmaster ではまだ利用できません — これらの設定は将来のために保存されますが、有効にしても現時点では生成されるリリースに何も追加されません。",
+				"advancedTitle": "詳細設定",
+				"useWebManifestLabel": "Web アプリマニフェストの情報を使用する",
+				"useWebManifestFound": "ビルド出力内に {{file}} が見つかりました — その名前、画面の向き、ステータスバーの色が使用されます。手動で設定するにはオフにしてください。",
+				"useWebManifestNotFound": "ビルド出力内に manifest.webmanifest、manifest.json、site.webmanifest のいずれも見つかりませんでした — 以下で手動で設定するか、プロジェクトに追加してください。",
+				"appNameLabel": "アプリ名",
+				"appNamePlaceholder": "マイゲーム",
+				"orientationLabel": "画面の向き",
+				"orientationOptions": {
+					"any": "指定なし",
+					"natural": "自然な向き",
+					"landscape": "横向き（どちらの方向でも）",
+					"landscape_primary": "横向き（固定）",
+					"landscape_secondary": "横向き（固定・反転）",
+					"portrait": "縦向き（どちらの方向でも）",
+					"portrait_primary": "縦向き（固定）",
+					"portrait_secondary": "縦向き（固定・反転）"
+				},
+				"themeColorLabel": "ステータスバーの色",
+				"themeColorPlaceholder": "#ffffff"
+			}
+		}
 	},
 	"generating": {
 		"title": "リリースを生成しています…",
