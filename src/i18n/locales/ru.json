@@ -93,29 +93,27 @@
 		"startButton": "Создать релиз",
 		"mobile": {
 			"title": "Мобильные",
-			"android": {
-				"title": "Android",
-				"description": "Собрать отладочный .apk для Android вместе с версией для настольных систем.",
-				"comingSoonNotice": "Сборка для Android пока недоступна в Packmaster — эти настройки сохраняются на будущее, но включение этой опции пока ничего не добавляет в собранную версию.",
-				"advancedTitle": "Дополнительные настройки",
-				"useWebManifestLabel": "Использовать данные из веб-манифеста приложения",
-				"useWebManifestFound": "Найден файл {{file}} в папке сборки — будут использованы его название, ориентация и цвет строки состояния. Отключите, чтобы задать их вручную.",
-				"useWebManifestNotFound": "В папке сборки не найден manifest.webmanifest, manifest.json или site.webmanifest — задайте эти значения вручную ниже или добавьте манифест в проект.",
-				"appNameLabel": "Название приложения",
-				"appNamePlaceholder": "Моя игра",
-				"orientationLabel": "Ориентация экрана",
-				"orientationOptions": {
-					"any": "Любая",
-					"natural": "Стандартная",
-					"landscape": "Альбомная (любое направление)",
-					"landscape_primary": "Альбомная (зафиксирована)",
-					"landscape_secondary": "Альбомная (зафиксирована, перевёрнута)",
-					"portrait": "Портретная (любое направление)",
-					"portrait_primary": "Портретная (зафиксирована)",
-					"portrait_secondary": "Портретная (зафиксирована, перевёрнута)"
-				},
-				"themeColorLabel": "Цвет строки состояния",
-				"themeColorPlaceholder": "#ffffff"
+			"description": "Собрать отладочный .apk для Android вместе с версией для настольных систем. Пока недоступно в Packmaster — ваш выбор здесь сохраняется на будущее.",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "Дополнительные настройки",
+			"description": "Общие для всех включённых мобильных платформ (пока только Android).",
+			"useWebManifestLabel": "Использовать данные из веб-манифеста приложения",
+			"useWebManifestFound": "Найден файл {{file}} в папке сборки — будут использованы его название и ориентация. Отключите, чтобы задать их вручную.",
+			"useWebManifestNotFound": "В папке сборки не найден manifest.webmanifest, manifest.json или site.webmanifest — задайте эти значения вручную ниже или добавьте манифест в проект.",
+			"appNameLabel": "Название приложения",
+			"appNamePlaceholder": "Моя игра",
+			"orientationLabel": "Ориентация экрана",
+			"orientationOptions": {
+				"any": "Любая",
+				"natural": "Стандартная",
+				"landscape": "Альбомная (любое направление)",
+				"landscape_primary": "Альбомная (зафиксирована)",
+				"landscape_secondary": "Альбомная (зафиксирована, перевёрнута)",
+				"portrait": "Портретная (любое направление)",
+				"portrait_primary": "Портретная (зафиксирована)",
+				"portrait_secondary": "Портретная (зафиксирована, перевёрнута)"
 			}
 		}
 	},

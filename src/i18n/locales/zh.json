@@ -93,29 +93,27 @@
 		"startButton": "生成发行版",
 		"mobile": {
 			"title": "移动端",
-			"android": {
-				"title": "Android",
-				"description": "在生成桌面版的同时，构建一个用于 Android 的调试 .apk。",
-				"comingSoonNotice": "Packmaster 尚不支持 Android 打包——这些设置会被保存下来，以便日后支持时使用，但目前启用它不会为生成的发行版添加任何内容。",
-				"advancedTitle": "高级设置",
-				"useWebManifestLabel": "使用你的 Web 应用清单中的信息",
-				"useWebManifestFound": "在构建输出中找到了 {{file}}——将使用其中的名称、方向和状态栏颜色。关闭此项可手动设置。",
-				"useWebManifestNotFound": "在构建输出中未找到 manifest.webmanifest、manifest.json 或 site.webmanifest——请在下方手动设置，或为项目添加一个清单文件。",
-				"appNameLabel": "应用名称",
-				"appNamePlaceholder": "我的游戏",
-				"orientationLabel": "屏幕方向",
-				"orientationOptions": {
-					"any": "任意",
-					"natural": "自然方向",
-					"landscape": "横屏（任意方向）",
-					"landscape_primary": "横屏（锁定）",
-					"landscape_secondary": "横屏（锁定，反向）",
-					"portrait": "竖屏（任意方向）",
-					"portrait_primary": "竖屏（锁定）",
-					"portrait_secondary": "竖屏（锁定，反向）"
-				},
-				"themeColorLabel": "状态栏颜色",
-				"themeColorPlaceholder": "#ffffff"
+			"description": "在生成桌面版的同时，构建一个用于 Android 的调试 .apk。Packmaster 尚不支持——这里的选择会被保存，以便日后支持时使用。",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "高级设置",
+			"description": "在所有已启用的移动平台间共享（目前仅 Android）。",
+			"useWebManifestLabel": "使用你的 Web 应用清单中的信息",
+			"useWebManifestFound": "在构建输出中找到了 {{file}}——将使用其中的名称和方向。关闭此项可手动设置。",
+			"useWebManifestNotFound": "在构建输出中未找到 manifest.webmanifest、manifest.json 或 site.webmanifest——请在下方手动设置，或为项目添加一个清单文件。",
+			"appNameLabel": "应用名称",
+			"appNamePlaceholder": "我的游戏",
+			"orientationLabel": "屏幕方向",
+			"orientationOptions": {
+				"any": "任意",
+				"natural": "自然方向",
+				"landscape": "横屏（任意方向）",
+				"landscape_primary": "横屏（锁定）",
+				"landscape_secondary": "横屏（锁定，反向）",
+				"portrait": "竖屏（任意方向）",
+				"portrait_primary": "竖屏（锁定）",
+				"portrait_secondary": "竖屏（锁定，反向）"
 			}
 		}
 	},

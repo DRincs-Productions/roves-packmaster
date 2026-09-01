@@ -43,7 +43,7 @@ export interface CompressionSettings {
   bootInclude: string[];
 }
 
-export type AndroidOrientation =
+export type MobileOrientation =
   | "any"
   | "natural"
   | "landscape"
@@ -53,22 +53,32 @@ export type AndroidOrientation =
   | "portrait-primary"
   | "portrait-secondary";
 
-export interface AndroidSettings {
+/** Just the "is this platform included in the release" toggle -- see MobileAdvancedSettings
+ * for the settings shared across every mobile platform. */
+export interface MobilePlatformSettings {
   enabled: boolean;
-  /** Manual overrides, mirroring the engine's own `--android-app-name`/`--android-orientation`/
-   * `--android-theme-color` `mach bundle` flags. Only actually used when configure.tsx's
-   * "use info from your web app manifest" switch is off, or for a field the manifest itself
-   * doesn't set -- that switch isn't persisted here (see configure.tsx's own comment): whether
-   * a project has a web app manifest is a per-project fact, not a global preference, so it's
-   * re-derived every time the source folder changes instead of being remembered across
-   * unrelated projects. */
+}
+
+/** Shared across every mobile platform (Android today, iOS later) rather than duplicated per
+ * platform -- a game's app name and screen orientation don't differ by mobile platform.
+ * Mirrors the engine's own `--android-app-name`/`--android-orientation` `mach bundle` flags.
+ * Manual values here are only actually used when configure.tsx's "use info from your web app
+ * manifest" switch is off, or for a field the manifest itself doesn't set -- that switch isn't
+ * persisted here (see configure.tsx's own comment): whether a project has a web app manifest
+ * is a per-project fact, not a global preference, so it's re-derived every time the source
+ * folder changes instead of being remembered across unrelated projects.
+ *
+ * Deliberately no status-bar-color/theme-color setting: a game is expected to run edge-to-
+ * edge with no visible status bar at all (a player can still pull it down like on any other
+ * Android app), so there's nothing to theme -- this isn't a configurable option. */
+export interface MobileAdvancedSettings {
   appName: string;
-  orientation: AndroidOrientation | "";
-  themeColor: string;
+  orientation: MobileOrientation | "";
 }
 
 export interface MobileSettings {
-  android: AndroidSettings;
+  android: MobilePlatformSettings;
+  advanced: MobileAdvancedSettings;
 }
 
 export interface IconSettings {
@@ -119,12 +129,8 @@ export const defaultSettings: PackmasterSettings = {
     macos: { enabled: false, formats: [] },
   },
   mobile: {
-    android: {
-      enabled: false,
-      appName: "",
-      orientation: "",
-      themeColor: "",
-    },
+    android: { enabled: false },
+    advanced: { appName: "", orientation: "" },
   },
   plugins: {
     // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default
@@ -181,6 +187,7 @@ export async function loadSettings(): Promise<PackmasterSettings> {
     },
     mobile: {
       android: { ...defaultSettings.mobile.android, ...stored.mobile?.android },
+      advanced: { ...defaultSettings.mobile.advanced, ...stored.mobile?.advanced },
     },
     plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },

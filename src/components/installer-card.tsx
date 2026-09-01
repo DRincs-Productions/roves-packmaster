@@ -1,6 +1,4 @@
 import { PLATFORM_ICONS, type Platform } from "@/components/platform-toggle";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Combobox,
   ComboboxChip,
@@ -13,6 +11,7 @@ import {
   useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface FormatOption {
   value: string;
@@ -37,6 +36,10 @@ interface InstallerCardProps {
   unavailableReason: string | null;
 }
 
+/** The toggle itself is a whole clickable card, mirroring platform-toggle.tsx's own
+ * PlatformToggle (used for the "Portable" section above) rather than a separate checkbox --
+ * same look, same click-anywhere-on-the-card interaction, for both sections. The format
+ * picker (only relevant once enabled) sits below as its own, separately-interactive area. */
 export function InstallerCard({
   platform,
   title,
@@ -52,27 +55,31 @@ export function InstallerCard({
   const PlatformIcon = PLATFORM_ICONS[platform];
   const anchor = useComboboxAnchor();
   const isAvailable = available ?? true;
+  const selected = isAvailable && enabled;
 
   return (
-    <Card className="flex-1">
-      <CardHeader className="flex-row items-center justify-between gap-2">
-        <CardTitle className="flex items-center gap-2">
-          <PlatformIcon size={20} />
-          {title}
-        </CardTitle>
-        <Checkbox
-          checked={isAvailable && enabled}
-          disabled={!isAvailable}
-          onCheckedChange={(checked) => onEnabledChange(checked === true)}
-        />
-      </CardHeader>
+    <div className="flex flex-1 flex-col gap-2">
+      <button
+        type="button"
+        aria-pressed={selected}
+        disabled={!isAvailable}
+        onClick={() => onEnabledChange(!enabled)}
+        className={cn(
+          "flex w-full flex-1 flex-col items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          selected
+            ? "border-primary bg-primary/10 text-primary"
+            : "border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        )}
+      >
+        <PlatformIcon size={28} weight={selected ? "fill" : "regular"} />
+        {title}
+      </button>
       {!isAvailable && unavailableReason && (
-        <CardContent>
-          <p className="text-muted-foreground text-xs">{unavailableReason}</p>
-        </CardContent>
+        <p className="text-muted-foreground text-xs">{unavailableReason}</p>
       )}
-      {isAvailable && enabled && (
-        <CardContent className="flex flex-col gap-1.5">
+      {selected && (
+        <div className="flex flex-col gap-1.5 rounded-lg border px-3 py-2.5">
           <Label className="text-muted-foreground text-xs">{typeLabel}</Label>
           <Combobox
             multiple
@@ -95,8 +102,8 @@ export function InstallerCard({
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

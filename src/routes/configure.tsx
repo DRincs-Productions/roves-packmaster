@@ -3,8 +3,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AndroidCard } from "@/components/android-card";
 import { InstallerCard } from "@/components/installer-card";
+import { type MobilePlatform, MobilePlatformToggle } from "@/components/mobile-platform-toggle";
 import { type Platform, PlatformToggle } from "@/components/platform-toggle";
 import {
   Accordion,
@@ -17,6 +17,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -24,15 +31,31 @@ import {
   type InstallerAvailability,
 } from "@/lib/installer-availability";
 import { readParentPackageJson } from "@/lib/release-info";
+import type { MobileOrientation } from "@/lib/settings";
 import { useSettings } from "@/lib/settings-context";
 import { checkShellAvailability } from "@/lib/shell-availability";
-import { readWebManifest } from "@/lib/web-manifest";
+import { readWebManifest, type WebManifestInfo } from "@/lib/web-manifest";
 
 export const Route = createFileRoute("/configure")({
   component: ConfigureView,
 });
 
 const PORTABLE_PLATFORMS: Platform[] = ["windows", "linux", "macos"];
+
+// Only "android" exists as a card today -- "ios" joins this list once that platform actually
+// exists (see mobile-platform-toggle.tsx and settings.ts's own MobileSettings comment).
+const MOBILE_PLATFORMS: MobilePlatform[] = ["android"];
+
+const MOBILE_ORIENTATIONS: MobileOrientation[] = [
+  "any",
+  "natural",
+  "landscape",
+  "landscape-primary",
+  "landscape-secondary",
+  "portrait",
+  "portrait-primary",
+  "portrait-secondary",
+];
 
 // Only one real installer format exists per platform today — see README.md's own
 // "nsis/rpm/appimage aren't implemented yet" — but each card's format picker is a
@@ -62,7 +85,7 @@ function ConfigureView() {
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
   const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam"]);
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
-  const [webManifestFile, setWebManifestFile] = useState<string | null>(null);
+  const [webManifestInfo, setWebManifestInfo] = useState<WebManifestInfo | null>(null);
   const [useWebManifest, setUseWebManifest] = useState(true);
 
   // A direct navigation here (or a reload) with no source picked yet has
@@ -124,7 +147,7 @@ function ConfigureView() {
   }, [settings.sourceDir]);
 
   // Whether a project has its own web app manifest is a per-project fact, not a persisted
-  // global preference (see settings.ts's AndroidSettings comment) -- re-derived fresh every
+  // global preference (see settings.ts's MobileSettings comment) -- re-derived fresh every
   // time the source folder changes, defaulting the switch to "on" whenever one is found,
   // exactly as requested. The user can still flip it off within this session (e.g. to type
   // manual overrides even though a manifest exists), it just isn't remembered afterward.
@@ -134,7 +157,7 @@ function ConfigureView() {
     let cancelled = false;
     readWebManifest(sourceDir).then((manifest) => {
       if (cancelled) return;
-      setWebManifestFile(manifest?.file ?? null);
+      setWebManifestInfo(manifest);
       setUseWebManifest(Boolean(manifest));
     });
     return () => {
@@ -156,6 +179,18 @@ function ConfigureView() {
   const unavailablePlatforms = PORTABLE_PLATFORMS.filter((p) => availability?.[p] === false);
   const steamAppIdInvalid =
     settings.plugins.steam.enabled && !isValidSteamAppId(settings.plugins.steam.appId);
+
+  // "Mobile" advanced settings only make sense once at least one mobile platform is enabled
+  // (currently just Android) -- see settings.ts's MobileSettings comment on why these are
+  // shared across mobile platforms rather than duplicated per platform.
+  const anyMobileEnabled = settings.mobile.android.enabled;
+  const manifestDriven = Boolean(webManifestInfo) && useWebManifest;
+  const displayedAppName = manifestDriven
+    ? webManifestInfo?.shortName || webManifestInfo?.name || ""
+    : settings.mobile.advanced.appName;
+  const displayedOrientation = manifestDriven
+    ? ((webManifestInfo?.orientation as MobileOrientation | undefined) ?? "")
+    : settings.mobile.advanced.orientation;
 
   const handleBrowseIcon = async (kind: "png" | "ico") => {
     const path = await open({
@@ -271,82 +306,165 @@ function ConfigureView() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">{t("configure.installers.title")}</h2>
-          <p className="text-muted-foreground text-sm">{t("configure.installers.description")}</p>
-        </div>
-        <div className="flex gap-3">
-          {PORTABLE_PLATFORMS.map((p) => (
-            <InstallerCard
-              key={p}
-              platform={p}
-              title={t(`configure.installers.${p}`)}
-              typeLabel={t("configure.installers.typeLabel")}
-              enabled={settings.installers[p].enabled}
-              onEnabledChange={(enabled) =>
-                updateSettings({
-                  installers: {
-                    ...settings.installers,
-                    [p]: {
-                      ...settings.installers[p],
-                      enabled,
-                      // Default to the one real format that exists per platform today, so
-                      // enabling a card doesn't also require opening its (currently
-                      // single-option) format picker just to get anything selected.
-                      formats:
-                        enabled && settings.installers[p].formats.length === 0
-                          ? INSTALLER_FORMATS[p].map((f) => f.value)
-                          : settings.installers[p].formats,
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("configure.installers.title")}</CardTitle>
+          <CardDescription>{t("configure.installers.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <div className="flex gap-3">
+            {PORTABLE_PLATFORMS.map((p) => (
+              <InstallerCard
+                key={p}
+                platform={p}
+                title={t(`configure.installers.${p}`)}
+                typeLabel={t("configure.installers.typeLabel")}
+                enabled={settings.installers[p].enabled}
+                onEnabledChange={(enabled) =>
+                  updateSettings({
+                    installers: {
+                      ...settings.installers,
+                      [p]: {
+                        ...settings.installers[p],
+                        enabled,
+                        // Default to the one real format that exists per platform today, so
+                        // enabling a card doesn't also require opening its (currently
+                        // single-option) format picker just to get anything selected.
+                        formats:
+                          enabled && settings.installers[p].formats.length === 0
+                            ? INSTALLER_FORMATS[p].map((f) => f.value)
+                            : settings.installers[p].formats,
+                      },
                     },
-                  },
-                })
-              }
-              available={installerAvailability ? installerAvailability[p].available : null}
-              unavailableReason={installerAvailability ? installerAvailability[p].reason : null}
-              availableFormats={INSTALLER_FORMATS[p]}
-              formats={settings.installers[p].formats}
-              onFormatsChange={(formats) =>
-                updateSettings({
-                  installers: {
-                    ...settings.installers,
-                    [p]: { ...settings.installers[p], formats },
-                  },
-                })
-              }
-            />
-          ))}
-        </div>
-      </div>
+                  })
+                }
+                available={installerAvailability ? installerAvailability[p].available : null}
+                unavailableReason={installerAvailability ? installerAvailability[p].reason : null}
+                availableFormats={INSTALLER_FORMATS[p]}
+                formats={settings.installers[p].formats}
+                onFormatsChange={(formats) =>
+                  updateSettings({
+                    installers: {
+                      ...settings.installers,
+                      [p]: { ...settings.installers[p], formats },
+                    },
+                  })
+                }
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">{t("configure.mobile.title")}</h2>
-        </div>
-        <div className="flex gap-3">
-          <AndroidCard
-            enabled={settings.mobile.android.enabled}
-            onEnabledChange={(enabled) =>
-              updateSettings({ mobile: { android: { ...settings.mobile.android, enabled } } })
-            }
-            webManifestFile={webManifestFile}
-            useWebManifest={useWebManifest}
-            onUseWebManifestChange={setUseWebManifest}
-            appName={settings.mobile.android.appName}
-            onAppNameChange={(appName) =>
-              updateSettings({ mobile: { android: { ...settings.mobile.android, appName } } })
-            }
-            orientation={settings.mobile.android.orientation}
-            onOrientationChange={(orientation) =>
-              updateSettings({ mobile: { android: { ...settings.mobile.android, orientation } } })
-            }
-            themeColor={settings.mobile.android.themeColor}
-            onThemeColorChange={(themeColor) =>
-              updateSettings({ mobile: { android: { ...settings.mobile.android, themeColor } } })
-            }
-          />
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("configure.mobile.title")}</CardTitle>
+          <CardDescription>{t("configure.mobile.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex gap-3">
+            {MOBILE_PLATFORMS.map((p) => (
+              <MobilePlatformToggle
+                key={p}
+                platform={p}
+                label={t(`configure.mobile.${p}`)}
+                selected={settings.mobile[p].enabled}
+                onSelectedChange={(enabled) =>
+                  updateSettings({ mobile: { ...settings.mobile, [p]: { enabled } } })
+                }
+              />
+            ))}
+          </div>
+
+          {anyMobileEnabled && (
+            <Accordion className="gap-4">
+              <AccordionItem
+                value="mobile-advanced"
+                className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+              >
+                <AccordionTrigger>{t("configure.mobileAdvanced.title")}</AccordionTrigger>
+                <AccordionContent className="flex flex-col gap-4">
+                  <p className="text-muted-foreground text-sm">
+                    {t("configure.mobileAdvanced.description")}
+                  </p>
+
+                  {webManifestInfo ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <Label>{t("configure.mobileAdvanced.useWebManifestLabel")}</Label>
+                        <p className="text-muted-foreground text-xs">
+                          {t("configure.mobileAdvanced.useWebManifestFound", {
+                            file: webManifestInfo.file,
+                          })}
+                        </p>
+                      </div>
+                      <Switch checked={useWebManifest} onCheckedChange={setUseWebManifest} />
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      {t("configure.mobileAdvanced.useWebManifestNotFound")}
+                    </p>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="mobile-app-name">
+                      {t("configure.mobileAdvanced.appNameLabel")}
+                    </Label>
+                    <Input
+                      id="mobile-app-name"
+                      disabled={manifestDriven}
+                      placeholder={t("configure.mobileAdvanced.appNamePlaceholder")}
+                      value={displayedAppName}
+                      onChange={(e) =>
+                        updateSettings({
+                          mobile: {
+                            ...settings.mobile,
+                            advanced: { ...settings.mobile.advanced, appName: e.target.value },
+                          },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="mobile-orientation">
+                      {t("configure.mobileAdvanced.orientationLabel")}
+                    </Label>
+                    <Select
+                      disabled={manifestDriven}
+                      value={displayedOrientation}
+                      onValueChange={(value) =>
+                        updateSettings({
+                          mobile: {
+                            ...settings.mobile,
+                            advanced: {
+                              ...settings.mobile.advanced,
+                              orientation: (value as MobileOrientation) ?? "",
+                            },
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger id="mobile-orientation" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOBILE_ORIENTATIONS.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {t(
+                              `configure.mobileAdvanced.orientationOptions.${value.replace(/-/g, "_")}`,
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t("configure.advanced.title")}</h2>

@@ -93,29 +93,27 @@
 		"startButton": "Generar versión",
 		"mobile": {
 			"title": "Móvil",
-			"android": {
-				"title": "Android",
-				"description": "Genera un .apk de depuración para Android junto con tu versión de escritorio.",
-				"comingSoonNotice": "El empaquetado para Android aún no está disponible en Packmaster — esta configuración se guarda para cuando esté disponible, pero activarla no añade nada a tu versión generada todavía.",
-				"advancedTitle": "Configuración avanzada",
-				"useWebManifestLabel": "Usar información de tu manifiesto de app web",
-				"useWebManifestFound": "Se encontró {{file}} en la salida de tu compilación — se usarán su nombre, orientación y color de la barra de estado. Desactívalo para configurarlos manualmente.",
-				"useWebManifestNotFound": "No se encontró manifest.webmanifest, manifest.json ni site.webmanifest en la salida de tu compilación — configúralos manualmente abajo, o añade uno a tu proyecto.",
-				"appNameLabel": "Nombre de la app",
-				"appNamePlaceholder": "Mi juego",
-				"orientationLabel": "Orientación de pantalla",
-				"orientationOptions": {
-					"any": "Cualquiera",
-					"natural": "Natural",
-					"landscape": "Horizontal (cualquier dirección)",
-					"landscape_primary": "Horizontal (bloqueada)",
-					"landscape_secondary": "Horizontal (bloqueada, invertida)",
-					"portrait": "Vertical (cualquier dirección)",
-					"portrait_primary": "Vertical (bloqueada)",
-					"portrait_secondary": "Vertical (bloqueada, invertida)"
-				},
-				"themeColorLabel": "Color de la barra de estado",
-				"themeColorPlaceholder": "#ffffff"
+			"description": "Genera un .apk de depuración para Android junto con tu versión de escritorio. Aún no disponible en Packmaster — tus elecciones aquí se guardan para cuando esté disponible.",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "Configuración avanzada",
+			"description": "Compartido entre todas las plataformas móviles habilitadas (por ahora, solo Android).",
+			"useWebManifestLabel": "Usar información de tu manifiesto de app web",
+			"useWebManifestFound": "Se encontró {{file}} en la salida de tu compilación — se usarán su nombre y orientación. Desactívalo para configurarlos manualmente.",
+			"useWebManifestNotFound": "No se encontró manifest.webmanifest, manifest.json ni site.webmanifest en la salida de tu compilación — configúralos manualmente abajo, o añade uno a tu proyecto.",
+			"appNameLabel": "Nombre de la app",
+			"appNamePlaceholder": "Mi juego",
+			"orientationLabel": "Orientación de pantalla",
+			"orientationOptions": {
+				"any": "Cualquiera",
+				"natural": "Natural",
+				"landscape": "Horizontal (cualquier dirección)",
+				"landscape_primary": "Horizontal (bloqueada)",
+				"landscape_secondary": "Horizontal (bloqueada, invertida)",
+				"portrait": "Vertical (cualquier dirección)",
+				"portrait_primary": "Vertical (bloqueada)",
+				"portrait_secondary": "Vertical (bloqueada, invertida)"
 			}
 		}
 	},

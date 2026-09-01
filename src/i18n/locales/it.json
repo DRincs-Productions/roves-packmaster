@@ -93,29 +93,27 @@
 		"startButton": "Genera release",
 		"mobile": {
 			"title": "Mobile",
-			"android": {
-				"title": "Android",
-				"description": "Genera un .apk di debug per Android insieme alla tua release desktop.",
-				"comingSoonNotice": "Il bundling Android non è ancora disponibile in Packmaster — queste impostazioni vengono salvate in vista del supporto futuro, ma abilitarlo non aggiunge ancora nulla alla release generata.",
-				"advancedTitle": "Impostazioni avanzate",
-				"useWebManifestLabel": "Prendi le info dal web app manifest",
-				"useWebManifestFound": "Trovato {{file}} nell'output della build — verranno usati il suo nome, l'orientamento e il colore della status bar. Disattiva per impostarli manualmente.",
-				"useWebManifestNotFound": "Nessun manifest.webmanifest, manifest.json o site.webmanifest trovato nell'output della build — impostali manualmente qui sotto, oppure aggiungine uno al progetto.",
-				"appNameLabel": "Nome dell'app",
-				"appNamePlaceholder": "Il mio gioco",
-				"orientationLabel": "Orientamento schermo",
-				"orientationOptions": {
-					"any": "Qualsiasi",
-					"natural": "Naturale",
-					"landscape": "Orizzontale (entrambe le direzioni)",
-					"landscape_primary": "Orizzontale (bloccato)",
-					"landscape_secondary": "Orizzontale (bloccato, invertito)",
-					"portrait": "Verticale (entrambe le direzioni)",
-					"portrait_primary": "Verticale (bloccato)",
-					"portrait_secondary": "Verticale (bloccato, invertito)"
-				},
-				"themeColorLabel": "Colore della status bar",
-				"themeColorPlaceholder": "#ffffff"
+			"description": "Genera un .apk di debug per Android insieme alla tua release desktop. Non ancora disponibile in Packmaster — le tue scelte qui vengono salvate in vista del supporto futuro.",
+			"android": "Android"
+		},
+		"mobileAdvanced": {
+			"title": "Impostazioni avanzate",
+			"description": "Condivise tra tutte le piattaforme mobile abilitate (per ora solo Android).",
+			"useWebManifestLabel": "Prendi le info dal web app manifest",
+			"useWebManifestFound": "Trovato {{file}} nell'output della build — verranno usati il suo nome e l'orientamento. Disattiva per impostarli manualmente.",
+			"useWebManifestNotFound": "Nessun manifest.webmanifest, manifest.json o site.webmanifest trovato nell'output della build — impostali manualmente qui sotto, oppure aggiungine uno al progetto.",
+			"appNameLabel": "Nome dell'app",
+			"appNamePlaceholder": "Il mio gioco",
+			"orientationLabel": "Orientamento schermo",
+			"orientationOptions": {
+				"any": "Qualsiasi",
+				"natural": "Naturale",
+				"landscape": "Orizzontale (entrambe le direzioni)",
+				"landscape_primary": "Orizzontale (bloccato)",
+				"landscape_secondary": "Orizzontale (bloccato, invertito)",
+				"portrait": "Verticale (entrambe le direzioni)",
+				"portrait_primary": "Verticale (bloccato)",
+				"portrait_secondary": "Verticale (bloccato, invertito)"
 			}
 		}
 	},

@@ -5,7 +5,6 @@ export interface WebManifestInfo {
   name?: string;
   shortName?: string;
   orientation?: string;
-  themeColor?: string;
 }
 
 // Same 3 filenames, same order, as the engine's own `_read_web_manifest` (see
@@ -33,7 +32,6 @@ export async function readWebManifest(sourceDir: string): Promise<WebManifestInf
         name: typeof json.name === "string" ? json.name : undefined,
         shortName: typeof json.short_name === "string" ? json.short_name : undefined,
         orientation: typeof json.orientation === "string" ? json.orientation : undefined,
-        themeColor: typeof json.theme_color === "string" ? json.theme_color : undefined,
       };
     } catch {
       // Malformed JSON -- try the next candidate rather than failing outright.
