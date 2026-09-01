@@ -93,7 +93,7 @@
 		"startButton": "릴리스 생성",
 		"mobile": {
 			"title": "모바일",
-			"description": "데스크톱 릴리스와 함께 Android용 디버그 .apk를 빌드합니다. Packmaster에서 아직 지원되지 않습니다 — 여기서 선택한 내용은 향후 지원을 위해 저장됩니다.",
+			"description": "데스크톱 릴리스와 함께 Android용 디버그 .apk를 빌드합니다. 실험적 기능: 현재는 Linux/macOS에서만 지원되며, 디버그 서명된 .apk가 생성됩니다(Play 스토어에 게시 불가).",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "{{platform}} 패키지 조립 중…",
 			"packing": "{{platform}}용 콘텐츠 패킹 중…",
 			"zipping": "{{platform}} 빌드 패키징 중…",
-			"done": "{{platform}} 완료"
+			"done": "{{platform}} 완료",
+			"packaging": "{{platform}} 설치 프로그램을 만드는 중…",
+			"downloading-jre": "Android용 Java 런타임을 다운로드하는 중…",
+			"downloading-sdk": "Android SDK를 다운로드하는 중…",
+			"downloading-ndk": "Android NDK를 다운로드하는 중…",
+			"downloading-project": "Android 빌드 프로젝트를 다운로드하는 중…",
+			"downloading-native": "컴파일된 엔진 라이브러리를 다운로드하는 중…"
 		},
 		"doneTitle": "릴리스가 준비되었습니다",
 		"doneDescription": "Packmaster가 모든 내용을 {{folder}} 폴더에 저장했습니다.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "Roves Packmaster 정보",

@@ -50,6 +50,12 @@ walkdir = "2"
 # tool already installed, unlike the portable/shell-download path.
 uuid = { version = "1", features = ["v4", "v5"] }
 
+# Real Android APK generation (see src/android.rs): a portable JRE (Eclipse Temurin) and the
+# Android SDK/NDK ship as .tar.gz on Linux/macOS (the JRE) -- `zip` above already covers the
+# SDK/project zips and the NDK's own Linux/Windows .zip.
+tar = "0.4"
+flate2 = "1"
+
 [dev-dependencies]
 tempfile = "3"
 

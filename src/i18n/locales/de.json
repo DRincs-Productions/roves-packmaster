@@ -93,7 +93,7 @@
 		"startButton": "Release generieren",
 		"mobile": {
 			"title": "Mobil",
-			"description": "Erstellt zusätzlich zu deiner Desktop-Version eine Debug-.apk für Android. In Packmaster noch nicht verfügbar — deine Auswahl hier wird für später gespeichert.",
+			"description": "Erstellt zusätzlich zu deiner Desktop-Version eine Debug-.apk für Android. Experimentell: vorerst nur Linux/macOS, erzeugt eine debug-signierte .apk, die nicht im Play Store veröffentlicht werden kann.",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "Paket für {{platform}} wird zusammengestellt…",
 			"packing": "Inhalte für {{platform}} werden gepackt…",
 			"zipping": "Build für {{platform}} wird verpackt…",
-			"done": "{{platform}} fertig"
+			"done": "{{platform}} fertig",
+			"packaging": "{{platform}}-Installationsprogramm wird erstellt…",
+			"downloading-jre": "Java-Laufzeitumgebung für Android wird heruntergeladen…",
+			"downloading-sdk": "Android SDK wird heruntergeladen…",
+			"downloading-ndk": "Android NDK wird heruntergeladen…",
+			"downloading-project": "Android-Build-Projekt wird heruntergeladen…",
+			"downloading-native": "Kompilierte Engine-Bibliothek wird heruntergeladen…"
 		},
 		"doneTitle": "Dein Release ist bereit",
 		"doneDescription": "Packmaster hat alles im Ordner {{folder}} gespeichert.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "Über Roves Packmaster",

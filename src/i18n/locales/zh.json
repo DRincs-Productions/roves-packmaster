@@ -93,7 +93,7 @@
 		"startButton": "生成发行版",
 		"mobile": {
 			"title": "移动端",
-			"description": "在生成桌面版的同时，构建一个用于 Android 的调试 .apk。Packmaster 尚不支持——这里的选择会被保存，以便日后支持时使用。",
+			"description": "在生成桌面版的同时，构建一个用于 Android 的调试 .apk。实验性功能：目前仅支持 Linux/macOS，生成的是调试签名的 .apk，无法发布到 Play 商店。",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "正在组装 {{platform}} 软件包…",
 			"packing": "正在为 {{platform}} 打包内容…",
 			"zipping": "正在打包 {{platform}} 版本…",
-			"done": "{{platform}} 已完成"
+			"done": "{{platform}} 已完成",
+			"packaging": "正在创建 {{platform}} 安装程序……",
+			"downloading-jre": "正在下载 Android 所需的 Java 运行时……",
+			"downloading-sdk": "正在下载 Android SDK……",
+			"downloading-ndk": "正在下载 Android NDK……",
+			"downloading-project": "正在下载 Android 构建项目……",
+			"downloading-native": "正在下载已编译的引擎库……"
 		},
 		"doneTitle": "发行版已就绪",
 		"doneDescription": "Packmaster 已将所有内容保存到 {{folder}} 文件夹。",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "关于 Roves Packmaster",

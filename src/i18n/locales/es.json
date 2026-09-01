@@ -93,7 +93,7 @@
 		"startButton": "Generar versión",
 		"mobile": {
 			"title": "Móvil",
-			"description": "Genera un .apk de depuración para Android junto con tu versión de escritorio. Aún no disponible en Packmaster — tus elecciones aquí se guardan para cuando esté disponible.",
+			"description": "Genera un .apk de depuración para Android junto con tu versión de escritorio. Experimental: por ahora solo Linux/macOS, y produce un .apk firmado en modo debug, no publicable en la Play Store.",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "Ensamblando el paquete de {{platform}}…",
 			"packing": "Empaquetando tu contenido para {{platform}}…",
 			"zipping": "Empaquetando la build de {{platform}}…",
-			"done": "{{platform}} completado"
+			"done": "{{platform}} completado",
+			"packaging": "Creando el instalador de {{platform}}…",
+			"downloading-jre": "Descargando un runtime de Java para Android…",
+			"downloading-sdk": "Descargando el SDK de Android…",
+			"downloading-ndk": "Descargando el NDK de Android…",
+			"downloading-project": "Descargando el proyecto de compilación de Android…",
+			"downloading-native": "Descargando la biblioteca del motor compilada…"
 		},
 		"doneTitle": "Tu versión está lista",
 		"doneDescription": "Packmaster guardó todo en la carpeta {{folder}}.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "Acerca de Roves Packmaster",

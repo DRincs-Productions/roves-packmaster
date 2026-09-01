@@ -93,7 +93,7 @@
 		"startButton": "Genera release",
 		"mobile": {
 			"title": "Mobile",
-			"description": "Genera un .apk di debug per Android insieme alla tua release desktop. Non ancora disponibile in Packmaster — le tue scelte qui vengono salvate in vista del supporto futuro.",
+			"description": "Genera un .apk di debug per Android insieme alla tua release desktop. Sperimentale: per ora solo Linux/macOS, e produce un .apk firmato in debug, non pubblicabile sul Play Store.",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "Assemblaggio del pacchetto per {{platform}}…",
 			"packing": "Confezionamento dei contenuti per {{platform}}…",
 			"zipping": "Impacchettamento della build {{platform}}…",
-			"done": "{{platform}} completato"
+			"done": "{{platform}} completato",
+			"packaging": "Creazione dell'installer per {{platform}}…",
+			"downloading-jre": "Download del runtime Java per Android…",
+			"downloading-sdk": "Download dell'SDK Android…",
+			"downloading-ndk": "Download dell'NDK Android…",
+			"downloading-project": "Download del progetto di build Android…",
+			"downloading-native": "Download della libreria del motore compilata…"
 		},
 		"doneTitle": "La tua release è pronta",
 		"doneDescription": "Packmaster ha salvato tutto nella cartella {{folder}}.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "Informazioni su Roves Packmaster",

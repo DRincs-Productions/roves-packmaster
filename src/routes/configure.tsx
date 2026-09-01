@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { checkAndroidAvailability } from "@/lib/android-availability";
 import {
   checkInstallerAvailability,
   type InstallerAvailability,
@@ -87,6 +88,10 @@ function ConfigureView() {
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
   const [webManifestInfo, setWebManifestInfo] = useState<WebManifestInfo | null>(null);
   const [useWebManifest, setUseWebManifest] = useState(true);
+  const [androidAvailable, setAndroidAvailable] = useState<{
+    available: boolean;
+    reason: string | null;
+  } | null>(null);
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -102,6 +107,13 @@ function ConfigureView() {
   // this: an installer can only ever be built on its own platform.
   useEffect(() => {
     checkInstallerAvailability([...PORTABLE_PLATFORMS]).then(setInstallerAvailability);
+  }, []);
+
+  // Real, live check ("is this actually distributable") -- unlike desktop's portable
+  // bundling, Android packaging currently only runs on Linux/macOS (see
+  // src-tauri/src/android.rs's own doc comment for why).
+  useEffect(() => {
+    checkAndroidAvailability().then(setAndroidAvailable);
   }, []);
 
   // Real, live check ("is this actually distributable") against the targeted shell
@@ -183,7 +195,7 @@ function ConfigureView() {
   // "Mobile" advanced settings only make sense once at least one mobile platform is enabled
   // (currently just Android) -- see settings.ts's MobileSettings comment on why these are
   // shared across mobile platforms rather than duplicated per platform.
-  const anyMobileEnabled = settings.mobile.android.enabled;
+  const anyMobileEnabled = (androidAvailable?.available ?? true) && settings.mobile.android.enabled;
   const manifestDriven = Boolean(webManifestInfo) && useWebManifest;
   const displayedAppName = manifestDriven
     ? webManifestInfo?.shortName || webManifestInfo?.name || ""
@@ -368,13 +380,20 @@ function ConfigureView() {
                 key={p}
                 platform={p}
                 label={t(`configure.mobile.${p}`)}
-                selected={settings.mobile[p].enabled}
+                selected={(androidAvailable?.available ?? true) && settings.mobile[p].enabled}
+                disabled={androidAvailable !== null && !androidAvailable.available}
                 onSelectedChange={(enabled) =>
                   updateSettings({ mobile: { ...settings.mobile, [p]: { enabled } } })
                 }
               />
             ))}
           </div>
+          {androidAvailable && !androidAvailable.available && (
+            <p className="text-destructive flex items-center gap-1.5 text-xs">
+              <WarningCircle className="size-3.5 shrink-0" weight="fill" />
+              {androidAvailable.reason}
+            </p>
+          )}
 
           {anyMobileEnabled && (
             <Accordion className="gap-4">

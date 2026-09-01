@@ -49,7 +49,7 @@
 		},
 		"mobile": {
 			"title": "Mobile",
-			"description": "Build a debug .apk for Android alongside your desktop release. Not available yet in Packmaster — your choices here are saved for when it lands.",
+			"description": "Build a debug .apk for Android alongside your desktop release. Experimental: Linux/macOS only for now, and produces a debug-signed .apk, not something you can publish to the Play Store.",
 			"android": "Android"
 		},
 		"advanced": {
@@ -125,7 +125,13 @@
 			"assembling": "Assembling the {{platform}} package…",
 			"packing": "Packing your content for {{platform}}…",
 			"zipping": "Packaging the {{platform}} build…",
-			"done": "{{platform}} done"
+			"done": "{{platform}} done",
+			"packaging": "Packaging the {{platform}} installer…",
+			"downloading-jre": "Downloading a Java runtime for Android…",
+			"downloading-sdk": "Downloading the Android SDK…",
+			"downloading-ndk": "Downloading the Android NDK…",
+			"downloading-project": "Downloading the Android build project…",
+			"downloading-native": "Downloading the compiled engine library…"
 		},
 		"doneTitle": "Your release is ready",
 		"doneDescription": "Packmaster saved everything to the {{folder}} folder.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "About Roves Packmaster",

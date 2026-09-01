@@ -58,10 +58,39 @@ pub struct IconSettings {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MobilePlatformSettings {
+    pub enabled: bool,
+}
+
+/// Shared across every mobile platform (Android today) — mirrors `src/lib/settings.ts`'s
+/// `MobileAdvancedSettings`. Both fields are manual *overrides*: an empty string means
+/// "nothing explicitly set", in which case `android.rs`'s own `read_web_manifest` resolves
+/// the real value from the project's web app manifest instead — the frontend's own "use info
+/// from your web app manifest" switch is deliberately not sent here at all (see
+/// `configure.tsx`'s own comment: it's per-project derived UI state, not a setting), so this
+/// same "non-empty override always wins, else fall back to the manifest" precedence is the
+/// only thing that needs to agree between the two sides.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MobileAdvancedSettings {
+    pub app_name: String,
+    pub orientation: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MobileSettings {
+    pub android: MobilePlatformSettings,
+    pub advanced: MobileAdvancedSettings,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PackmasterSettings {
     pub source_dir: Option<String>,
     pub portable: PortableSettings,
     pub installers: InstallerSettings,
+    pub mobile: MobileSettings,
     pub plugins: PluginSettings,
     pub compression: CompressionSettings,
     pub icon: IconSettings,

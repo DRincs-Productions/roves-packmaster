@@ -93,7 +93,7 @@
 		"startButton": "リリースを生成",
 		"mobile": {
 			"title": "モバイル",
-			"description": "デスクトップ版と一緒に、Android 向けのデバッグ用 .apk を生成します。Packmaster ではまだ利用できません — ここでの選択は将来のために保存されます。",
+			"description": "デスクトップ版と一緒に、Android 向けのデバッグ用 .apk を生成します。実験的機能: 現時点では Linux/macOS のみ対応で、生成されるのはデバッグ署名の .apk（Play ストアには公開できません）。",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "{{platform}} 用パッケージを組み立てています…",
 			"packing": "{{platform}} 向けにコンテンツを梱包しています…",
 			"zipping": "{{platform}} 用ビルドをパッケージ化しています…",
-			"done": "{{platform}} 完了"
+			"done": "{{platform}} 完了",
+			"packaging": "{{platform}} インストーラーを作成しています…",
+			"downloading-jre": "Android 用の Java ランタイムをダウンロードしています…",
+			"downloading-sdk": "Android SDK をダウンロードしています…",
+			"downloading-ndk": "Android NDK をダウンロードしています…",
+			"downloading-project": "Android ビルドプロジェクトをダウンロードしています…",
+			"downloading-native": "コンパイル済みのエンジンライブラリをダウンロードしています…"
 		},
 		"doneTitle": "リリースの準備ができました",
 		"doneDescription": "Packmaster はすべてを {{folder}} フォルダーに保存しました。",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "Roves Packmaster について",

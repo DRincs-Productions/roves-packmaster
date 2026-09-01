@@ -93,7 +93,7 @@
 		"startButton": "Générer la version",
 		"mobile": {
 			"title": "Mobile",
-			"description": "Génère un .apk de débogage pour Android en plus de ta version bureau. Pas encore disponible dans Packmaster — tes choix ici sont enregistrés pour quand ce sera le cas.",
+			"description": "Génère un .apk de débogage pour Android en plus de ta version bureau. Expérimental : pour l'instant Linux/macOS uniquement, et produit un .apk signé en mode débogage, non publiable sur le Play Store.",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "Assemblage du paquet {{platform}}…",
 			"packing": "Empaquetage de votre contenu pour {{platform}}…",
 			"zipping": "Empaquetage de la version {{platform}}…",
-			"done": "{{platform}} terminé"
+			"done": "{{platform}} terminé",
+			"packaging": "Création de l'installateur {{platform}}…",
+			"downloading-jre": "Téléchargement d'un runtime Java pour Android…",
+			"downloading-sdk": "Téléchargement du SDK Android…",
+			"downloading-ndk": "Téléchargement du NDK Android…",
+			"downloading-project": "Téléchargement du projet de build Android…",
+			"downloading-native": "Téléchargement de la bibliothèque moteur compilée…"
 		},
 		"doneTitle": "Votre version est prête",
 		"doneDescription": "Packmaster a tout enregistré dans le dossier {{folder}}.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "À propos de Roves Packmaster",

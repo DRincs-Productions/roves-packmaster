@@ -93,7 +93,7 @@
 		"startButton": "Создать релиз",
 		"mobile": {
 			"title": "Мобильные",
-			"description": "Собрать отладочный .apk для Android вместе с версией для настольных систем. Пока недоступно в Packmaster — ваш выбор здесь сохраняется на будущее.",
+			"description": "Собрать отладочный .apk для Android вместе с версией для настольных систем. Экспериментально: пока только Linux/macOS, создаётся .apk с отладочной подписью, непригодный для публикации в Play Store.",
 			"android": "Android"
 		},
 		"mobileAdvanced": {
@@ -125,7 +125,13 @@
 			"assembling": "Сборка пакета для {{platform}}…",
 			"packing": "Упаковка контента для {{platform}}…",
 			"zipping": "Упаковка сборки {{platform}}…",
-			"done": "{{platform}} готово"
+			"done": "{{platform}} готово",
+			"packaging": "Создание установщика {{platform}}…",
+			"downloading-jre": "Загрузка Java-среды для Android…",
+			"downloading-sdk": "Загрузка Android SDK…",
+			"downloading-ndk": "Загрузка Android NDK…",
+			"downloading-project": "Загрузка проекта сборки Android…",
+			"downloading-native": "Загрузка скомпилированной библиотеки движка…"
 		},
 		"doneTitle": "Релиз готов",
 		"doneDescription": "Packmaster сохранил всё в папку {{folder}}.",
@@ -137,7 +143,8 @@
 	"system": {
 		"windows": "Windows",
 		"macos": "macOS",
-		"linux": "Linux"
+		"linux": "Linux",
+		"android": "Android"
 	},
 	"info": {
 		"trigger": "О Roves Packmaster",
