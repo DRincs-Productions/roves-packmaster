@@ -21,6 +21,30 @@ icona per il Dock, ora c'è. Non verificato con una build reale (nessun ambiente
 in questa sessione — vedi il commit per il disclaimer, stessa cautela già usata per il
 backend Android).
 
+## 2. Firma dell'APK Android generato da Packmaster
+
+**Stato:** noto, non ancora iniziato — vedi il `TODO.md` del motore `roves`, voce #5, per il
+lato engine/Gradle di questo stesso obiettivo.
+
+Oggi `android.rs` produce solo un `.apk` di debug (firmato con il keystore di debug standard di
+Gradle) — non distribuibile. Per un vero .apk di release, Packmaster dovrebbe offrire un modo
+per l'utente di generare o importare un keystore reale (a differenza di `roves-action`, qui non
+c'è un GitHub Secrets a cui appoggiarsi — l'utente non ha necessariamente `keytool`/Android
+Studio installati, quindi probabilmente va generato con lo stesso Android SDK/JDK che Packmaster
+già scarica da solo) e passarne le credenziali al task Gradle di release al posto di quello di
+debug. Da decidere anche come/se persistere il keystore tra un utilizzo e l'altro senza
+rischiare di esporne la chiave privata.
+
+## 3. Supporto Android su Windows
+
+**Stato:** bloccato lato engine — vedi il `TODO.md` del motore `roves`, voci #4 e #6.
+
+`check_android_availability()` in `android.rs` disabilita esplicitamente l'opzione Android
+quando Packmaster gira su Windows, perché il task Gradle che copia `libservoshell.so` invoca
+`ndk-build` senza fallback `.cmd` (fallisce su Windows a prescindere da chi lo invoca). Nessuna
+modifica possibile qui finché quel punto non è risolto lato motore (è un file Gradle
+vendorizzato di Servo, non qualcosa che Packmaster possa aggirare da solo).
+
 ## Note
 
 - **2026-09-01 — differenza tra le due icone attuali (chiarimento, non un problema):**
