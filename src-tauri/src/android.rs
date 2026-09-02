@@ -141,7 +141,7 @@ fn tools_cache_dir(app: &AppHandle) -> Result<PathBuf, String> {
 async fn download_with_retries(
     url: &str,
     dest: &Path,
-    on_progress: &mut impl FnMut(f64) + Send,
+    on_progress: &mut (impl FnMut(f64) + Send),
 ) -> Result<(), String> {
     use futures_util::StreamExt;
     use tokio::io::AsyncWriteExt;
