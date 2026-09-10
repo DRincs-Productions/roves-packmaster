@@ -303,7 +303,7 @@ fn sdkmanager_path(cmdline_tools_dir: &Path) -> PathBuf {
 /// `cmd.exe` typing a bare name does. Routing through `cmd /C` explicitly is the standard,
 /// robust fix (same approach Cargo/rustup's own Windows batch-script wrappers use). A no-op
 /// everywhere else: returns a plain `Command::new(program)`, unchanged.
-fn script_command(program: &Path) -> std::process::Command {
+pub(crate) fn script_command(program: &Path) -> std::process::Command {
     if cfg!(windows) && program.extension().and_then(|e| e.to_str()) == Some("bat") {
         let mut command = std::process::Command::new("cmd");
         command.arg("/C").arg(program);
@@ -548,6 +548,11 @@ pub struct AndroidBuildOptions<'a> {
     pub icon_png: Option<&'a Path>,
     pub app_name_override: &'a str,
     pub orientation_override: &'a str,
+    /// `Some` builds a real, signed release `.apk` (Gradle's `assemble<Arch>Release`,
+    /// signed via the 4 env vars `SigningConfig::env_vars` sets) instead of the default
+    /// debug one -- mirrors the engine's own `mach bundle --android-release`, see
+    /// `signing.rs`'s own doc comment for the full mechanism.
+    pub signing: Option<&'a crate::signing::SigningConfig>,
 }
 
 /// Builds a debug `.apk` and returns its path. `on_progress(phase, fraction)` mirrors
@@ -603,7 +608,17 @@ pub async fn build_apk(
     // The raw compiled library, at the exact path `ndk-build`'s own `jni/Android.mk`
     // (`LOCAL_PATH := $(SERVO_TARGET_DIR)`) will look for it -- mirrors the engine's own
     // `post_build_commands.py` setting `env["SERVO_TARGET_DIR"] = path.dirname(servo_binary)`.
-    let native_target_dir = scratch_root.join("native-src").join("debug");
+    //
+    // The directory's own *name* ("debug"/"release") isn't just cosmetic: buildSrc/
+    // Interop.kt's `getSubTargetDir` -- shared by both `getNativeTargetDir` (where ndk-build
+    // copies the .so from, driven by this env var) and `getTargetDir` (where Gradle's own
+    // `copyAndRename<Variant>APK` task writes the *final* .apk, this function's own
+    // `apk_path` below) -- takes `System.getenv("SERVO_TARGET_DIR")`'s basename over the
+    // actual Debug/Release build type whenever the env var is set, which it always is here.
+    // Get this wrong and the signed release .apk silently ends up under .../debug/ instead
+    // of .../release/, where `apk_path` below would never find it.
+    let build_type_dir_name = if options.signing.is_some() { "release" } else { "debug" };
+    let native_target_dir = scratch_root.join("native-src").join(build_type_dir_name);
     std::fs::create_dir_all(&native_target_dir).map_err(|e| e.to_string())?;
     std::fs::copy(&native_so, native_target_dir.join("libservoshell.so")).map_err(|e| e.to_string())?;
 
@@ -660,8 +675,10 @@ pub async fn build_apk(
         }
     }
 
-    let task = format!(":servoapp:assemble{ARCH_STRING}Debug");
-    let status = script_command(&gradlew)
+    let gradle_build_type = if options.signing.is_some() { "Release" } else { "Debug" };
+    let task = format!(":servoapp:assemble{ARCH_STRING}{gradle_build_type}");
+    let mut command = script_command(&gradlew);
+    command
         .current_dir(&apk_project_dir)
         .arg("--no-daemon")
         .arg(&task)
@@ -670,21 +687,30 @@ pub async fn build_apk(
         .env("JAVA_HOME", &java_home)
         .env("ANDROID_SDK_ROOT", &sdk_root)
         .env("ANDROID_NDK_ROOT", &ndk_root)
-        .env("SERVO_TARGET_DIR", &native_target_dir)
-        .status()
-        .map_err(|e| format!("running gradlew: {e}"))?;
+        .env("SERVO_TARGET_DIR", &native_target_dir);
+    // See `signing.rs`'s own doc comment: these 4 vars are the entire signing mechanism,
+    // read directly by upstream Servo's own (unpatched) buildSrc/Android.kt.
+    if let Some(signing) = options.signing {
+        for (key, value) in signing.env_vars() {
+            command.env(key, value);
+        }
+    }
+    let status = command.status().map_err(|e| format!("running gradlew: {e}"))?;
     if !status.success() {
         return Err(format!("gradlew exited with {status} while running {task}"));
     }
 
     // Same location `servoapp/build.gradle.kts`'s own `copyAndRename<Variant>APK` task
-    // writes to -- `getTargetDir(debug=true, "arm64")`, i.e. `<scratch_root>/target/
-    // aarch64-linux-android/debug/servoapp.apk` (see this function's own doc comment on the
-    // "three directories up" assumption that makes `<scratch_root>` play the repo-root role).
+    // writes to -- `getTargetDir(debug, "arm64")`, i.e. `<scratch_root>/target/
+    // aarch64-linux-android/<debug|release>/servoapp.apk` (see this function's own doc
+    // comment on the "three directories up" assumption that makes `<scratch_root>` play the
+    // repo-root role, and `native_target_dir`'s own doc comment above for why
+    // `build_type_dir_name` -- not the literal `gradle_build_type` -- is what actually
+    // determines this).
     let apk_path = scratch_root
         .join("target")
         .join(RUST_TRIPLE)
-        .join("debug")
+        .join(build_type_dir_name)
         .join("servoapp.apk");
     if !apk_path.is_file() {
         return Err(format!("gradlew succeeded but no .apk found at the expected path {apk_path:?}"));

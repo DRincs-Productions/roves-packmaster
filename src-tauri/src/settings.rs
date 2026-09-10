@@ -78,6 +78,12 @@ pub struct MobilePlatformSettings {
 pub struct MobileAdvancedSettings {
     pub app_name: String,
     pub orientation: String,
+    /// Build a real, signed release `.apk` (via `signing.rs`'s locally-generated/imported
+    /// keystore) instead of the default debug one. A separate, explicit opt-in rather than
+    /// "sign automatically whenever a keystore happens to be configured" -- a debug build
+    /// stays the quick, no-keystore-needed default even for someone who's already set one
+    /// up, e.g. while iterating and not yet ready to hand out a release build.
+    pub release_signing_enabled: bool,
 }
 
 #[derive(Debug, Deserialize)]

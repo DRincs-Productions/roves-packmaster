@@ -110,6 +110,23 @@
 				"portrait": "Hochformat (beide Richtungen)",
 				"portrait_primary": "Hochformat (fixiert)",
 				"portrait_secondary": "Hochformat (fixiert, umgekehrt)"
+			},
+			"signing": {
+				"title": "Release-Signierung",
+				"description": "Erstellt eine echte, signierte .apk statt nur einer Debug-Version. Erforderlich, bevor eine APK als Update einer vorherigen Version installiert oder irgendwo veröffentlicht werden kann.",
+				"enableLabel": "Signierte Release-APK erstellen",
+				"configuredAs": "Verwendet Keystore-Alias „{{alias}}“",
+				"remove": "Keystore entfernen",
+				"generate": "Neuen Keystore erstellen",
+				"generating": "Wird erstellt…",
+				"import": "Vorhandenen Keystore importieren",
+				"browse": "Durchsuchen…",
+				"keystorePathPlaceholder": "Keystore-Datei",
+				"keyAliasPlaceholder": "Schlüssel-Alias",
+				"storePasswordPlaceholder": "Keystore-Passwort",
+				"keyPasswordPlaceholder": "Schlüssel-Passwort",
+				"confirmImport": "Importieren",
+				"cancel": "Abbrechen"
 			}
 		}
 	},

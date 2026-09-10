@@ -74,6 +74,11 @@ export interface MobilePlatformSettings {
 export interface MobileAdvancedSettings {
   appName: string;
   orientation: MobileOrientation | "";
+  /** Build a real, signed release .apk instead of the default debug one -- see
+   * lib/android-signing.ts for the keystore this relies on. A separate opt-in from "is a
+   * keystore configured at all": generating/importing one doesn't itself switch future
+   * builds to release mode. */
+  releaseSigningEnabled: boolean;
 }
 
 export interface MobileSettings {
@@ -131,7 +136,7 @@ export const defaultSettings: PackmasterSettings = {
   },
   mobile: {
     android: { enabled: false },
-    advanced: { appName: "", orientation: "" },
+    advanced: { appName: "", orientation: "", releaseSigningEnabled: false },
   },
   plugins: {
     // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default

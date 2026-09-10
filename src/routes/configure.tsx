@@ -29,6 +29,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { checkAndroidAvailability } from "@/lib/android-availability";
 import {
+  type AndroidSigningStatus,
+  checkAndroidSigningStatus,
+  clearAndroidSigning,
+  generateAndroidKeystore,
+  importAndroidKeystore,
+} from "@/lib/android-signing";
+import {
   checkInstallerAvailability,
   type InstallerAvailability,
 } from "@/lib/installer-availability";
@@ -94,6 +101,16 @@ function ConfigureView() {
     reason: string | null;
   } | null>(null);
   const [detectedIconPath, setDetectedIconPath] = useState<string | null>(null);
+  const [signingStatus, setSigningStatus] = useState<AndroidSigningStatus | null>(null);
+  const [signingBusy, setSigningBusy] = useState(false);
+  const [signingError, setSigningError] = useState<string | null>(null);
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [importForm, setImportForm] = useState({
+    keystorePath: "",
+    keyAlias: "",
+    storePassword: "",
+    keyPassword: "",
+  });
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -117,6 +134,71 @@ function ConfigureView() {
   useEffect(() => {
     checkAndroidAvailability().then(setAndroidAvailable);
   }, []);
+
+  useEffect(() => {
+    checkAndroidSigningStatus().then(setSigningStatus);
+  }, []);
+
+  async function handleGenerateKeystore() {
+    setSigningBusy(true);
+    setSigningError(null);
+    try {
+      setSigningStatus(await generateAndroidKeystore());
+    } catch (error) {
+      setSigningError(String(error));
+    } finally {
+      setSigningBusy(false);
+    }
+  }
+
+  async function handleImportKeystore() {
+    setSigningBusy(true);
+    setSigningError(null);
+    try {
+      setSigningStatus(
+        await importAndroidKeystore(
+          importForm.keystorePath,
+          importForm.keyAlias,
+          importForm.storePassword,
+          importForm.keyPassword,
+        ),
+      );
+      setShowImportForm(false);
+      setImportForm({ keystorePath: "", keyAlias: "", storePassword: "", keyPassword: "" });
+    } catch (error) {
+      setSigningError(String(error));
+    } finally {
+      setSigningBusy(false);
+    }
+  }
+
+  async function handleClearSigning() {
+    setSigningBusy(true);
+    setSigningError(null);
+    try {
+      await clearAndroidSigning();
+      setSigningStatus({ configured: false, keystorePath: null, keyAlias: null });
+      if (settings.mobile.advanced.releaseSigningEnabled) {
+        updateSettings({
+          mobile: {
+            ...settings.mobile,
+            advanced: { ...settings.mobile.advanced, releaseSigningEnabled: false },
+          },
+        });
+      }
+    } catch (error) {
+      setSigningError(String(error));
+    } finally {
+      setSigningBusy(false);
+    }
+  }
+
+  async function handlePickKeystoreFile() {
+    const picked = await open({ multiple: false, directory: false });
+    if (typeof picked === "string") {
+      setImportForm((form) => ({ ...form, keystorePath: picked }));
+    }
+  }
 
   // Real, live check ("is this actually distributable") against the targeted shell
   // release's actual assets — not assumed just because it's a supported platform. Re-run
@@ -526,6 +608,150 @@ function ConfigureView() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t pt-4">
+                    <div>
+                      <Label>{t("configure.mobileAdvanced.signing.title")}</Label>
+                      <p className="text-muted-foreground text-xs">
+                        {t("configure.mobileAdvanced.signing.description")}
+                      </p>
+                    </div>
+
+                    {signingStatus?.configured ? (
+                      <>
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm">
+                              {t("configure.mobileAdvanced.signing.enableLabel")}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {t("configure.mobileAdvanced.signing.configuredAs", {
+                                alias: signingStatus.keyAlias,
+                              })}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={settings.mobile.advanced.releaseSigningEnabled}
+                            onCheckedChange={(checked) =>
+                              updateSettings({
+                                mobile: {
+                                  ...settings.mobile,
+                                  advanced: {
+                                    ...settings.mobile.advanced,
+                                    releaseSigningEnabled: checked,
+                                  },
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={signingBusy}
+                          onClick={handleClearSigning}
+                          className="self-start"
+                        >
+                          {t("configure.mobileAdvanced.signing.remove")}
+                        </Button>
+                      </>
+                    ) : showImportForm ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Input
+                            readOnly
+                            placeholder={t(
+                              "configure.mobileAdvanced.signing.keystorePathPlaceholder",
+                            )}
+                            value={importForm.keystorePath}
+                          />
+                          <Button type="button" variant="outline" onClick={handlePickKeystoreFile}>
+                            {t("configure.mobileAdvanced.signing.browse")}
+                          </Button>
+                        </div>
+                        <Input
+                          placeholder={t("configure.mobileAdvanced.signing.keyAliasPlaceholder")}
+                          value={importForm.keyAlias}
+                          onChange={(e) =>
+                            setImportForm((f) => ({ ...f, keyAlias: e.target.value }))
+                          }
+                        />
+                        <Input
+                          type="password"
+                          placeholder={t(
+                            "configure.mobileAdvanced.signing.storePasswordPlaceholder",
+                          )}
+                          value={importForm.storePassword}
+                          onChange={(e) =>
+                            setImportForm((f) => ({ ...f, storePassword: e.target.value }))
+                          }
+                        />
+                        <Input
+                          type="password"
+                          placeholder={t("configure.mobileAdvanced.signing.keyPasswordPlaceholder")}
+                          value={importForm.keyPassword}
+                          onChange={(e) =>
+                            setImportForm((f) => ({ ...f, keyPassword: e.target.value }))
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={
+                              signingBusy ||
+                              !importForm.keystorePath ||
+                              !importForm.keyAlias ||
+                              !importForm.storePassword ||
+                              !importForm.keyPassword
+                            }
+                            onClick={handleImportKeystore}
+                          >
+                            {t("configure.mobileAdvanced.signing.confirmImport")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={signingBusy}
+                            onClick={() => setShowImportForm(false)}
+                          >
+                            {t("configure.mobileAdvanced.signing.cancel")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={signingBusy}
+                          onClick={handleGenerateKeystore}
+                        >
+                          {signingBusy
+                            ? t("configure.mobileAdvanced.signing.generating")
+                            : t("configure.mobileAdvanced.signing.generate")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={signingBusy}
+                          onClick={() => setShowImportForm(true)}
+                        >
+                          {t("configure.mobileAdvanced.signing.import")}
+                        </Button>
+                      </div>
+                    )}
+
+                    {signingError && (
+                      <p className="text-destructive flex items-center gap-1.5 text-xs">
+                        <WarningCircle className="size-3.5 shrink-0" weight="fill" />
+                        {signingError}
+                      </p>
+                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>

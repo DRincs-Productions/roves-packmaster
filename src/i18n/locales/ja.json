@@ -110,6 +110,23 @@
 				"portrait": "縦向き（どちらの方向でも）",
 				"portrait_primary": "縦向き（固定）",
 				"portrait_secondary": "縦向き（固定・反転）"
+			},
+			"signing": {
+				"title": "リリース署名",
+				"description": "デバッグ用ではなく、実際に署名された .apk をビルドします。以前のリリースの更新としてAPKをインストールしたり、どこかに公開したりする前に必要です。",
+				"enableLabel": "署名済みリリースAPKをビルド",
+				"configuredAs": "エイリアス「{{alias}}」のキーストアを使用中",
+				"remove": "キーストアを削除",
+				"generate": "新しいキーストアを生成",
+				"generating": "生成中…",
+				"import": "既存のキーストアをインポート",
+				"browse": "参照…",
+				"keystorePathPlaceholder": "キーストアファイル",
+				"keyAliasPlaceholder": "キーエイリアス",
+				"storePasswordPlaceholder": "キーストアのパスワード",
+				"keyPasswordPlaceholder": "キーのパスワード",
+				"confirmImport": "インポート",
+				"cancel": "キャンセル"
 			}
 		}
 	},

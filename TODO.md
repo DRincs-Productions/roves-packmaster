@@ -23,17 +23,26 @@ backend Android).
 
 ## 2. Firma dell'APK Android generato da Packmaster
 
-**Stato:** noto, non ancora iniziato — vedi il `TODO.md` del motore `roves`, voce #5, per il
-lato engine/Gradle di questo stesso obiettivo.
+**Stato: fatto (2026-09-10), non verificato con un build reale.** Vedi `src-tauri/src/
+signing.rs`'s own doc comment per il meccanismo completo, e il `TODO.md` del motore `roves`,
+voce #5, per il lato engine/Gradle di questo stesso obiettivo (le 4 variabili d'ambiente
+`APK_SIGNING_KEY_*` che questo modulo imposta prima di invocare `gradlew`).
 
-Oggi `android.rs` produce solo un `.apk` di debug (firmato con il keystore di debug standard di
-Gradle) — non distribuibile. Per un vero .apk di release, Packmaster dovrebbe offrire un modo
-per l'utente di generare o importare un keystore reale (a differenza di `roves-action`, qui non
-c'è un GitHub Secrets a cui appoggiarsi — l'utente non ha necessariamente `keytool`/Android
-Studio installati, quindi probabilmente va generato con lo stesso Android SDK/JDK che Packmaster
-già scarica da solo) e passarne le credenziali al task Gradle di release al posto di quello di
-debug. Da decidere anche come/se persistere il keystore tra un utilizzo e l'altro senza
-rischiare di esporne la chiave privata.
+Un'unica sezione "Firma della release" dentro la card Mobile (accordion "Impostazioni
+avanzate"): genera un nuovo keystore (`keytool`, tramite lo stesso JRE portatile che Packmaster
+già scarica per Gradle) oppure importane uno esistente (percorso via file picker + alias + le
+due password). Le credenziali sono salvate in chiaro in un file JSON separato nella cartella
+di configurazione dell'app (`android-signing.json`, **non** nel `settings.json` di progetto) —
+una scelta deliberata e documentata, non un keychain OS reale (Credential Manager/Keychain/
+Secret Service): stesso livello di fiducia di `~/.android/debug.keystore` o `~/.netrc`, non
+cifrato a riposo ma mai trasmesso altrove. Un'integrazione keychain reale (es. crate `keyring`)
+sarebbe un miglioramento, deliberatamente non tentato qui: porterebbe dipendenze native per
+piattaforma non testabili in questa sessione (e su Linux dipende da un demone Secret Service
+che potrebbe non essere in esecuzione).
+
+**Non ancora fatto:** un vero build firmato non è mai stato eseguito ed è mai stato verificato
+con `apksigner verify` o installando l'apk risultante su un dispositivo reale — solo il codice
+Rust compila (`roves-packmaster` CI verde) e TypeScript/i18n sono validati.
 
 ## 3. Supporto Android su Windows
 

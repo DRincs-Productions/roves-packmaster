@@ -16,6 +16,7 @@ use crate::installer;
 use crate::packer;
 use crate::settings::PackmasterSettings;
 use crate::shell;
+use crate::signing;
 
 #[derive(Clone, Serialize)]
 struct BundleProgress {
@@ -194,11 +195,25 @@ pub async fn generate_release(
 
         // Same one-icon resolution as desktop's own `apply_icon` -- see `resolve_icon_path`.
         let icon_path = resolve_icon_path(&settings.icon, &content_dir);
+        let signing_config = if settings.mobile.advanced.release_signing_enabled {
+            match signing::load_signing_config(&app)? {
+                Some(config) => Some(config),
+                None => {
+                    return Err(
+                        "Release signing is enabled, but no keystore is configured yet -- generate or import one first."
+                            .to_string(),
+                    );
+                },
+            }
+        } else {
+            None
+        };
         let options = android::AndroidBuildOptions {
             content_dir: &content_dir,
             icon_png: icon_path.as_deref().map(Path::new),
             app_name_override: &settings.mobile.advanced.app_name,
             orientation_override: &settings.mobile.advanced.orientation,
+            signing: signing_config.as_ref(),
         };
         let apk_path = android::build_apk(&app, &options, |phase, fraction| {
             emit_progress(&app, "android", phase, fraction);

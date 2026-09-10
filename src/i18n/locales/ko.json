@@ -110,6 +110,23 @@
 				"portrait": "세로 (양방향)",
 				"portrait_primary": "세로 (고정)",
 				"portrait_secondary": "세로 (고정, 반전)"
+			},
+			"signing": {
+				"title": "릴리스 서명",
+				"description": "디버그 전용이 아닌 실제 서명된 .apk를 빌드합니다. 이전 릴리스의 업데이트로 APK를 설치하거나 어디에든 게시하기 전에 필요합니다.",
+				"enableLabel": "서명된 릴리스 APK 빌드",
+				"configuredAs": "별칭 \"{{alias}}\"의 키스토어 사용 중",
+				"remove": "키스토어 제거",
+				"generate": "새 키스토어 생성",
+				"generating": "생성 중…",
+				"import": "기존 키스토어 가져오기",
+				"browse": "찾아보기…",
+				"keystorePathPlaceholder": "키스토어 파일",
+				"keyAliasPlaceholder": "키 별칭",
+				"storePasswordPlaceholder": "키스토어 비밀번호",
+				"keyPasswordPlaceholder": "키 비밀번호",
+				"confirmImport": "가져오기",
+				"cancel": "취소"
 			}
 		}
 	},

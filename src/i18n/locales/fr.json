@@ -110,6 +110,23 @@
 				"portrait": "Portrait (les deux sens)",
 				"portrait_primary": "Portrait (verrouillée)",
 				"portrait_secondary": "Portrait (verrouillée, inversée)"
+			},
+			"signing": {
+				"title": "Signature de la version",
+				"description": "Génère un vrai .apk signé au lieu d'un simple débogage. Nécessaire avant qu'un APK puisse être installé comme mise à jour d'une version précédente, ou publié n'importe où.",
+				"enableLabel": "Générer un APK de version signé",
+				"configuredAs": "Utilisation du keystore avec l'alias « {{alias}} »",
+				"remove": "Supprimer le keystore",
+				"generate": "Générer un nouveau keystore",
+				"generating": "Génération…",
+				"import": "Importer un keystore existant",
+				"browse": "Parcourir…",
+				"keystorePathPlaceholder": "Fichier keystore",
+				"keyAliasPlaceholder": "Alias de la clé",
+				"storePasswordPlaceholder": "Mot de passe du keystore",
+				"keyPasswordPlaceholder": "Mot de passe de la clé",
+				"confirmImport": "Importer",
+				"cancel": "Annuler"
 			}
 		}
 	},

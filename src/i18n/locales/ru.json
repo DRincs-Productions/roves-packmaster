@@ -110,6 +110,23 @@
 				"portrait": "Портретная (любое направление)",
 				"portrait_primary": "Портретная (зафиксирована)",
 				"portrait_secondary": "Портретная (зафиксирована, перевёрнута)"
+			},
+			"signing": {
+				"title": "Подпись релиза",
+				"description": "Собирает настоящий подписанный .apk вместо отладочного. Необходимо, прежде чем APK можно будет установить как обновление предыдущей версии или опубликовать где-либо.",
+				"enableLabel": "Собрать подписанный релизный APK",
+				"configuredAs": "Используется keystore с псевдонимом «{{alias}}»",
+				"remove": "Удалить keystore",
+				"generate": "Создать новый keystore",
+				"generating": "Создание…",
+				"import": "Импортировать существующий keystore",
+				"browse": "Обзор…",
+				"keystorePathPlaceholder": "Файл keystore",
+				"keyAliasPlaceholder": "Псевдоним ключа",
+				"storePasswordPlaceholder": "Пароль keystore",
+				"keyPasswordPlaceholder": "Пароль ключа",
+				"confirmImport": "Импортировать",
+				"cancel": "Отмена"
 			}
 		}
 	},

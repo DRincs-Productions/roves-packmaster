@@ -110,6 +110,23 @@
 				"portrait": "Portrait (either direction)",
 				"portrait_primary": "Portrait (locked)",
 				"portrait_secondary": "Portrait (locked, reversed)"
+			},
+			"signing": {
+				"title": "Release signing",
+				"description": "Build a real, signed .apk instead of a debug-only one. Needed before an APK can be installed as an update to a previous release, or published anywhere.",
+				"enableLabel": "Build a signed release APK",
+				"configuredAs": "Using keystore alias \"{{alias}}\"",
+				"remove": "Remove keystore",
+				"generate": "Generate a new keystore",
+				"generating": "Generating…",
+				"import": "Import an existing keystore",
+				"browse": "Browse…",
+				"keystorePathPlaceholder": "Keystore file",
+				"keyAliasPlaceholder": "Key alias",
+				"storePasswordPlaceholder": "Keystore password",
+				"keyPasswordPlaceholder": "Key password",
+				"confirmImport": "Import",
+				"cancel": "Cancel"
 			}
 		}
 	},

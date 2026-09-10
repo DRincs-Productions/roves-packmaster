@@ -110,6 +110,23 @@
 				"portrait": "Verticale (entrambe le direzioni)",
 				"portrait_primary": "Verticale (bloccato)",
 				"portrait_secondary": "Verticale (bloccato, invertito)"
+			},
+			"signing": {
+				"title": "Firma della release",
+				"description": "Genera un vero APK firmato invece di uno solo di debug. Necessario prima che un APK possa essere installato come aggiornamento di una release precedente, o pubblicato ovunque.",
+				"enableLabel": "Genera un APK di release firmato",
+				"configuredAs": "In uso il keystore con alias \"{{alias}}\"",
+				"remove": "Rimuovi keystore",
+				"generate": "Genera un nuovo keystore",
+				"generating": "Generazione…",
+				"import": "Importa un keystore esistente",
+				"browse": "Sfoglia…",
+				"keystorePathPlaceholder": "File keystore",
+				"keyAliasPlaceholder": "Alias della chiave",
+				"storePasswordPlaceholder": "Password del keystore",
+				"keyPasswordPlaceholder": "Password della chiave",
+				"confirmImport": "Importa",
+				"cancel": "Annulla"
 			}
 		}
 	},

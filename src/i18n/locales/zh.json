@@ -110,6 +110,23 @@
 				"portrait": "竖屏（任意方向）",
 				"portrait_primary": "竖屏（锁定）",
 				"portrait_secondary": "竖屏（锁定，反向）"
+			},
+			"signing": {
+				"title": "发布签名",
+				"description": "构建真正签名的 .apk，而不仅是调试版本。在 APK 可以作为之前版本的更新安装或在任何地方发布之前，这是必需的。",
+				"enableLabel": "构建已签名的发布 APK",
+				"configuredAs": "使用别名为“{{alias}}”的密钥库",
+				"remove": "移除密钥库",
+				"generate": "生成新的密钥库",
+				"generating": "生成中…",
+				"import": "导入现有密钥库",
+				"browse": "浏览…",
+				"keystorePathPlaceholder": "密钥库文件",
+				"keyAliasPlaceholder": "密钥别名",
+				"storePasswordPlaceholder": "密钥库密码",
+				"keyPasswordPlaceholder": "密钥密码",
+				"confirmImport": "导入",
+				"cancel": "取消"
 			}
 		}
 	},
