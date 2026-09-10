@@ -37,11 +37,15 @@ rischiare di esporne la chiave privata.
 
 ## 3. Supporto Android su Windows
 
-**Stato: sbloccato (2026-09-10), non verificato su un build Windows reale.** Il fix lato
-motore (`TODO.md` del motore, voce #4) è applicato e `check_android_availability()` non
-blocca più Windows — ma né il fix Gradle né questa rimozione del blocco sono mai stati
-eseguiti contro un vero Android SDK/NDK su una macchina Windows. Se emerge un fallimento
-Android specifico di Windows, è il primo posto da controllare, non una sorpresa.
+**Stato: sbloccato (2026-09-10), non verificato su un build Windows reale.** Due gap
+indipendenti, entrambi risolti lo stesso giorno: il fix lato motore (`TODO.md` del motore,
+voce #4, `ndk-build.cmd`) e — scoperto solo dopo, leggendo `android.rs` con più attenzione —
+il bootstrap JRE/SDK/NDK di **questo stesso file**, che semplicemente non aveva mai avuto un
+ramo Windows (`adoptium_os_arch`/`sdk_os_tag`/`ndk_download_info` restituivano tutti errore
+esplicito su Windows). Vedi il commento in testa a `android.rs` per il dettaglio completo di
+entrambi. `check_android_availability()` non blocca più Windows, ma nessuno di questi fix è
+mai stato eseguito contro un vero Android SDK/NDK su una macchina Windows. Se emerge un
+fallimento Android specifico di Windows, è il primo posto da controllare, non una sorpresa.
 
 ## Note
 

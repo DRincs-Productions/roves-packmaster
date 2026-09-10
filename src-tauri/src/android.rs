@@ -19,14 +19,23 @@
 //! to copy the prebuilt `libservoshell.so` *and* the NDK's own `libc++_shared.so` into the
 //! APK's `jniLibs/` — there's no way to produce a working APK without that step.
 //!
-//! **Windows: unblocked 2026-09-10, not yet verified for real.** That same Gradle task used to
+//! **Windows: unblocked 2026-09-10, not yet verified for real.** Two independent gaps, both
+//! fixed the same day: (1) `servoview/build.gradle.kts`'s `ndkbuild<Variant>` task used to
 //! hardcode the Unix script name (`getNdkDir() + "/ndk-build"`, never `ndk-build.cmd`) with no
 //! Windows fallback — fixed engine-side (see the engine's own CUSTOMIZATIONS.md, "Fix
-//! `ndk-build` invocation for Windows" entry). `check_android_availability` no longer blocks
-//! Windows on that basis, but nobody has actually run this against a real Android SDK/NDK on
-//! Windows yet (this was fixed by reading Gradle/Kotlin behavior, not by testing it) — treat a
-//! Windows-specific Android failure here as "the fix wasn't as complete as it looked", not as
-//! a surprise, until someone actually confirms a real build+install works.
+//! `ndk-build` invocation for Windows" entry); (2) *this file's own* JRE/SDK/NDK bootstrap
+//! (`adoptium_os_arch`/`sdk_os_tag`/`ndk_download_info`) simply never had a Windows branch at
+//! all — discovered only after fixing (1) and realizing `check_android_availability` alone
+//! wasn't the whole story. Fixed here too: Adoptium's Windows JRE ships as `.zip` not
+//! `.tar.gz`, Google's cmdline-tools/NDK both have their own Windows-tagged downloads, and
+//! `sdkmanager`/`gradlew` are `.bat` files on Windows that need routing through `cmd /C`
+//! (see `script_command`) since `std::process::Command` doesn't resolve script interpreters
+//! for a bare `.bat` path the way typing one into `cmd.exe` interactively does. Nobody has
+//! actually run any of this against a real Android SDK/NDK on Windows yet — every fix here
+//! was derived by reading Google/Adoptium's own download-naming conventions and Windows
+//! process-invocation behavior, not by testing it. Treat a Windows-specific Android failure
+//! as "the fix wasn't as complete as it looked," not as a surprise, until someone actually
+//! confirms a real build+install works end to end.
 
 use std::path::{Path, PathBuf};
 
@@ -211,6 +220,8 @@ fn adoptium_os_arch() -> Result<(&'static str, &'static str), String> {
         "mac"
     } else if cfg!(target_os = "linux") {
         "linux"
+    } else if cfg!(target_os = "windows") {
+        "windows"
     } else {
         return Err("unsupported OS for the Android JRE".to_string());
     };
@@ -245,10 +256,20 @@ pub async fn ensure_jre(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send
     let url = format!(
         "https://api.adoptium.net/v3/binary/latest/{JRE_FEATURE_VERSION}/ga/{os}/{arch}/jre/hotspot/normal/eclipse"
     );
-    let archive_path = cache_dir.join("jre.tar.gz");
-    download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JRE: {e}"))?;
-    extract_tar_gz(&archive_path, &cache_dir)?;
-    tokio::fs::remove_file(&archive_path).await.ok();
+    // Adoptium packages Windows binaries as .zip, everything else as .tar.gz -- same
+    // distinction the NDK's own download (see `ndk_download_info`) makes for its own
+    // Windows/Linux .zip vs. macOS .dmg.
+    if os == "windows" {
+        let archive_path = cache_dir.join("jre.zip");
+        download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JRE: {e}"))?;
+        extract_zip(&archive_path, &cache_dir)?;
+        tokio::fs::remove_file(&archive_path).await.ok();
+    } else {
+        let archive_path = cache_dir.join("jre.tar.gz");
+        download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JRE: {e}"))?;
+        extract_tar_gz(&archive_path, &cache_dir)?;
+        tokio::fs::remove_file(&archive_path).await.ok();
+    }
     tokio::fs::write(&marker, b"1").await.map_err(|e| e.to_string())?;
 
     let extracted = find_single_subdir(&cache_dir)?;
@@ -262,8 +283,33 @@ fn sdk_os_tag() -> Result<&'static str, String> {
         if cfg!(target_arch = "aarch64") { Ok("mac_arm64") } else { Ok("mac_x86_64") }
     } else if cfg!(target_os = "linux") {
         Ok("linux")
+    } else if cfg!(target_os = "windows") {
+        Ok("win")
     } else {
         Err("unsupported OS for the Android SDK".to_string())
+    }
+}
+
+/// `sdkmanager` (and every other cmdline-tools script) ships as a `.bat` on Windows, a
+/// plain extension-less shell script everywhere else -- same distinction as the engine's own
+/// `gradlew`/`gradlew.bat` (see CUSTOMIZATIONS.md) and `ndk-build`/`ndk-build.cmd` (see
+/// TODO.md #4) gaps this mirrors.
+fn sdkmanager_path(cmdline_tools_dir: &Path) -> PathBuf {
+    cmdline_tools_dir.join("bin").join(if cfg!(windows) { "sdkmanager.bat" } else { "sdkmanager" })
+}
+
+/// `.bat` files aren't directly executable via `std::process::Command` on Windows the way a
+/// real `.exe` is -- `CreateProcess` doesn't resolve script interpreters on its own the way
+/// `cmd.exe` typing a bare name does. Routing through `cmd /C` explicitly is the standard,
+/// robust fix (same approach Cargo/rustup's own Windows batch-script wrappers use). A no-op
+/// everywhere else: returns a plain `Command::new(program)`, unchanged.
+fn script_command(program: &Path) -> std::process::Command {
+    if cfg!(windows) && program.extension().and_then(|e| e.to_str()) == Some("bat") {
+        let mut command = std::process::Command::new("cmd");
+        command.arg("/C").arg(program);
+        command
+    } else {
+        std::process::Command::new(program)
     }
 }
 
@@ -312,7 +358,7 @@ pub async fn ensure_android_sdk(
         tokio::fs::remove_dir_all(&extract_tmp).await.ok();
     }
 
-    let sdkmanager = cmdline_tools_dir.join("bin").join("sdkmanager");
+    let sdkmanager = sdkmanager_path(&cmdline_tools_dir);
     accept_sdk_licenses(&sdkmanager, &sdk_root, java_home)?;
     run_sdkmanager(
         &sdkmanager,
@@ -332,7 +378,7 @@ fn accept_sdk_licenses(sdkmanager: &Path, sdk_root: &Path, java_home: &Path) -> 
     use std::io::Write;
     use std::process::Stdio;
 
-    let mut child = std::process::Command::new(sdkmanager)
+    let mut child = script_command(sdkmanager)
         .arg(format!("--sdk_root={}", sdk_root.display()))
         .arg("--licenses")
         .env("JAVA_HOME", java_home)
@@ -357,7 +403,7 @@ fn accept_sdk_licenses(sdkmanager: &Path, sdk_root: &Path, java_home: &Path) -> 
 }
 
 fn run_sdkmanager(sdkmanager: &Path, sdk_root: &Path, java_home: &Path, packages: &[&str]) -> Result<(), String> {
-    let mut command = std::process::Command::new(sdkmanager);
+    let mut command = script_command(sdkmanager);
     command.arg(format!("--sdk_root={}", sdk_root.display())).env("JAVA_HOME", java_home);
     for package in packages {
         command.arg(package);
@@ -379,6 +425,8 @@ fn ndk_download_info() -> Result<(String, bool), String> {
         Ok((format!("https://dl.google.com/android/repository/android-ndk-{NDK_VERSION}-darwin.dmg"), true))
     } else if cfg!(target_os = "linux") {
         Ok((format!("https://dl.google.com/android/repository/android-ndk-{NDK_VERSION}-linux.zip"), false))
+    } else if cfg!(target_os = "windows") {
+        Ok((format!("https://dl.google.com/android/repository/android-ndk-{NDK_VERSION}-windows.zip"), false))
     } else {
         Err("unsupported OS for the Android NDK".to_string())
     }
@@ -613,7 +661,7 @@ pub async fn build_apk(
     }
 
     let task = format!(":servoapp:assemble{ARCH_STRING}Debug");
-    let status = std::process::Command::new(&gradlew)
+    let status = script_command(&gradlew)
         .current_dir(&apk_project_dir)
         .arg("--no-daemon")
         .arg(&task)
