@@ -37,13 +37,11 @@ rischiare di esporne la chiave privata.
 
 ## 3. Supporto Android su Windows
 
-**Stato:** bloccato lato engine — vedi il `TODO.md` del motore `roves`, voci #4 e #6.
-
-`check_android_availability()` in `android.rs` disabilita esplicitamente l'opzione Android
-quando Packmaster gira su Windows, perché il task Gradle che copia `libservoshell.so` invoca
-`ndk-build` senza fallback `.cmd` (fallisce su Windows a prescindere da chi lo invoca). Nessuna
-modifica possibile qui finché quel punto non è risolto lato motore (è un file Gradle
-vendorizzato di Servo, non qualcosa che Packmaster possa aggirare da solo).
+**Stato: sbloccato (2026-09-10), non verificato su un build Windows reale.** Il fix lato
+motore (`TODO.md` del motore, voce #4) è applicato e `check_android_availability()` non
+blocca più Windows — ma né il fix Gradle né questa rimozione del blocco sono mai stati
+eseguiti contro un vero Android SDK/NDK su una macchina Windows. Se emerge un fallimento
+Android specifico di Windows, è il primo posto da controllare, non una sorpresa.
 
 ## Note
 
