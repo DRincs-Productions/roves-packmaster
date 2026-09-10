@@ -53,6 +53,12 @@ availability check per platform, same as the portable/installable paths above.
      --content-compress` flags) and Steam (a toggle plus your Steam App ID — downloads the
      Steam-enabled shell variant and writes a `steam_appid.txt` next to the packaged
      executable; see "Status" above).
+   - **Mobile (Android, experimental)** — builds a real, installable `.apk` alongside your
+     desktop release, downloading a JRE/Android SDK/NDK on first use — no Android Studio
+     needed. Debug-signed by default; the same card can also generate or import a signing
+     keystore to produce a real, release-signed `.apk`. See the
+     [wiki](https://github.com/DRincs-Productions/roves-wiki/blob/main/content/docs/packmaster.mdx)
+     for the current caveats (Windows support is new and unverified against a real device).
 3. **Generate.** Downloads the shell (cached per version/platform after the first run),
    packs your content into it, and shows real, per-step progress. Opens the folder the
    release was written to when done — a `release/` folder next to wherever Packmaster
