@@ -19,11 +19,14 @@
 //! to copy the prebuilt `libservoshell.so` *and* the NDK's own `libc++_shared.so` into the
 //! APK's `jniLibs/` — there's no way to produce a working APK without that step.
 //!
-//! **Linux/macOS only for now**: that same Gradle task hardcodes the Unix script name
-//! (`getNdkDir() + "/ndk-build"`, never `ndk-build.cmd`) with no Windows fallback — a real,
-//! upstream Gradle-script gap this repo hasn't patched yet (see TODO.md), not a
-//! Packmaster-specific choice. `check_android_availability` reports this honestly instead of
-//! attempting a build that's known to fail on Windows.
+//! **Windows: unblocked 2026-09-10, not yet verified for real.** That same Gradle task used to
+//! hardcode the Unix script name (`getNdkDir() + "/ndk-build"`, never `ndk-build.cmd`) with no
+//! Windows fallback — fixed engine-side (see the engine's own CUSTOMIZATIONS.md, "Fix
+//! `ndk-build` invocation for Windows" entry). `check_android_availability` no longer blocks
+//! Windows on that basis, but nobody has actually run this against a real Android SDK/NDK on
+//! Windows yet (this was fixed by reading Gradle/Kotlin behavior, not by testing it) — treat a
+//! Windows-specific Android failure here as "the fix wasn't as complete as it looked", not as
+//! a surprise, until someone actually confirms a real build+install works.
 
 use std::path::{Path, PathBuf};
 
@@ -86,22 +89,13 @@ fn android_orientation(pwa_value: &str) -> &'static str {
     }
 }
 
-/// Real feasibility check -- see this module's own top comment for why Windows isn't
-/// supported yet. `(available, reason_if_not)`, matching `installer::check_installer_availability`'s
-/// own shape.
+/// Real feasibility check -- see this module's own top comment for the Windows history.
+/// `(available, reason_if_not)`, matching `installer::check_installer_availability`'s own
+/// shape. Always available now (no more platform gating), kept as a function rather than
+/// inlined `true` at each call site since a real, newly-discovered platform gap should have
+/// one place to report from, the same as `check_installer_availability` does for installers.
 pub fn check_android_availability() -> (bool, Option<String>) {
-    if cfg!(target_os = "windows") {
-        (
-            false,
-            Some(
-                "Android packaging isn't supported on Windows yet -- the engine's own Gradle \
-                 build shells out to `ndk-build` without a Windows (`ndk-build.cmd`) fallback."
-                    .to_string(),
-            ),
-        )
-    } else {
-        (true, None)
-    }
+    (true, None)
 }
 
 #[derive(Debug, Default, Clone)]
