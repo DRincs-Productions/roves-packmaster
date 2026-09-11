@@ -46,15 +46,28 @@ Rust compila (`roves-packmaster` CI verde) e TypeScript/i18n sono validati.
 
 ## 3. Supporto Android su Windows
 
-**Stato: sbloccato (2026-09-10), non verificato su un build Windows reale.** Due gap
-indipendenti, entrambi risolti lo stesso giorno: il fix lato motore (`TODO.md` del motore,
-voce #4, `ndk-build.cmd`) e — scoperto solo dopo, leggendo `android.rs` con più attenzione —
-il bootstrap JRE/SDK/NDK di **questo stesso file**, che semplicemente non aveva mai avuto un
-ramo Windows (`adoptium_os_arch`/`sdk_os_tag`/`ndk_download_info` restituivano tutti errore
-esplicito su Windows). Vedi il commento in testa a `android.rs` per il dettaglio completo di
-entrambi. `check_android_availability()` non blocca più Windows, ma nessuno di questi fix è
-mai stato eseguito contro un vero Android SDK/NDK su una macchina Windows. Se emerge un
-fallimento Android specifico di Windows, è il primo posto da controllare, non una sorpresa.
+**Stato: sbloccato (2026-09-10), primo test reale su Windows il 2026-09-11 -- fallito, in
+diagnosi.** Due gap indipendenti erano stati risolti il 2026-09-10: il fix lato motore
+(`TODO.md` del motore, voce #4, `ndk-build.cmd`) e — scoperto solo dopo, leggendo `android.rs`
+con più attenzione — il bootstrap JRE/SDK/NDK di **questo stesso file**, che semplicemente non
+aveva mai avuto un ramo Windows (`adoptium_os_arch`/`sdk_os_tag`/`ndk_download_info`
+restituivano tutti errore esplicito su Windows). Vedi il commento in testa a `android.rs` per
+il dettaglio completo di entrambi.
+
+**2026-09-11 — primo report reale:** un utente su una vera macchina Windows ha ottenuto
+`sdkmanager exited with exit code: 1 while installing ["platform-tools",
+"platforms;android-37", "build-tools;36.0.0"]` — nessun altro dettaglio, perché Packmaster è
+un'app GUI senza console su ogni piattaforma: `run_sdkmanager`/`accept_sdk_licenses`/gradlew
+usavano tutti `.status()` con stdio ereditata (che su Windows senza console non va da nessuna
+parte visibile), quindi qualunque cosa `sdkmanager`/`gradlew` scrivessero sul VERO motivo del
+fallimento (licenza rifiutata, problema di rete, versione Java incompatibile, ...) veniva
+scartata in silenzio. **Non ancora diagnosticato il vero motivo** — prima cosa sistemata:
+`run_capturing_output`/`format_process_failure` (nuovi helper in `android.rs`) catturano ora
+stdout+stderr di ogni invocazione (`sdkmanager --licenses`, `sdkmanager <install>`, `gradlew`)
+e li includono (troncati) nel messaggio d'errore mostrato in UI — così il prossimo tentativo
+di questo stesso utente dovrebbe finalmente dire *perché* fallisce, invece del solo exit code.
+Non ancora verificato: serve un secondo tentativo reale su quella stessa macchina Windows con
+questa build per sapere la causa vera.
 
 ## Note
 

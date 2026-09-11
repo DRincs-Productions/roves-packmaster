@@ -313,6 +313,48 @@ pub(crate) fn script_command(program: &Path) -> std::process::Command {
     }
 }
 
+/// Runs `command` to completion, capturing stdout/stderr instead of letting them inherit the
+/// parent's -- necessary because Packmaster is a windowed (console-less) GUI app on every
+/// platform, same root cause as the engine repo's own `windows_subsystem` gap: a plain
+/// `.status()` call's inherited stdio goes nowhere visible, so `sdkmanager`/`gradlew` failing
+/// for any real reason (a rejected license, a network hiccup, a Java version mismatch, ...)
+/// previously surfaced to the user as nothing but a bare exit code, with the actual "why"
+/// silently discarded. On failure, folds a tail of whatever the process printed into the
+/// returned error so it's at least visible in the generic error banner, even without a log
+/// file to go dig through.
+fn run_capturing_output(command: &mut std::process::Command, context: &str) -> Result<(), String> {
+    use std::process::Stdio;
+
+    let output = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("running {context}: {e}"))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(format_process_failure(context, &output.status, &output.stdout, &output.stderr))
+}
+
+/// Shared by `run_capturing_output` and `accept_sdk_licenses` (which needs to write to stdin
+/// while the process runs, so it can't use `Command::output()` directly and builds its own
+/// `std::process::Output` via `wait_with_output` instead).
+fn format_process_failure(context: &str, status: &std::process::ExitStatus, stdout: &[u8], stderr: &[u8]) -> String {
+    let mut combined = String::from_utf8_lossy(stdout).into_owned();
+    combined.push_str(&String::from_utf8_lossy(stderr));
+    let trimmed = combined.trim();
+    // Keep only the tail -- sdkmanager/gradlew can print a lot of unrelated noise (download
+    // progress, deprecation warnings) before the actual error, and this whole string renders
+    // as a single error banner in the UI.
+    const MAX_LEN: usize = 4000;
+    let tail = if trimmed.len() > MAX_LEN { &trimmed[trimmed.len() - MAX_LEN..] } else { trimmed };
+    if tail.is_empty() {
+        format!("{context} exited with {status}")
+    } else {
+        format!("{context} exited with {status} -- output:\n{tail}")
+    }
+}
+
 /// Downloads (once; cached) the Android SDK "command line tools" and uses `sdkmanager` to
 /// install exactly the components `support/android/apk` needs (matching
 /// `servoapp/build.gradle.kts`'s own `compileSdk`/`buildToolsVersion`), accepting every
@@ -383,21 +425,37 @@ fn accept_sdk_licenses(sdkmanager: &Path, sdk_root: &Path, java_home: &Path) -> 
         .arg("--licenses")
         .env("JAVA_HOME", java_home)
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("running sdkmanager --licenses: {e}"))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        // Comfortably more than the number of distinct SDK licenses that have ever existed.
-        // `.take()`, not `.as_mut()`: `stdin` must actually be dropped (closing the pipe) once
-        // written, or sdkmanager blocks forever waiting for EOF after its last prompt instead
-        // of exiting -- same reason `yes | sdkmanager --licenses` relies on `yes` eventually
-        // getting SIGPIPE'd rather than sdkmanager reading from an indefinitely-open pipe.
-        let _ = stdin.write_all("y\n".repeat(32).as_bytes());
-    }
-    let status = child.wait().map_err(|e| e.to_string())?;
-    if !status.success() {
-        return Err(format!("sdkmanager --licenses exited with {status}"));
+    // Writing on a separate thread rather than inline before `wait_with_output` below: stdout
+    // and stderr are now real pipes (needed to capture them for `format_process_failure`), not
+    // `Stdio::null()` -- writing "y\n" x32 synchronously here, before anything starts draining
+    // those pipes, risks a classic deadlock if sdkmanager's license-prompt output is ever large
+    // enough to fill the OS pipe buffer while it's still blocked waiting for us to read more
+    // stdin than we've written. Concurrent write + drain avoids that regardless of how much
+    // either side produces.
+    let mut stdin = child.stdin.take();
+    let writer = std::thread::spawn(move || {
+        if let Some(stdin) = stdin.as_mut() {
+            // Comfortably more than the number of distinct SDK licenses that have ever
+            // existed. Dropping `stdin` (out of scope at the end of this closure) closes the
+            // pipe, or sdkmanager blocks forever waiting for EOF after its last prompt instead
+            // of exiting -- same reason `yes | sdkmanager --licenses` relies on `yes`
+            // eventually getting SIGPIPE'd rather than sdkmanager reading from an
+            // indefinitely-open pipe.
+            let _ = stdin.write_all("y\n".repeat(32).as_bytes());
+        }
+    });
+    // `wait_with_output` (not `wait`) so a rejected/unexpected license prompt -- previously
+    // discarded via `Stdio::null()` -- is captured and surfaces in the error instead of just
+    // a bare exit code. See `run_capturing_output`'s own doc comment for why this matters on
+    // a console-less GUI app.
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    let _ = writer.join();
+    if !output.status.success() {
+        return Err(format_process_failure("sdkmanager --licenses", &output.status, &output.stdout, &output.stderr));
     }
     Ok(())
 }
@@ -408,11 +466,7 @@ fn run_sdkmanager(sdkmanager: &Path, sdk_root: &Path, java_home: &Path, packages
     for package in packages {
         command.arg(package);
     }
-    let status = command.status().map_err(|e| format!("running sdkmanager: {e}"))?;
-    if !status.success() {
-        return Err(format!("sdkmanager exited with {status} while installing {packages:?}"));
-    }
-    Ok(())
+    run_capturing_output(&mut command, &format!("sdkmanager while installing {packages:?}"))
 }
 
 // ── Android NDK (needed for ndk-build's jniLibs/libc++_shared.so packaging step) ────────
@@ -695,10 +749,7 @@ pub async fn build_apk(
             command.env(key, value);
         }
     }
-    let status = command.status().map_err(|e| format!("running gradlew: {e}"))?;
-    if !status.success() {
-        return Err(format!("gradlew exited with {status} while running {task}"));
-    }
+    run_capturing_output(&mut command, &format!("gradlew while running {task}"))?;
 
     // Same location `servoapp/build.gradle.kts`'s own `copyAndRename<Variant>APK` task
     // writes to -- `getTargetDir(debug, "arm64")`, i.e. `<scratch_root>/target/
