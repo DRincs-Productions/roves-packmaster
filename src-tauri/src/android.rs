@@ -235,13 +235,25 @@ fn adoptium_os_arch() -> Result<(&'static str, &'static str), String> {
     Ok((os, arch))
 }
 
-/// Downloads (once; cached) a portable Eclipse Temurin JRE and returns `JAVA_HOME` --
+/// Downloads (once; cached) a portable Eclipse Temurin **JDK** and returns `JAVA_HOME` --
 /// Gradle needs a JVM to run at all, and Packmaster's whole point is that a game developer
 /// doesn't need one preinstalled (see `shell.rs`'s own doc comment on the same principle for
 /// the engine shell itself).
+///
+/// A plain JRE (this function's own original choice, and still what its name/cache-folder/
+/// progress-phase-key say -- kept as-is to avoid an unrelated i18n churn across all 9 locale
+/// files for a wording nitpick, see the CLAUDE.md rule on that) is **not enough**: confirmed
+/// via a real Windows build failure, Gradle 9.5.1's own version-catalog codegen
+/// (`GeneratedClassCompilationException`) needs `javac`, which a JRE doesn't ship at all --
+/// `.github/workflows/android.yml` avoids this because `actions/setup-java` defaults to
+/// installing a real JDK, not a JRE, a distinction that was easy to miss porting the same
+/// bootstrap to a from-scratch Adoptium download here. The cache folder name was changed from
+/// `jre` to `jdk` specifically so this fix self-heals for anyone who already has the old,
+/// JDK-less download cached from before this fix -- reusing the same folder name would have
+/// kept serving the broken cached JRE forever.
 pub async fn ensure_jre(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send) -> Result<PathBuf, String> {
     let (os, arch) = adoptium_os_arch()?;
-    let cache_dir = tools_cache_dir(app)?.join("jre").join(format!("{os}-{arch}"));
+    let cache_dir = tools_cache_dir(app)?.join("jdk").join(format!("{os}-{arch}"));
     let marker = cache_dir.join(".complete");
     if marker.exists() {
         on_progress(1.0);
@@ -254,19 +266,19 @@ pub async fn ensure_jre(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send
     tokio::fs::create_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
 
     let url = format!(
-        "https://api.adoptium.net/v3/binary/latest/{JRE_FEATURE_VERSION}/ga/{os}/{arch}/jre/hotspot/normal/eclipse"
+        "https://api.adoptium.net/v3/binary/latest/{JRE_FEATURE_VERSION}/ga/{os}/{arch}/jdk/hotspot/normal/eclipse"
     );
     // Adoptium packages Windows binaries as .zip, everything else as .tar.gz -- same
     // distinction the NDK's own download (see `ndk_download_info`) makes for its own
     // Windows/Linux .zip vs. macOS .dmg.
     if os == "windows" {
-        let archive_path = cache_dir.join("jre.zip");
-        download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JRE: {e}"))?;
+        let archive_path = cache_dir.join("jdk.zip");
+        download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JDK: {e}"))?;
         extract_zip(&archive_path, &cache_dir)?;
         tokio::fs::remove_file(&archive_path).await.ok();
     } else {
-        let archive_path = cache_dir.join("jre.tar.gz");
-        download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JRE: {e}"))?;
+        let archive_path = cache_dir.join("jdk.tar.gz");
+        download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JDK: {e}"))?;
         extract_tar_gz(&archive_path, &cache_dir)?;
         tokio::fs::remove_file(&archive_path).await.ok();
     }

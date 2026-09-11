@@ -83,8 +83,20 @@ risolve dinamicamente via `sdkmanager --list | grep -oE "platforms;android-37(\.
 
 **Fix:** nuova funzione `resolve_platform_package()` in `android.rs` che replica la stessa
 logica (lista via `sdkmanager --channel=3 --list`, filtra prerelease, sceglie la versione
-`.N`/`-extN` più alta) invece di costruire la stringa a mano. Non ancora verificato su una
-build Windows reale — serve un quarto tentativo.
+`.N`/`-extN` più alta) invece di costruire la stringa a mano.
+
+**Quarto tentativo (stesso giorno) — un problema diverso, più avanti nel processo:**
+la risoluzione SDK ha funzionato, ma `gradlew` è fallito con
+`No Java compiler found, please ensure you are running Gradle with a JDK`. Causa:
+`ensure_jre()` ha sempre scaricato letteralmente una **JRE** (Java Runtime Environment,
+`.../jre/hotspot/...` sull'API di Adoptium) — una JRE non include `javac`, necessario a
+Gradle 9.5.1 per il proprio codegen dei version catalog. `.github/workflows/android.yml`
+del motore non ha mai avuto questo problema perché `actions/setup-java` installa di
+default una vera JDK, non una JRE — una differenza facile da perdere portando lo stesso
+bootstrap qui da zero. **Fix:** cambiato l'URL Adoptium da `/jre/` a `/jdk/`, e la cartella
+di cache da `jre` a `jdk` (così chi ha già una cache vecchia, rotta, non continua a
+riusarla all'infinito). Non ancora verificato su una build Windows reale — serve un
+quinto tentativo.
 
 ## Note
 
