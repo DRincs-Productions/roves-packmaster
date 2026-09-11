@@ -693,6 +693,48 @@ async fn download_native_library(app: &AppHandle, mut on_progress: impl FnMut(f6
     Ok(so_path)
 }
 
+/// `llvm-strip` lives under the NDK's own clang toolchain, in a host-OS-tagged directory --
+/// same "one binary per host, no generic fallback" shape as `sdk_os_tag`/`adoptium_os_arch`
+/// above, just for the NDK's own internal layout instead of a download URL.
+fn ndk_llvm_strip_path(ndk_root: &Path) -> Result<PathBuf, String> {
+    let host_tag = if cfg!(target_os = "windows") {
+        "windows-x86_64"
+    } else if cfg!(target_os = "macos") {
+        "darwin-x86_64"
+    } else if cfg!(target_os = "linux") {
+        "linux-x86_64"
+    } else {
+        return Err("unsupported OS for locating the NDK's own llvm-strip".to_string());
+    };
+    let exe_name = if cfg!(windows) { "llvm-strip.exe" } else { "llvm-strip" };
+    Ok(ndk_root.join("toolchains").join("llvm").join("prebuilt").join(host_tag).join("bin").join(exe_name))
+}
+
+/// Strips the downloaded `.so` in place -- see the call site's own comment for why this
+/// matters (an unstripped debug build came to *1.86 GB*, confirmed against a real generated
+/// APK). `--strip-all` (not just `--strip-debug`) -- confirmed via `llvm-nm -D` against the
+/// actual stripped output that the JNI-visible symbols this needs
+/// (`Java_org_servo_servoview_JNIServo_*`, looked up by *name* at runtime since this JNI
+/// bridge uses the plain `#[no_mangle] extern "C" fn Java_...` naming convention, not
+/// `RegisterNatives`) survive `--strip-all` intact -- it only removes the regular symbol
+/// table and debug sections, never the dynamic symbol table dynamic linking/JNI lookup
+/// actually needs. Shrinks the real 1.86 GB file this was tested against down to ~246 MB
+/// (`--strip-debug` alone only gets to ~411 MB) -- still large for a mobile `.so` since this
+/// is still a `dev`-profile (unoptimized, not just unstripped) build with no local Rust
+/// recompile to fix that (see the call site's comment on why Packmaster can't do better than
+/// this without the engine publishing a real release-profile build for embedding instead).
+/// `llvm-strip` is a real executable (unlike `sdkmanager`/`gradlew`), so no `script_command`
+/// wrapping needed even on Windows.
+fn strip_native_library(ndk_root: &Path, so_path: &Path) -> Result<(), String> {
+    let llvm_strip = ndk_llvm_strip_path(ndk_root)?;
+    if !llvm_strip.is_file() {
+        return Err(format!("llvm-strip not found at {}", llvm_strip.display()));
+    }
+    let mut command = std::process::Command::new(&llvm_strip);
+    command.arg("--strip-all").arg(so_path);
+    run_capturing_output(&mut command, "llvm-strip")
+}
+
 // ── Orchestration ────────────────────────────────────────────────────────────────────────
 
 pub struct AndroidBuildOptions<'a> {
@@ -772,7 +814,19 @@ pub async fn build_apk(
     let build_type_dir_name = if options.signing.is_some() { "release" } else { "debug" };
     let native_target_dir = scratch_root.join("native-src").join(build_type_dir_name);
     std::fs::create_dir_all(&native_target_dir).map_err(|e| e.to_string())?;
-    std::fs::copy(&native_so, native_target_dir.join("libservoshell.so")).map_err(|e| e.to_string())?;
+    let native_so_dest = native_target_dir.join("libservoshell.so");
+    std::fs::copy(&native_so, &native_so_dest).map_err(|e| e.to_string())?;
+    // `roves_android_native_arm64.zip` is published by the engine's own `android.yml`, whose
+    // own title says "debug" -- a completely unstripped debug build of Servo, full DWARF debug
+    // info included, comes to roughly *1.8 GB* (confirmed against a real generated APK, not a
+    // guess: `lib/arm64-v8a/libservoshell.so` alone accounted for 1.86 GB of a 1.9 GB total).
+    // No amount of Gradle-side APK optimization touches this -- AGP packages whatever's in
+    // `jniLibs` byte for byte. Stripping here, right after the copy and before Gradle/ndk-build
+    // ever see it, is what a `--release`-profile-plus-strip pipeline would give for free if
+    // this project compiled Rust locally at all -- which it deliberately doesn't (Packmaster's
+    // whole point is no toolchain needed), so the NDK's own `llvm-strip` (already downloaded
+    // for `ndk-build` itself) is the only way to get a reasonably-sized `.apk` without one.
+    strip_native_library(&ndk_root, &native_so_dest)?;
 
     // Content: mirrors `_bundle_android`'s unconditional `shutil.copytree(content_dir,
     // assets_dir)` -- no compression option exists for Android today (MainActivity.kt loads

@@ -95,8 +95,31 @@ del motore non ha mai avuto questo problema perché `actions/setup-java` install
 default una vera JDK, non una JRE — una differenza facile da perdere portando lo stesso
 bootstrap qui da zero. **Fix:** cambiato l'URL Adoptium da `/jre/` a `/jdk/`, e la cartella
 di cache da `jre` a `jdk` (così chi ha già una cache vecchia, rotta, non continua a
-riusarla all'infinito). Non ancora verificato su una build Windows reale — serve un
-quinto tentativo.
+riusarla all'infinito).
+
+**Quinto tentativo (stesso giorno) — successo, ma con un problema serio scoperto dopo:**
+la build Android è finalmente andata a buon fine, ma l'apk generato pesava **1,9 GB**
+(`lib/arm64-v8a/libservoshell.so` da solo: 1,86 GB) contro un progetto sorgente ben più
+piccolo — segnalato direttamente dall'utente. Causa: `roves_android_native_arm64.zip`,
+scaricato da `download_native_library()`, è pubblicato da `.github/workflows/android.yml`
+del motore, il cui stesso titolo dice "debug" — una build Rust `dev`-profile completamente
+non spogliata (debug info DWARF piena), mai pensata per finire in un apk reale. Nessuna
+ottimizzazione lato Gradle tocca questo file: AGP impacchetta byte per byte quello che
+trova in `jniLibs`.
+
+**Fix:** nuova `strip_native_library()` — usa l'`llvm-strip` già scaricato insieme
+all'NDK (nessun tool aggiuntivo) con `--strip-all` sul file appena copiato in
+`native_target_dir`, prima che Gradle lo veda. Verificato **con il file reale generato
+dall'utente**, non solo a tavolino: 1,86 GB → 246 MB (con solo `--strip-debug` si scende
+solo a 411 MB). Verificato anche che i simboli JNI (`Java_org_servo_servoview_JNIServo_*`,
+risolti per nome a runtime, non via `RegisterNatives`) sopravvivono a `--strip-all` intatti
+(`llvm-nm -D` sul file spogliato). 246 MB resta comunque grande per un `.so` mobile — è il
+massimo ottenibile senza ricompilare in modalità release, cosa che Packmaster non fa mai di
+proposito (nessun toolchain Rust richiesto). Il fix vero, più a monte, sarebbe far
+pubblicare al motore una build native realmente in modalità release per l'embedding, non
+riusare l'artefatto CI "debug" — non affrontato in questa sessione. Non ancora verificato
+che l'apk stripped installi/funzioni davvero su un dispositivo reale, solo che si genera
+alla dimensione attesa.
 
 ## Note
 
