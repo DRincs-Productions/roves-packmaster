@@ -68,13 +68,23 @@ d'errore mostrato in UI.
 
 **Causa reale trovata con il secondo tentativo (stesso giorno):** grazie all'output ora
 visibile, l'errore vero era `Warning: Failed to find package 'platforms;android-37'`.
-`platforms;android-37` è un SDK level preview/canary-only — non è nel canale "stable" che
-`sdkmanager` guarda di default. `.github/workflows/android.yml` del motore lo gestisce già
-correttamente passando `--channel=3` (canary, il canale più ampio) a ogni chiamata a
-`sdkmanager`; `run_sdkmanager`/`accept_sdk_licenses` in questo file non lo facevano mai.
-**Fix:** aggiunto `--channel=3` a entrambe le chiamate, allineando il comportamento a quello
-già verificato nella CI del motore. Non ancora verificato su una build Windows reale — serve
-un terzo tentativo per confermare che questo era l'unico problema.
+Primo fix (`--channel=3` su ogni chiamata a `sdkmanager`, mancante qui ma già presente
+in `.github/workflows/android.yml` del motore) **necessario ma non sufficiente** — il terzo
+tentativo ha dato lo stesso identico errore.
+
+**Causa reale completa, trovata interrogando direttamente il repository Google (non
+supposizione):** dal 2026-09 in poi Google versiona i platform level 37+ come
+`platforms;android-37.0`/`.1`/`.2` (più prerelease `-betaN`) — **non esiste affatto** un
+pacchetto letteralmente chiamato `platforms;android-37`. La stringa hardcoded
+`format!("platforms;android-{ANDROID_PLATFORM}")` non ha mai potuto corrispondere a nulla,
+indipendentemente dal canale. `android.yml` funziona perché non hardcoda mai il nome esatto:
+risolve dinamicamente via `sdkmanager --list | grep -oE "platforms;android-37(\.[0-9]+)?
+(-ext[0-9]+)?" | grep -v -- '-beta\|-rc' | sort -V | tail -1`.
+
+**Fix:** nuova funzione `resolve_platform_package()` in `android.rs` che replica la stessa
+logica (lista via `sdkmanager --channel=3 --list`, filtra prerelease, sceglie la versione
+`.N`/`-extN` più alta) invece di costruire la stringa a mano. Non ancora verificato su una
+build Windows reale — serve un quarto tentativo.
 
 ## Note
 

@@ -402,15 +402,86 @@ pub async fn ensure_android_sdk(
 
     let sdkmanager = sdkmanager_path(&cmdline_tools_dir);
     accept_sdk_licenses(&sdkmanager, &sdk_root, java_home)?;
+    let platform_package = resolve_platform_package(&sdkmanager, &sdk_root, java_home)?;
     run_sdkmanager(
         &sdkmanager,
         &sdk_root,
         java_home,
-        &["platform-tools", &format!("platforms;android-{ANDROID_PLATFORM}"), &format!("build-tools;{BUILD_TOOLS_VERSION}")],
+        &["platform-tools", &platform_package, &format!("build-tools;{BUILD_TOOLS_VERSION}")],
     )?;
 
     tokio::fs::write(&marker, b"1").await.map_err(|e| e.to_string())?;
     Ok(sdk_root)
+}
+
+/// As of Google's current repository (confirmed directly, not from documentation, 2026-09-11),
+/// `platforms;android-{ANDROID_PLATFORM}` alone is **not a real package** for platform levels
+/// 37+: Google now versions these as `platforms;android-37.0`/`.1`/`.2` (plus `-betaN`
+/// prereleases and separate `-extN` SDK-extension packages), the same way older levels like 35
+/// got `-ext14`/`-ext15` add-ons alongside the bare package -- except for 37+ the *bare* form
+/// doesn't exist at all. Hardcoding the literal string (this function's previous approach) is
+/// exactly what produced a real, confirmed "Failed to find package 'platforms;android-37'" on
+/// a real Windows machine even after fixing the separate `--channel=3` gap (needed for these
+/// to be visible in the first place, but not sufficient on its own).
+///
+/// Mirrors `.github/workflows/android.yml`'s own dynamic resolution (`sdkmanager --list |
+/// grep -oE "platforms;android-${ANDROID_COMPILE_SDK}(\.[0-9]+)?(-ext[0-9]+)?" | grep -v --
+/// '-beta\|-rc' | sort -V | tail -1`) instead of trying to guess/hardcode the right exact
+/// string here too -- list what's actually offered, keep only non-prerelease matches for this
+/// platform level, and take the highest `.N` (falling back to the highest `-extN`, then the
+/// bare form, if that's all that's offered instead).
+fn resolve_platform_package(sdkmanager: &Path, sdk_root: &Path, java_home: &Path) -> Result<String, String> {
+    use std::process::Stdio;
+
+    let mut command = script_command(sdkmanager);
+    command
+        .arg(format!("--sdk_root={}", sdk_root.display()))
+        .arg("--channel=3")
+        .arg("--list")
+        .env("JAVA_HOME", java_home);
+    let output = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("running sdkmanager --list: {e}"))?;
+    if !output.status.success() {
+        return Err(format_process_failure("sdkmanager --list", &output.status, &output.stdout, &output.stderr));
+    }
+
+    let prefix = format!("platforms;android-{ANDROID_PLATFORM}");
+    let mut bare: Option<String> = None;
+    let mut best_dot: Option<(u32, String)> = None;
+    let mut best_ext: Option<(u32, String)> = None;
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let Some(token) = line.trim_start().split(|c: char| c.is_whitespace() || c == '|').next() else {
+            continue;
+        };
+        if token == prefix {
+            bare = Some(token.to_string());
+            continue;
+        }
+        let Some(suffix) = token.strip_prefix(&prefix) else {
+            continue;
+        };
+        if suffix.contains("beta") || suffix.contains("rc") {
+            continue; // pre-release channel -- android.yml's own `grep -v` excludes these too
+        }
+        if let Some(n) = suffix.strip_prefix('.').and_then(|n| n.parse::<u32>().ok()) {
+            if best_dot.as_ref().map_or(true, |(m, _)| n > *m) {
+                best_dot = Some((n, token.to_string()));
+            }
+        } else if let Some(n) = suffix.strip_prefix("-ext").and_then(|n| n.parse::<u32>().ok()) {
+            if best_ext.as_ref().map_or(true, |(m, _)| n > *m) {
+                best_ext = Some((n, token.to_string()));
+            }
+        }
+    }
+
+    best_dot
+        .or(best_ext)
+        .map(|(_, pkg)| pkg)
+        .or(bare)
+        .ok_or_else(|| format!("no {prefix}* package advertised by sdkmanager --list"))
 }
 
 /// `sdkmanager --licenses` prompts once per not-yet-accepted license, reading `y`/`d` from
