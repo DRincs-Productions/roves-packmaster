@@ -61,13 +61,20 @@ un'app GUI senza console su ogni piattaforma: `run_sdkmanager`/`accept_sdk_licen
 usavano tutti `.status()` con stdio ereditata (che su Windows senza console non va da nessuna
 parte visibile), quindi qualunque cosa `sdkmanager`/`gradlew` scrivessero sul VERO motivo del
 fallimento (licenza rifiutata, problema di rete, versione Java incompatibile, ...) veniva
-scartata in silenzio. **Non ancora diagnosticato il vero motivo** — prima cosa sistemata:
-`run_capturing_output`/`format_process_failure` (nuovi helper in `android.rs`) catturano ora
-stdout+stderr di ogni invocazione (`sdkmanager --licenses`, `sdkmanager <install>`, `gradlew`)
-e li includono (troncati) nel messaggio d'errore mostrato in UI — così il prossimo tentativo
-di questo stesso utente dovrebbe finalmente dire *perché* fallisce, invece del solo exit code.
-Non ancora verificato: serve un secondo tentativo reale su quella stessa macchina Windows con
-questa build per sapere la causa vera.
+scartata in silenzio. Prima cosa sistemata: `run_capturing_output`/`format_process_failure`
+(nuovi helper in `android.rs`) catturano ora stdout+stderr di ogni invocazione (`sdkmanager
+--licenses`, `sdkmanager <install>`, `gradlew`) e li includono (troncati) nel messaggio
+d'errore mostrato in UI.
+
+**Causa reale trovata con il secondo tentativo (stesso giorno):** grazie all'output ora
+visibile, l'errore vero era `Warning: Failed to find package 'platforms;android-37'`.
+`platforms;android-37` è un SDK level preview/canary-only — non è nel canale "stable" che
+`sdkmanager` guarda di default. `.github/workflows/android.yml` del motore lo gestisce già
+correttamente passando `--channel=3` (canary, il canale più ampio) a ogni chiamata a
+`sdkmanager`; `run_sdkmanager`/`accept_sdk_licenses` in questo file non lo facevano mai.
+**Fix:** aggiunto `--channel=3` a entrambe le chiamate, allineando il comportamento a quello
+già verificato nella CI del motore. Non ancora verificato su una build Windows reale — serve
+un terzo tentativo per confermare che questo era l'unico problema.
 
 ## Note
 

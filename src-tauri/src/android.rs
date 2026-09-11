@@ -422,6 +422,10 @@ fn accept_sdk_licenses(sdkmanager: &Path, sdk_root: &Path, java_home: &Path) -> 
 
     let mut child = script_command(sdkmanager)
         .arg(format!("--sdk_root={}", sdk_root.display()))
+        // See `run_sdkmanager`'s own comment on `--channel=3` -- without it, sdkmanager only
+        // looks at the stable channel, and never even offers the license for whatever's not
+        // in it (silently, not an error) for this step to accept ahead of time.
+        .arg("--channel=3")
         .arg("--licenses")
         .env("JAVA_HOME", java_home)
         .stdin(Stdio::piped())
@@ -462,7 +466,18 @@ fn accept_sdk_licenses(sdkmanager: &Path, sdk_root: &Path, java_home: &Path) -> 
 
 fn run_sdkmanager(sdkmanager: &Path, sdk_root: &Path, java_home: &Path, packages: &[&str]) -> Result<(), String> {
     let mut command = script_command(sdkmanager);
-    command.arg(format!("--sdk_root={}", sdk_root.display())).env("JAVA_HOME", java_home);
+    command
+        .arg(format!("--sdk_root={}", sdk_root.display()))
+        // The engine's own `.github/workflows/android.yml` needs this same flag for the exact
+        // same package set, with its own comment explaining why: sdkmanager only considers the
+        // stable channel by default, and `platforms;android-{ANDROID_PLATFORM}` (a preview/
+        // canary-only SDK level as of this writing) isn't in it -- omitting this flag is
+        // exactly what produced a real "Failed to find package" failure on a real Windows
+        // machine, since without it the package is invisible to sdkmanager, not just
+        // unlicensed. `--channel=3` is canary, the widest channel (superset of stable/beta/
+        // dev), matching that workflow's own choice so this doesn't drift out of sync with it.
+        .arg("--channel=3")
+        .env("JAVA_HOME", java_home);
     for package in packages {
         command.arg(package);
     }
