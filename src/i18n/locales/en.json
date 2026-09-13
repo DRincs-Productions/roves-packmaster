@@ -142,9 +142,7 @@
 			"packaging": "Packaging the {{platform}} installer…",
 			"downloading-jre": "Downloading a Java runtime for Android…",
 			"downloading-sdk": "Downloading the Android SDK…",
-			"downloading-ndk": "Downloading the Android NDK…",
-			"downloading-project": "Downloading the Android build project…",
-			"downloading-native": "Downloading the compiled engine library…"
+			"downloading-project": "Downloading the Android build project…"
 		},
 		"doneTitle": "Your release is ready",
 		"doneDescription": "Packmaster saved everything to the {{folder}} folder.",

@@ -46,7 +46,19 @@ Rust compila (`roves-packmaster` CI verde) e TypeScript/i18n sono validati.
 
 ## 3. Supporto Android su Windows
 
-**Stato: sbloccato (2026-09-10), primo test reale su Windows il 2026-09-11 -- fallito, in
+**Superato in gran parte (2026-09-13):** il motore è passato da Servo/JNI a WebView nativa
+per Android (vedi `CUSTOMIZATIONS.md` del motore, voce "Mobile pivots from Servo to native
+WebView") — `android.rs` non scarica/compila/strippa più alcuna libreria nativa, quindi non
+c'è più alcun NDK da bootstrappare su nessuna piattaforma, Windows incluso. Tutto ciò che
+riguarda NDK/`libservoshell.so`/`ndk-build.cmd`/`llvm-strip` qui sotto è storico: descrive un
+problema che semplicemente non esiste più nella nuova architettura. Restano ancora validi:
+la risoluzione dinamica del platform package (`resolve_platform_package`, il bug
+`platforms;android-37` era reale e indipendente dall'NDK) e il fix JRE→JDK (Gradle continua a
+servire un JDK vero). Non ancora verificato su Windows con la nuova architettura WebView-only
+— dovrebbe essere più semplice da verificare ora (solo JDK+SDK+Gradle, niente NDK), ma nessun
+ambiente Windows reale disponibile in questa sessione per confermarlo.
+
+**Stato (storico, pre-pivot): sbloccato (2026-09-10), primo test reale su Windows il 2026-09-11 -- fallito, in
 diagnosi.** Due gap indipendenti erano stati risolti il 2026-09-10: il fix lato motore
 (`TODO.md` del motore, voce #4, `ndk-build.cmd`) e — scoperto solo dopo, leggendo `android.rs`
 con più attenzione — il bootstrap JRE/SDK/NDK di **questo stesso file**, che semplicemente non

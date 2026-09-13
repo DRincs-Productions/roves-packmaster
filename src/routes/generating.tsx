@@ -30,9 +30,7 @@ interface BundleProgressEvent {
     | "packaging"
     | "downloading-jre"
     | "downloading-sdk"
-    | "downloading-ndk"
     | "downloading-project"
-    | "downloading-native"
     | "done";
   fraction: number;
 }

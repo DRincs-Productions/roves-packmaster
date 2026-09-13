@@ -142,9 +142,7 @@
 			"packaging": "{{platform}}-Installationsprogramm wird erstellt…",
 			"downloading-jre": "Java-Laufzeitumgebung für Android wird heruntergeladen…",
 			"downloading-sdk": "Android SDK wird heruntergeladen…",
-			"downloading-ndk": "Android NDK wird heruntergeladen…",
-			"downloading-project": "Android-Build-Projekt wird heruntergeladen…",
-			"downloading-native": "Kompilierte Engine-Bibliothek wird heruntergeladen…"
+			"downloading-project": "Android-Build-Projekt wird heruntergeladen…"
 		},
 		"doneTitle": "Dein Release ist bereit",
 		"doneDescription": "Packmaster hat alles im Ordner {{folder}} gespeichert.",

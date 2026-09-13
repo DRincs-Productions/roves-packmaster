@@ -142,9 +142,7 @@
 			"packaging": "Création de l'installateur {{platform}}…",
 			"downloading-jre": "Téléchargement d'un runtime Java pour Android…",
 			"downloading-sdk": "Téléchargement du SDK Android…",
-			"downloading-ndk": "Téléchargement du NDK Android…",
-			"downloading-project": "Téléchargement du projet de build Android…",
-			"downloading-native": "Téléchargement de la bibliothèque moteur compilée…"
+			"downloading-project": "Téléchargement du projet de build Android…"
 		},
 		"doneTitle": "Votre version est prête",
 		"doneDescription": "Packmaster a tout enregistré dans le dossier {{folder}}.",

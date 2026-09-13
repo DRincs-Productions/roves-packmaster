@@ -1,11 +1,11 @@
-//! Real Android APK generation for Packmaster: downloads the raw compiled `libservoshell.so`
-//! and the `support/android/apk/` Gradle project (both published by the engine's own
-//! `.github/workflows/android.yml` to the rolling "test" GitHub Release — see that workflow's
-//! own comment; Android isn't part of a real, tagged release yet, so there's nothing versioned
-//! to pin to), plus a portable JRE (Eclipse Temurin) and the Android SDK/NDK components
-//! Gradle/`ndk-build` need — all auto-downloaded and cached under this app's own cache dir,
-//! exactly like `shell.rs` already does for the desktop shell, so a game developer using
-//! Packmaster needs no Android Studio, no Rust toolchain, nothing preinstalled.
+//! Real Android APK generation for Packmaster: downloads the `support/android/apk/` Gradle
+//! project (published by the engine's own `.github/workflows/android.yml` to the rolling
+//! "test" GitHub Release — see that workflow's own comment; Android isn't part of a real,
+//! tagged release yet, so there's nothing versioned to pin to), plus a portable JDK (Eclipse
+//! Temurin) and the Android SDK components Gradle needs — all auto-downloaded and cached
+//! under this app's own cache dir, exactly like `shell.rs` already does for the desktop
+//! shell, so a game developer using Packmaster needs no Android Studio, no Rust toolchain,
+//! nothing preinstalled.
 //!
 //! Mirrors the engine's own `python/servo/post_build_commands.py`'s `_bundle_android` (content
 //! injection into `servoapp/src/main/assets/www/`, launcher icon into `res/mipmap/`, app name/
@@ -13,29 +13,17 @@
 //! design this ports to Rust. Reading the game's own web app manifest for defaults
 //! (`read_web_manifest` below) mirrors that same file's `_read_web_manifest`.
 //!
-//! **The NDK is required even though Packmaster never compiles Rust**: `support/android/apk`'s
-//! own Gradle build doesn't use `externalNativeBuild` — it shells out to `ndk-build` (via
-//! `servoview/build.gradle.kts`'s `ndkbuild<Variant>` task, driven by `jni/Android.mk`) purely
-//! to copy the prebuilt `libservoshell.so` *and* the NDK's own `libc++_shared.so` into the
-//! APK's `jniLibs/` — there's no way to produce a working APK without that step.
-//!
-//! **Windows: unblocked 2026-09-10, not yet verified for real.** Two independent gaps, both
-//! fixed the same day: (1) `servoview/build.gradle.kts`'s `ndkbuild<Variant>` task used to
-//! hardcode the Unix script name (`getNdkDir() + "/ndk-build"`, never `ndk-build.cmd`) with no
-//! Windows fallback — fixed engine-side (see the engine's own CUSTOMIZATIONS.md, "Fix
-//! `ndk-build` invocation for Windows" entry); (2) *this file's own* JRE/SDK/NDK bootstrap
-//! (`adoptium_os_arch`/`sdk_os_tag`/`ndk_download_info`) simply never had a Windows branch at
-//! all — discovered only after fixing (1) and realizing `check_android_availability` alone
-//! wasn't the whole story. Fixed here too: Adoptium's Windows JRE ships as `.zip` not
-//! `.tar.gz`, Google's cmdline-tools/NDK both have their own Windows-tagged downloads, and
-//! `sdkmanager`/`gradlew` are `.bat` files on Windows that need routing through `cmd /C`
-//! (see `script_command`) since `std::process::Command` doesn't resolve script interpreters
-//! for a bare `.bat` path the way typing one into `cmd.exe` interactively does. Nobody has
-//! actually run any of this against a real Android SDK/NDK on Windows yet — every fix here
-//! was derived by reading Google/Adoptium's own download-naming conventions and Windows
-//! process-invocation behavior, not by testing it. Treat a Windows-specific Android failure
-//! as "the fix wasn't as complete as it looked," not as a surprise, until someone actually
-//! confirms a real build+install works end to end.
+//! **2026-09-13: migrated to the engine's native-WebView Android port.** As of the engine's
+//! own mobile pivot (Servo -> Android WebView/iOS WKWebView, see the engine repo's own
+//! CUSTOMIZATIONS.md, "Mobile pivots from Servo to native WebView"), the game runs on
+//! Android's own system `WebView` — no Servo, no JNI, no compiled `libservoshell.so` to
+//! download, strip, or place, and therefore **no NDK at all**. This is why the whole previous
+//! NDK/native-library-download/`llvm-strip` machinery that used to live in this file is gone:
+//! `support/android/apk`'s own Gradle build no longer shells out to `ndk-build` at all (see
+//! that project's own `servoapp/build.gradle.kts`), so there's nothing native for Packmaster
+//! to compile, download, or fit into the APK anymore. This also means the earlier "Windows:
+//! unblocked, not yet verified" NDK/`ndk-build.cmd` caveat that used to live here no longer
+//! applies — there's no `ndk-build` invocation left to have a Windows-specific gap in.
 
 use std::path::{Path, PathBuf};
 
@@ -53,30 +41,21 @@ use tauri::{AppHandle, Manager};
 /// as of 2026-09 for linux/mac_x86_64/mac_arm64; bump when Google ships a newer one).
 const CMDLINE_TOOLS_BUILD: &str = "15859902";
 
-/// Must match the engine's own `python/servo/platform/build_target.py`, which hard-requires
-/// major version 28 specifically (checks `source.properties`, rejects anything else) --
-/// unlike `.github/workflows/android.yml`'s own dynamic `sdkmanager --list` resolution, this
-/// can't easily re-resolve "latest r28.x" without already having a JRE+sdkmanager bootstrapped
-/// first, so it's a plain pinned version instead (r28c, the last r28 release before r29).
-const NDK_VERSION: &str = "r28c";
-
 const ANDROID_PLATFORM: &str = "37";
 const BUILD_TOOLS_VERSION: &str = "36.0.0";
 /// Feature (major) version only -- Adoptium's `latest` endpoint resolves the exact patch
-/// build itself, so this never goes stale the way `CMDLINE_TOOLS_BUILD`/`NDK_VERSION` can.
+/// build itself, so this never goes stale the way `CMDLINE_TOOLS_BUILD` can.
 const JRE_FEATURE_VERSION: &str = "21";
 
 /// Where `.github/workflows/android.yml` (this repo -- DRincs-Productions/roves) publishes
-/// `roves_android_native_arm64.zip`/`roves_android_project.zip`. Not `shell::TARGET_SHELL_VERSION`
-/// (a real, tagged release) -- Android is still experimental (see README.md's "Supported
-/// platforms" table), so the rolling "test" tag is the only channel that has these assets at
-/// all today.
+/// `roves_android_project.zip`. Not `shell::TARGET_SHELL_VERSION` (a real, tagged release) --
+/// Android is still experimental (see README.md's "Supported platforms" table), so the
+/// rolling "test" tag is the only channel that has this asset at all today.
 const ANDROID_TEST_RELEASE_TAG: &str = "test";
 const ANDROID_REPO: &str = "DRincs-Productions/roves";
 
 /// Only this ABI is published (see android.yml) -- virtually every real Android device.
 const ARCH_STRING: &str = "Arm64"; // servoapp's own Gradle variant naming (assemble<Arch>Debug)
-const RUST_TRIPLE: &str = "aarch64-linux-android";
 
 // Same 3 filenames, same order, as the frontend's own `readWebManifest` and the engine's own
 // `_read_web_manifest` -- kept in sync across all three independent implementations (Rust
@@ -200,9 +179,9 @@ fn extract_tar_gz(archive_path: &Path, dest_dir: &Path) -> Result<(), String> {
     archive.unpack(dest_dir).map_err(|e| format!("extracting {archive_path:?}: {e}"))
 }
 
-/// Many of these downloads extract to a single, version-named top-level folder (e.g.
-/// `android-ndk-r28c/`, `jdk-21.0.12.1+1-jre/`) whose exact name isn't worth hardcoding --
-/// this finds it instead of guessing.
+/// The JDK download extracts to a single, version-named top-level folder (e.g.
+/// `jdk-21.0.12.1+1-jre/`) whose exact name isn't worth hardcoding -- this finds it instead
+/// of guessing.
 fn find_single_subdir(parent: &Path) -> Result<PathBuf, String> {
     let mut dirs = std::fs::read_dir(parent)
         .map_err(|e| e.to_string())?
@@ -268,9 +247,7 @@ pub async fn ensure_jre(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send
     let url = format!(
         "https://api.adoptium.net/v3/binary/latest/{JRE_FEATURE_VERSION}/ga/{os}/{arch}/jdk/hotspot/normal/eclipse"
     );
-    // Adoptium packages Windows binaries as .zip, everything else as .tar.gz -- same
-    // distinction the NDK's own download (see `ndk_download_info`) makes for its own
-    // Windows/Linux .zip vs. macOS .dmg.
+    // Adoptium packages Windows binaries as .zip, everything else as .tar.gz.
     if os == "windows" {
         let archive_path = cache_dir.join("jdk.zip");
         download_with_retries(&url, &archive_path, &mut on_progress).await.map_err(|e| format!("downloading JDK: {e}"))?;
@@ -304,8 +281,7 @@ fn sdk_os_tag() -> Result<&'static str, String> {
 
 /// `sdkmanager` (and every other cmdline-tools script) ships as a `.bat` on Windows, a
 /// plain extension-less shell script everywhere else -- same distinction as the engine's own
-/// `gradlew`/`gradlew.bat` (see CUSTOMIZATIONS.md) and `ndk-build`/`ndk-build.cmd` (see
-/// TODO.md #4) gaps this mirrors.
+/// `gradlew`/`gradlew.bat` (see CUSTOMIZATIONS.md).
 fn sdkmanager_path(cmdline_tools_dir: &Path) -> PathBuf {
     cmdline_tools_dir.join("bin").join(if cfg!(windows) { "sdkmanager.bat" } else { "sdkmanager" })
 }
@@ -567,92 +543,18 @@ fn run_sdkmanager(sdkmanager: &Path, sdk_root: &Path, java_home: &Path, packages
     run_capturing_output(&mut command, &format!("sdkmanager while installing {packages:?}"))
 }
 
-// ── Android NDK (needed for ndk-build's jniLibs/libc++_shared.so packaging step) ────────
-
-/// `(download_url, is_dmg)` -- macOS ships the NDK as a `.dmg` disk image, Linux/Windows as a
-/// plain `.zip` (confirmed against the real, current download pages; Windows isn't reachable
-/// here at all per `check_android_availability`, but the URL is still real).
-fn ndk_download_info() -> Result<(String, bool), String> {
-    if cfg!(target_os = "macos") {
-        Ok((format!("https://dl.google.com/android/repository/android-ndk-{NDK_VERSION}-darwin.dmg"), true))
-    } else if cfg!(target_os = "linux") {
-        Ok((format!("https://dl.google.com/android/repository/android-ndk-{NDK_VERSION}-linux.zip"), false))
-    } else if cfg!(target_os = "windows") {
-        Ok((format!("https://dl.google.com/android/repository/android-ndk-{NDK_VERSION}-windows.zip"), false))
-    } else {
-        Err("unsupported OS for the Android NDK".to_string())
-    }
-}
-
-/// Downloads (once; cached) NDK r28c and returns `ANDROID_NDK_ROOT`.
-pub async fn ensure_ndk(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send) -> Result<PathBuf, String> {
-    let cache_dir = tools_cache_dir(app)?.join("ndk").join(NDK_VERSION);
-    let marker = cache_dir.join(".complete");
-    if marker.exists() {
-        on_progress(1.0);
-        return find_single_subdir(&cache_dir);
-    }
-    if cache_dir.exists() {
-        tokio::fs::remove_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
-    }
-    tokio::fs::create_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
-
-    let (url, is_dmg) = ndk_download_info()?;
-    if is_dmg {
-        let dmg_path = cache_dir.join("ndk.dmg");
-        download_with_retries(&url, &dmg_path, &mut on_progress).await.map_err(|e| format!("downloading NDK: {e}"))?;
-        extract_dmg(&dmg_path, &cache_dir)?;
-        tokio::fs::remove_file(&dmg_path).await.ok();
-    } else {
-        let zip_path = cache_dir.join("ndk.zip");
-        download_with_retries(&url, &zip_path, &mut on_progress).await.map_err(|e| format!("downloading NDK: {e}"))?;
-        extract_zip(&zip_path, &cache_dir)?;
-        tokio::fs::remove_file(&zip_path).await.ok();
-    }
-    tokio::fs::write(&marker, b"1").await.map_err(|e| e.to_string())?;
-    find_single_subdir(&cache_dir)
-}
-
-/// Mounts `dmg_path` via `hdiutil` (macOS only -- the NDK's `.dmg` packaging), copies the
-/// NDK folder it contains out to `dest_dir`, then unmounts. `hdiutil` is a stock macOS tool,
-/// no download needed.
-fn extract_dmg(dmg_path: &Path, dest_dir: &Path) -> Result<(), String> {
-    let mount_point = std::env::temp_dir().join(format!("roves-packmaster-ndk-mount-{}", std::process::id()));
-    std::fs::create_dir_all(&mount_point).map_err(|e| e.to_string())?;
-
-    let attach_status = std::process::Command::new("hdiutil")
-        .args(["attach", "-nobrowse", "-mountpoint"])
-        .arg(&mount_point)
-        .arg(dmg_path)
-        .status()
-        .map_err(|e| format!("running hdiutil attach: {e}"))?;
-    if !attach_status.success() {
-        return Err(format!("hdiutil attach exited with {attach_status}"));
-    }
-
-    let copy_result = (|| -> Result<(), String> {
-        let ndk_dir = find_single_subdir(&mount_point)?;
-        copy_dir_recursive(&ndk_dir, dest_dir)
-    })();
-
-    let _ = std::process::Command::new("hdiutil").args(["detach", "-quiet"]).arg(&mount_point).status();
-    std::fs::remove_dir_all(&mount_point).ok();
-
-    copy_result
-}
-
-// ── Android project + prebuilt native library (from the engine's rolling "test" release) ─
+// ── Android project (from the engine's rolling "test" release) ─────────────────────────
 
 fn test_release_asset_url(asset_name: &str) -> String {
     format!("https://github.com/{ANDROID_REPO}/releases/download/{ANDROID_TEST_RELEASE_TAG}/{asset_name}")
 }
 
 /// Downloads (once per app run -- see the "always re-check" note below; not cached across
-/// runs the way the JRE/SDK/NDK are) the engine's `support/android/apk/` Gradle project.
-/// Unlike the JRE/SDK/NDK toolchains (pinned/self-updating, safe to cache indefinitely), this
-/// tracks a rolling release that's overwritten on every push to the engine's `main` branch --
-/// caching it would silently keep building against a stale snapshot of the engine's own
-/// Android integration.
+/// runs the way the JRE/SDK are) the engine's `support/android/apk/` Gradle project. Unlike
+/// the JRE/SDK toolchains (pinned/self-updating, safe to cache indefinitely), this tracks a
+/// rolling release that's overwritten on every push to the engine's `main` branch -- caching
+/// it would silently keep building against a stale snapshot of the engine's own Android
+/// integration.
 async fn download_android_project(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send) -> Result<PathBuf, String> {
     let dest_dir = tools_cache_dir(app)?.join("android-project");
     if dest_dir.exists() {
@@ -667,72 +569,9 @@ async fn download_android_project(app: &AppHandle, mut on_progress: impl FnMut(f
     extract_zip(&zip_path, &dest_dir)?;
     tokio::fs::remove_file(&zip_path).await.ok();
     // The zip's own root is `support/android/apk/...` (see android.yml's `zip -rq ...
-    // support/android/apk`) -- already the exact relative layout `getTargetDir`'s "three
-    // directories up from the Gradle project" assumption needs (see this module's own
-    // `build_apk` doc comment), as long as `dest_dir` plays the role of the engine repo root.
+    // support/android/apk`) -- the exact relative path this function's own caller expects
+    // (`apk_project_dir` below), with `dest_dir` playing the role of the engine repo root.
     Ok(dest_dir)
-}
-
-async fn download_native_library(app: &AppHandle, mut on_progress: impl FnMut(f64) + Send) -> Result<PathBuf, String> {
-    let dest_dir = tools_cache_dir(app)?.join("android-native");
-    if dest_dir.exists() {
-        tokio::fs::remove_dir_all(&dest_dir).await.map_err(|e| e.to_string())?;
-    }
-    tokio::fs::create_dir_all(&dest_dir).await.map_err(|e| e.to_string())?;
-
-    let zip_path = dest_dir.join("native.zip");
-    download_with_retries(&test_release_asset_url("roves_android_native_arm64.zip"), &zip_path, &mut on_progress)
-        .await
-        .map_err(|e| format!("downloading the compiled engine library: {e}"))?;
-    extract_zip(&zip_path, &dest_dir)?;
-    tokio::fs::remove_file(&zip_path).await.ok();
-    let so_path = dest_dir.join("libservoshell.so");
-    if !so_path.is_file() {
-        return Err("downloaded native library zip didn't contain libservoshell.so".to_string());
-    }
-    Ok(so_path)
-}
-
-/// `llvm-strip` lives under the NDK's own clang toolchain, in a host-OS-tagged directory --
-/// same "one binary per host, no generic fallback" shape as `sdk_os_tag`/`adoptium_os_arch`
-/// above, just for the NDK's own internal layout instead of a download URL.
-fn ndk_llvm_strip_path(ndk_root: &Path) -> Result<PathBuf, String> {
-    let host_tag = if cfg!(target_os = "windows") {
-        "windows-x86_64"
-    } else if cfg!(target_os = "macos") {
-        "darwin-x86_64"
-    } else if cfg!(target_os = "linux") {
-        "linux-x86_64"
-    } else {
-        return Err("unsupported OS for locating the NDK's own llvm-strip".to_string());
-    };
-    let exe_name = if cfg!(windows) { "llvm-strip.exe" } else { "llvm-strip" };
-    Ok(ndk_root.join("toolchains").join("llvm").join("prebuilt").join(host_tag).join("bin").join(exe_name))
-}
-
-/// Strips the downloaded `.so` in place -- see the call site's own comment for why this
-/// matters (an unstripped debug build came to *1.86 GB*, confirmed against a real generated
-/// APK). `--strip-all` (not just `--strip-debug`) -- confirmed via `llvm-nm -D` against the
-/// actual stripped output that the JNI-visible symbols this needs
-/// (`Java_org_servo_servoview_JNIServo_*`, looked up by *name* at runtime since this JNI
-/// bridge uses the plain `#[no_mangle] extern "C" fn Java_...` naming convention, not
-/// `RegisterNatives`) survive `--strip-all` intact -- it only removes the regular symbol
-/// table and debug sections, never the dynamic symbol table dynamic linking/JNI lookup
-/// actually needs. Shrinks the real 1.86 GB file this was tested against down to ~246 MB
-/// (`--strip-debug` alone only gets to ~411 MB) -- still large for a mobile `.so` since this
-/// is still a `dev`-profile (unoptimized, not just unstripped) build with no local Rust
-/// recompile to fix that (see the call site's comment on why Packmaster can't do better than
-/// this without the engine publishing a real release-profile build for embedding instead).
-/// `llvm-strip` is a real executable (unlike `sdkmanager`/`gradlew`), so no `script_command`
-/// wrapping needed even on Windows.
-fn strip_native_library(ndk_root: &Path, so_path: &Path) -> Result<(), String> {
-    let llvm_strip = ndk_llvm_strip_path(ndk_root)?;
-    if !llvm_strip.is_file() {
-        return Err(format!("llvm-strip not found at {}", llvm_strip.display()));
-    }
-    let mut command = std::process::Command::new(&llvm_strip);
-    command.arg("--strip-all").arg(so_path);
-    run_capturing_output(&mut command, "llvm-strip")
 }
 
 // ── Orchestration ────────────────────────────────────────────────────────────────────────
@@ -749,17 +588,12 @@ pub struct AndroidBuildOptions<'a> {
     pub signing: Option<&'a crate::signing::SigningConfig>,
 }
 
-/// Builds a debug `.apk` and returns its path. `on_progress(phase, fraction)` mirrors
-/// `bundle.rs`'s own per-platform progress events, with `"android"` as the pseudo-platform
-/// name -- see that module's `emit_progress`.
-///
-/// Scratch layout note: `support/android/apk/servoview/build.gradle.kts`'s own
-/// `getTargetDir`/`getJniLibsPath` (buildSrc/Interop.kt) hardcode "go up 3 directories from
-/// the Gradle project root" to find where `target/<triple>/<debug|release>/jniLibs/` should
-/// live -- i.e. they assume the engine repo's own layout (`support/android/apk/servoview/../
-/// ../../` = repo root). This build copies the downloaded project into a scratch dir
-/// preserving that exact `support/android/apk/` nesting, so that assumption still resolves
-/// correctly to the scratch root instead of somewhere unwritable.
+/// Builds a debug (or, with `signing`, a signed release) `.apk` and returns its path.
+/// `on_progress(phase, fraction)` mirrors `bundle.rs`'s own per-platform progress events,
+/// with `"android"` as the pseudo-platform name -- see that module's `emit_progress`. Mirrors
+/// the engine's own `_bundle_android` (`python/servo/post_build_commands.py`) step for step --
+/// see that function's own doc comment for the design this ports to Rust; no native library
+/// or NDK involved anymore, just copying content into a Gradle project and running it.
 pub async fn build_apk(
     app: &AppHandle,
     options: &AndroidBuildOptions<'_>,
@@ -776,14 +610,8 @@ pub async fn build_apk(
     on_progress("downloading-sdk", 0.0);
     let sdk_root = ensure_android_sdk(app, &java_home, |f| on_progress("downloading-sdk", f)).await?;
 
-    on_progress("downloading-ndk", 0.0);
-    let ndk_root = ensure_ndk(app, |f| on_progress("downloading-ndk", f)).await?;
-
     on_progress("downloading-project", 0.0);
     let project_root = download_android_project(app, |f| on_progress("downloading-project", f)).await?;
-
-    on_progress("downloading-native", 0.0);
-    let native_so = download_native_library(app, |f| on_progress("downloading-native", f)).await?;
 
     on_progress("assembling", 0.0);
     let scratch_root = std::env::temp_dir().join(format!("roves-packmaster-android-{}", std::process::id()));
@@ -792,45 +620,20 @@ pub async fn build_apk(
     }
     // `project_root` already has the `support/android/apk/...` layout (see
     // `download_android_project`'s own comment) -- moving it wholesale into place is enough,
-    // no need to know or reconstruct the individual module paths inside it.
+    // no need to know or reconstruct the individual module paths inside it. A scratch copy
+    // rather than building the download cache in place, same reasoning as the engine's own
+    // `_bundle_android`: a repeat build for a different game starts from a clean copy every
+    // time instead of accumulating the previous game's files.
     copy_dir_recursive(&project_root, &scratch_root)?;
     let apk_project_dir = scratch_root.join("support").join("android").join("apk");
     if !apk_project_dir.is_dir() {
         return Err(format!("downloaded Android project has no support/android/apk/ under {scratch_root:?}"));
     }
 
-    // The raw compiled library, at the exact path `ndk-build`'s own `jni/Android.mk`
-    // (`LOCAL_PATH := $(SERVO_TARGET_DIR)`) will look for it -- mirrors the engine's own
-    // `post_build_commands.py` setting `env["SERVO_TARGET_DIR"] = path.dirname(servo_binary)`.
-    //
-    // The directory's own *name* ("debug"/"release") isn't just cosmetic: buildSrc/
-    // Interop.kt's `getSubTargetDir` -- shared by both `getNativeTargetDir` (where ndk-build
-    // copies the .so from, driven by this env var) and `getTargetDir` (where Gradle's own
-    // `copyAndRename<Variant>APK` task writes the *final* .apk, this function's own
-    // `apk_path` below) -- takes `System.getenv("SERVO_TARGET_DIR")`'s basename over the
-    // actual Debug/Release build type whenever the env var is set, which it always is here.
-    // Get this wrong and the signed release .apk silently ends up under .../debug/ instead
-    // of .../release/, where `apk_path` below would never find it.
-    let build_type_dir_name = if options.signing.is_some() { "release" } else { "debug" };
-    let native_target_dir = scratch_root.join("native-src").join(build_type_dir_name);
-    std::fs::create_dir_all(&native_target_dir).map_err(|e| e.to_string())?;
-    let native_so_dest = native_target_dir.join("libservoshell.so");
-    std::fs::copy(&native_so, &native_so_dest).map_err(|e| e.to_string())?;
-    // `roves_android_native_arm64.zip` is published by the engine's own `android.yml`, whose
-    // own title says "debug" -- a completely unstripped debug build of Servo, full DWARF debug
-    // info included, comes to roughly *1.8 GB* (confirmed against a real generated APK, not a
-    // guess: `lib/arm64-v8a/libservoshell.so` alone accounted for 1.86 GB of a 1.9 GB total).
-    // No amount of Gradle-side APK optimization touches this -- AGP packages whatever's in
-    // `jniLibs` byte for byte. Stripping here, right after the copy and before Gradle/ndk-build
-    // ever see it, is what a `--release`-profile-plus-strip pipeline would give for free if
-    // this project compiled Rust locally at all -- which it deliberately doesn't (Packmaster's
-    // whole point is no toolchain needed), so the NDK's own `llvm-strip` (already downloaded
-    // for `ndk-build` itself) is the only way to get a reasonably-sized `.apk` without one.
-    strip_native_library(&ndk_root, &native_so_dest)?;
-
     // Content: mirrors `_bundle_android`'s unconditional `shutil.copytree(content_dir,
-    // assets_dir)` -- no compression option exists for Android today (MainActivity.kt loads
-    // a plain `file:///android_asset/www/index.html`, not a packed archive).
+    // assets_dir)` -- no compression option exists for Android today (MainActivity.kt serves
+    // the game via `WebViewAssetLoader` from this exact `assets/www/` folder, not a packed
+    // archive).
     let assets_dir = apk_project_dir.join("servoapp").join("src").join("main").join("assets").join("www");
     if assets_dir.exists() {
         std::fs::remove_dir_all(&assets_dir).map_err(|e| e.to_string())?;
@@ -892,8 +695,7 @@ pub async fn build_apk(
         .arg(format!("-PservoAppName={app_name}"))
         .env("JAVA_HOME", &java_home)
         .env("ANDROID_SDK_ROOT", &sdk_root)
-        .env("ANDROID_NDK_ROOT", &ndk_root)
-        .env("SERVO_TARGET_DIR", &native_target_dir);
+        .env("ANDROID_HOME", &sdk_root);
     // See `signing.rs`'s own doc comment: these 4 vars are the entire signing mechanism,
     // read directly by upstream Servo's own (unpatched) buildSrc/Android.kt.
     if let Some(signing) = options.signing {
@@ -903,23 +705,22 @@ pub async fn build_apk(
     }
     run_capturing_output(&mut command, &format!("gradlew while running {task}"))?;
 
-    // Same location `servoapp/build.gradle.kts`'s own `copyAndRename<Variant>APK` task
-    // writes to -- `getTargetDir(debug, "arm64")`, i.e. `<scratch_root>/target/
-    // aarch64-linux-android/<debug|release>/servoapp.apk` (see this function's own doc
-    // comment on the "three directories up" assumption that makes `<scratch_root>` play the
-    // repo-root role, and `native_target_dir`'s own doc comment above for why
-    // `build_type_dir_name` -- not the literal `gradle_build_type` -- is what actually
-    // determines this).
-    let apk_path = scratch_root
-        .join("target")
-        .join(RUST_TRIPLE)
-        .join(build_type_dir_name)
-        .join("servoapp.apk");
-    if !apk_path.is_file() {
-        return Err(format!("gradlew succeeded but no .apk found at the expected path {apk_path:?}"));
-    }
+    // AGP's own standard per-variant output location -- no more custom
+    // `copyAndRename<Variant>APK` Gradle task moving it elsewhere (see the engine's own
+    // `_bundle_android`, which made the identical switch for the identical reason: nothing
+    // upstream needed that task once there was no `target/<rust-triple>/` for it to reach
+    // back into). Exactly one match expected -- more than one is ambiguous, zero means
+    // gradlew's own "successful" exit code didn't actually produce anything.
+    let pattern = apk_project_dir.join("servoapp").join("build").join("outputs").join("apk").join("**").join("*.apk");
+    let matches: Vec<PathBuf> = glob::glob(&pattern.to_string_lossy())
+        .map_err(|e| format!("invalid apk glob pattern: {e}"))?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    let [apk_path] = matches.as_slice() else {
+        return Err(format!("expected exactly one built .apk under {pattern:?}, found {}", matches.len()));
+    };
     on_progress("done", 1.0);
-    Ok(apk_path)
+    Ok(apk_path.clone())
 }
 
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {

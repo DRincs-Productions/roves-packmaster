@@ -142,9 +142,7 @@
 			"packaging": "{{platform}} インストーラーを作成しています…",
 			"downloading-jre": "Android 用の Java ランタイムをダウンロードしています…",
 			"downloading-sdk": "Android SDK をダウンロードしています…",
-			"downloading-ndk": "Android NDK をダウンロードしています…",
-			"downloading-project": "Android ビルドプロジェクトをダウンロードしています…",
-			"downloading-native": "コンパイル済みのエンジンライブラリをダウンロードしています…"
+			"downloading-project": "Android ビルドプロジェクトをダウンロードしています…"
 		},
 		"doneTitle": "リリースの準備ができました",
 		"doneDescription": "Packmaster はすべてを {{folder}} フォルダーに保存しました。",

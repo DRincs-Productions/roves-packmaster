@@ -142,9 +142,7 @@
 			"packaging": "Создание установщика {{platform}}…",
 			"downloading-jre": "Загрузка Java-среды для Android…",
 			"downloading-sdk": "Загрузка Android SDK…",
-			"downloading-ndk": "Загрузка Android NDK…",
-			"downloading-project": "Загрузка проекта сборки Android…",
-			"downloading-native": "Загрузка скомпилированной библиотеки движка…"
+			"downloading-project": "Загрузка проекта сборки Android…"
 		},
 		"doneTitle": "Релиз готов",
 		"doneDescription": "Packmaster сохранил всё в папку {{folder}}.",

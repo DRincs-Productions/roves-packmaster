@@ -142,9 +142,7 @@
 			"packaging": "正在创建 {{platform}} 安装程序……",
 			"downloading-jre": "正在下载 Android 所需的 Java 运行时……",
 			"downloading-sdk": "正在下载 Android SDK……",
-			"downloading-ndk": "正在下载 Android NDK……",
-			"downloading-project": "正在下载 Android 构建项目……",
-			"downloading-native": "正在下载已编译的引擎库……"
+			"downloading-project": "正在下载 Android 构建项目……"
 		},
 		"doneTitle": "发行版已就绪",
 		"doneDescription": "Packmaster 已将所有内容保存到 {{folder}} 文件夹。",

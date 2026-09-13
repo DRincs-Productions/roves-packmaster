@@ -142,9 +142,7 @@
 			"packaging": "{{platform}} 설치 프로그램을 만드는 중…",
 			"downloading-jre": "Android용 Java 런타임을 다운로드하는 중…",
 			"downloading-sdk": "Android SDK를 다운로드하는 중…",
-			"downloading-ndk": "Android NDK를 다운로드하는 중…",
-			"downloading-project": "Android 빌드 프로젝트를 다운로드하는 중…",
-			"downloading-native": "컴파일된 엔진 라이브러리를 다운로드하는 중…"
+			"downloading-project": "Android 빌드 프로젝트를 다운로드하는 중…"
 		},
 		"doneTitle": "릴리스가 준비되었습니다",
 		"doneDescription": "Packmaster가 모든 내용을 {{folder}} 폴더에 저장했습니다.",
