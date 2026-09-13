@@ -1,4 +1,4 @@
-# TODO — cose da fare su Roves Packmaster (roves-ui)
+# TODO — cose da fare su Roves Packmaster (roves-packmaster)
 
 Backlog di lavoro noto ma non ancora fatto sulla UI di Packmaster. Vedi anche il `CLAUDE.md`
 di questo repo per le convenzioni (i18n obbligatoria su 9 lingue, `npm run check` prima di
