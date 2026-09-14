@@ -133,6 +133,17 @@ riusare l'artefatto CI "debug" — non affrontato in questa sessione. Non ancora
 che l'apk stripped installi/funzioni davvero su un dispositivo reale, solo che si genera
 alla dimensione attesa.
 
+## 4. Aggiungere un link al Discord del progetto nella UI
+
+Richiesto esplicitamente dall'utente (2026-09-14), non ancora fatto. `roves-wiki` ha già
+l'URL condiviso di tutto l'ecosistema DRincs-Productions (pixi-vn incluso) in
+`roves-wiki/lib/shared.ts`, `discordUrl = "https://discord.gg/E95FZWakzp"` — Packmaster non
+ha invece nessun link a Discord da nessuna parte nella UI attuale (nessun componente
+footer/about esiste ancora, vedi ricerca in questa sessione). Da decidere solo il
+posizionamento (es. un footer globale, la sezione impostazioni/informazioni, o un link vicino
+a dove già si punta a `ROVES_RELEASES_URL` in `src/lib/shell-version.ts`) — non il contenuto
+del link stesso, che è lo stesso URL condiviso sopra.
+
 ## Note
 
 - **2026-09-01 — differenza tra le due icone attuali (chiarimento, non un problema):**
