@@ -120,7 +120,7 @@ fn tools_cache_dir(app: &AppHandle) -> Result<PathBuf, String> {
 
 // ── Generic download/extract helpers (mirrors shell.rs's own download_file/extract_zip) ───
 
-async fn download_with_retries(
+pub(crate) async fn download_with_retries(
     url: &str,
     dest: &Path,
     on_progress: &mut (impl FnMut(f64) + Send),
@@ -166,7 +166,7 @@ async fn download_with_retries(
     Err(format!("after {MAX_ATTEMPTS} attempts: {last_err}"))
 }
 
-fn extract_zip(zip_path: &Path, dest_dir: &Path) -> Result<(), String> {
+pub(crate) fn extract_zip(zip_path: &Path, dest_dir: &Path) -> Result<(), String> {
     let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
     archive.extract(dest_dir).map_err(|e| format!("extracting {zip_path:?}: {e}"))
@@ -310,7 +310,7 @@ pub(crate) fn script_command(program: &Path) -> std::process::Command {
 /// silently discarded. On failure, folds a tail of whatever the process printed into the
 /// returned error so it's at least visible in the generic error banner, even without a log
 /// file to go dig through.
-fn run_capturing_output(command: &mut std::process::Command, context: &str) -> Result<(), String> {
+pub(crate) fn run_capturing_output(command: &mut std::process::Command, context: &str) -> Result<(), String> {
     use std::process::Stdio;
 
     let output = command
@@ -723,7 +723,7 @@ pub async fn build_apk(
     Ok(apk_path.clone())
 }
 
-fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+pub(crate) fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
     for entry in walkdir::WalkDir::new(src) {
         let entry = entry.map_err(|e| e.to_string())?;
         let rel = entry.path().strip_prefix(src).map_err(|e| e.to_string())?;

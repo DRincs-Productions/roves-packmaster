@@ -39,6 +39,13 @@ import {
   checkInstallerAvailability,
   type InstallerAvailability,
 } from "@/lib/installer-availability";
+import { checkIosAvailability } from "@/lib/ios-availability";
+import {
+  checkIosSigningStatus,
+  clearIosSigning,
+  type IosSigningStatus,
+  importIosSigning,
+} from "@/lib/ios-signing";
 import { readParentPackageJson } from "@/lib/release-info";
 import type { MobileOrientation } from "@/lib/settings";
 import { useSettings } from "@/lib/settings-context";
@@ -51,9 +58,7 @@ export const Route = createFileRoute("/configure")({
 
 const PORTABLE_PLATFORMS: Platform[] = ["windows", "linux", "macos"];
 
-// Only "android" exists as a card today -- "ios" joins this list once that platform actually
-// exists (see mobile-platform-toggle.tsx and settings.ts's own MobileSettings comment).
-const MOBILE_PLATFORMS: MobilePlatform[] = ["android"];
+const MOBILE_PLATFORMS: MobilePlatform[] = ["android", "ios"];
 
 const MOBILE_ORIENTATIONS: MobileOrientation[] = [
   "any",
@@ -111,6 +116,20 @@ function ConfigureView() {
     storePassword: "",
     keyPassword: "",
   });
+  const [iosAvailable, setIosAvailable] = useState<{
+    available: boolean;
+    reason: string | null;
+  } | null>(null);
+  const [iosSigningStatus, setIosSigningStatus] = useState<IosSigningStatus | null>(null);
+  const [iosSigningBusy, setIosSigningBusy] = useState(false);
+  const [iosSigningError, setIosSigningError] = useState<string | null>(null);
+  const [showIosImportForm, setShowIosImportForm] = useState(false);
+  const [iosImportForm, setIosImportForm] = useState({
+    certificateP12Path: "",
+    certificateP12Password: "",
+    provisioningProfilePath: "",
+    teamId: "",
+  });
 
   // A direct navigation here (or a reload) with no source picked yet has
   // nothing to configure a release for — send the user back to pick one.
@@ -137,6 +156,17 @@ function ConfigureView() {
 
   useEffect(() => {
     checkAndroidSigningStatus().then(setSigningStatus);
+  }, []);
+
+  // Same real, live check as Android, but iOS's own reason is genuinely permanent (only
+  // true when Packmaster runs on macOS with Xcode + XcodeGen installed) -- see
+  // src-tauri/src/ios.rs's own doc comment.
+  useEffect(() => {
+    checkIosAvailability().then(setIosAvailable);
+  }, []);
+
+  useEffect(() => {
+    checkIosSigningStatus().then(setIosSigningStatus);
   }, []);
 
   async function handleGenerateKeystore() {
@@ -197,6 +227,70 @@ function ConfigureView() {
     const picked = await open({ multiple: false, directory: false });
     if (typeof picked === "string") {
       setImportForm((form) => ({ ...form, keystorePath: picked }));
+    }
+  }
+
+  // No handleGenerateIosCertificate -- unlike Android, an Apple Distribution certificate must
+  // be countersigned by Apple itself, so only import exists here (see ios-signing.ts's own
+  // comment).
+  async function handleImportIosSigning() {
+    setIosSigningBusy(true);
+    setIosSigningError(null);
+    try {
+      setIosSigningStatus(
+        await importIosSigning(
+          iosImportForm.certificateP12Path,
+          iosImportForm.certificateP12Password,
+          iosImportForm.provisioningProfilePath,
+          iosImportForm.teamId,
+        ),
+      );
+      setShowIosImportForm(false);
+      setIosImportForm({
+        certificateP12Path: "",
+        certificateP12Password: "",
+        provisioningProfilePath: "",
+        teamId: "",
+      });
+    } catch (error) {
+      setIosSigningError(String(error));
+    } finally {
+      setIosSigningBusy(false);
+    }
+  }
+
+  async function handleClearIosSigning() {
+    setIosSigningBusy(true);
+    setIosSigningError(null);
+    try {
+      await clearIosSigning();
+      setIosSigningStatus({ configured: false, certificateP12Path: null, teamId: null });
+      if (settings.mobile.iosAdvanced.releaseSigningEnabled) {
+        updateSettings({
+          mobile: {
+            ...settings.mobile,
+            iosAdvanced: { ...settings.mobile.iosAdvanced, releaseSigningEnabled: false },
+          },
+        });
+      }
+    } catch (error) {
+      setIosSigningError(String(error));
+    } finally {
+      setIosSigningBusy(false);
+    }
+  }
+
+  async function handlePickIosCertificateFile() {
+    const picked = await open({ multiple: false, directory: false });
+    if (typeof picked === "string") {
+      setIosImportForm((form) => ({ ...form, certificateP12Path: picked }));
+    }
+  }
+
+  async function handlePickIosProvisioningProfileFile() {
+    const picked = await open({ multiple: false, directory: false });
+    if (typeof picked === "string") {
+      setIosImportForm((form) => ({ ...form, provisioningProfilePath: picked }));
     }
   }
 
@@ -293,10 +387,19 @@ function ConfigureView() {
   const steamAppIdInvalid =
     settings.plugins.steam.enabled && !isValidSteamAppId(settings.plugins.steam.appId);
 
-  // "Mobile" advanced settings only make sense once at least one mobile platform is enabled
-  // (currently just Android) -- see settings.ts's MobileSettings comment on why these are
-  // shared across mobile platforms rather than duplicated per platform.
-  const anyMobileEnabled = (androidAvailable?.available ?? true) && settings.mobile.android.enabled;
+  // Each mobile platform's own "advanced settings" section only makes sense once that
+  // specific platform is enabled -- Android and iOS now have genuinely different override
+  // fields (orientation vs. bundle ID), so each gets its own accordion item and its own
+  // enabled flag rather than a single shared one.
+  const androidEnabled = (androidAvailable?.available ?? true) && settings.mobile.android.enabled;
+  const iosEnabled = (iosAvailable?.available ?? true) && settings.mobile.ios.enabled;
+  const mobileAvailability: Record<
+    MobilePlatform,
+    { available: boolean; reason: string | null } | null
+  > = {
+    android: androidAvailable,
+    ios: iosAvailable,
+  };
   const manifestDriven = Boolean(webManifestInfo) && useWebManifest;
   const displayedAppName = manifestDriven
     ? webManifestInfo?.shortName || webManifestInfo?.name || ""
@@ -511,22 +614,24 @@ function ConfigureView() {
                 key={p}
                 platform={p}
                 label={t(`configure.mobile.${p}`)}
-                selected={(androidAvailable?.available ?? true) && settings.mobile[p].enabled}
-                disabled={androidAvailable !== null && !androidAvailable.available}
+                selected={(mobileAvailability[p]?.available ?? true) && settings.mobile[p].enabled}
+                disabled={mobileAvailability[p] !== null && !mobileAvailability[p]?.available}
                 onSelectedChange={(enabled) =>
                   updateSettings({ mobile: { ...settings.mobile, [p]: { enabled } } })
                 }
               />
             ))}
           </div>
-          {androidAvailable && !androidAvailable.available && (
-            <p className="text-destructive flex items-center gap-1.5 text-xs">
+          {MOBILE_PLATFORMS.filter(
+            (p) => mobileAvailability[p] && !mobileAvailability[p]?.available,
+          ).map((p) => (
+            <p key={p} className="text-destructive flex items-center gap-1.5 text-xs">
               <WarningCircle className="size-3.5 shrink-0" weight="fill" />
-              {androidAvailable.reason}
+              {mobileAvailability[p]?.reason}
             </p>
-          )}
+          ))}
 
-          {anyMobileEnabled && (
+          {androidEnabled && (
             <Accordion className="gap-4">
               <AccordionItem
                 value="mobile-advanced"
@@ -750,6 +855,216 @@ function ConfigureView() {
                       <p className="text-destructive flex items-center gap-1.5 text-xs">
                         <WarningCircle className="size-3.5 shrink-0" weight="fill" />
                         {signingError}
+                      </p>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
+
+          {iosEnabled && (
+            <Accordion className="gap-4">
+              <AccordionItem
+                value="ios-advanced"
+                className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+              >
+                <AccordionTrigger>{t("configure.iosAdvanced.title")}</AccordionTrigger>
+                <AccordionContent className="flex flex-col gap-4">
+                  <p className="text-muted-foreground text-sm">
+                    {t("configure.iosAdvanced.description")}
+                  </p>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="ios-app-name">{t("configure.iosAdvanced.appNameLabel")}</Label>
+                    <Input
+                      id="ios-app-name"
+                      placeholder={t("configure.iosAdvanced.appNamePlaceholder")}
+                      value={settings.mobile.iosAdvanced.appName}
+                      onChange={(e) =>
+                        updateSettings({
+                          mobile: {
+                            ...settings.mobile,
+                            iosAdvanced: {
+                              ...settings.mobile.iosAdvanced,
+                              appName: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="ios-bundle-id">
+                      {t("configure.iosAdvanced.bundleIdLabel")}
+                    </Label>
+                    <Input
+                      id="ios-bundle-id"
+                      placeholder={t("configure.iosAdvanced.bundleIdPlaceholder")}
+                      value={settings.mobile.iosAdvanced.bundleId}
+                      onChange={(e) =>
+                        updateSettings({
+                          mobile: {
+                            ...settings.mobile,
+                            iosAdvanced: {
+                              ...settings.mobile.iosAdvanced,
+                              bundleId: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t pt-4">
+                    <div>
+                      <Label>{t("configure.iosAdvanced.signing.title")}</Label>
+                      <p className="text-muted-foreground text-xs">
+                        {t("configure.iosAdvanced.signing.description")}
+                      </p>
+                    </div>
+
+                    {iosSigningStatus?.configured ? (
+                      <>
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm">
+                              {t("configure.iosAdvanced.signing.enableLabel")}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {t("configure.iosAdvanced.signing.configuredAs", {
+                                teamId: iosSigningStatus.teamId,
+                              })}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={settings.mobile.iosAdvanced.releaseSigningEnabled}
+                            onCheckedChange={(checked) =>
+                              updateSettings({
+                                mobile: {
+                                  ...settings.mobile,
+                                  iosAdvanced: {
+                                    ...settings.mobile.iosAdvanced,
+                                    releaseSigningEnabled: checked,
+                                  },
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={iosSigningBusy}
+                          onClick={handleClearIosSigning}
+                          className="self-start"
+                        >
+                          {t("configure.iosAdvanced.signing.remove")}
+                        </Button>
+                      </>
+                    ) : showIosImportForm ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Input
+                            readOnly
+                            placeholder={t(
+                              "configure.iosAdvanced.signing.certificatePathPlaceholder",
+                            )}
+                            value={iosImportForm.certificateP12Path}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handlePickIosCertificateFile}
+                          >
+                            {t("configure.iosAdvanced.signing.browse")}
+                          </Button>
+                        </div>
+                        <Input
+                          type="password"
+                          placeholder={t(
+                            "configure.iosAdvanced.signing.certificatePasswordPlaceholder",
+                          )}
+                          value={iosImportForm.certificateP12Password}
+                          onChange={(e) =>
+                            setIosImportForm((f) => ({
+                              ...f,
+                              certificateP12Password: e.target.value,
+                            }))
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            readOnly
+                            placeholder={t(
+                              "configure.iosAdvanced.signing.provisioningProfilePathPlaceholder",
+                            )}
+                            value={iosImportForm.provisioningProfilePath}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handlePickIosProvisioningProfileFile}
+                          >
+                            {t("configure.iosAdvanced.signing.browse")}
+                          </Button>
+                        </div>
+                        <Input
+                          placeholder={t("configure.iosAdvanced.signing.teamIdPlaceholder")}
+                          value={iosImportForm.teamId}
+                          onChange={(e) =>
+                            setIosImportForm((f) => ({ ...f, teamId: e.target.value }))
+                          }
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={
+                              iosSigningBusy ||
+                              !iosImportForm.certificateP12Path ||
+                              !iosImportForm.provisioningProfilePath ||
+                              !iosImportForm.teamId
+                            }
+                            onClick={handleImportIosSigning}
+                          >
+                            {t("configure.iosAdvanced.signing.confirmImport")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={iosSigningBusy}
+                            onClick={() => setShowIosImportForm(false)}
+                          >
+                            {t("configure.iosAdvanced.signing.cancel")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-muted-foreground text-xs">
+                          {t("configure.iosAdvanced.signing.noGenerateExplanation")}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="self-start"
+                          disabled={iosSigningBusy}
+                          onClick={() => setShowIosImportForm(true)}
+                        >
+                          {t("configure.iosAdvanced.signing.import")}
+                        </Button>
+                      </div>
+                    )}
+
+                    {iosSigningError && (
+                      <p className="text-destructive flex items-center gap-1.5 text-xs">
+                        <WarningCircle className="size-3.5 shrink-0" weight="fill" />
+                        {iosSigningError}
                       </p>
                     )}
                   </div>

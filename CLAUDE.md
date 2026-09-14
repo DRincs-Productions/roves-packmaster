@@ -156,6 +156,26 @@ without being able to try an option that can't work here.
   `check_installer_availability` is a real, live check for this (host OS + tool-on-PATH),
   not an assumption; `configure.tsx`'s installer cards disable themselves accordingly.
 
+**iOS backend (`ios.rs`/`ios_signing.rs`):** mirrors the Android backend's shape exactly --
+downloads the engine's own `support/ios/` WKWebView container + `resources/` branding assets
+(published by `.github/workflows/ios.yml` to the same rolling "test" release `android.rs`
+already targets), ports `support/ios/bundle.py`'s `stage()` to Rust, then runs XcodeGen +
+`xcodebuild` (unsigned Simulator build by default, or a real signed `.ipa` export with
+`ios_signing.rs`'s imported certificate/provisioning profile -- see that module's own doc
+comment for why there's no `generate` option the way Android's `signing.rs` has one: an Apple
+Distribution certificate must be countersigned by Apple itself, so only import exists here).
+**Only available when Packmaster itself is running on macOS** (`check_ios_availability`) --
+unlike Android's own history (see that module's doc comment on the NDK/Windows gap that later
+closed), this is a permanent restriction with no workaround: Xcode/XcodeGen simply don't exist
+elsewhere. `configure.tsx`'s iOS card and its own "Advanced settings" accordion item
+(app name, bundle ID, signing) are gated on this real, live check, same pattern as Android's
+own card and `check_installer_availability`. **Not verified end to end on a real macOS
+machine** in the session that added this -- no Rust toolchain to `cargo check`/`cargo build`
+against on this Windows machine at all (see this repo's own known toolchain gaps), let alone
+Xcode; real verification is this repo's own CI (`.github/workflows/test.yml`, which builds
+Packmaster's portable output on real runners, macOS included) plus, ultimately, someone
+actually running a generated iOS build on a device/simulator.
+
 **Steam plugin:** the engine now publishes a Steam-enabled shell variant alongside the plain
 one (`roves_shell_<platform>_steam.zip` — see the engine repo's own `release.yml`/`CLAUDE.md`),
 so `configure.tsx`'s "Steam" panel is a real control now, not informational-only: a `Switch`

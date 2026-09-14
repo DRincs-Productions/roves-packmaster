@@ -52,8 +52,9 @@
 		},
 		"mobile": {
 			"title": "Mobile",
-			"description": "Build a debug .apk for Android alongside your desktop release. Experimental: Linux/macOS only for now, and produces a debug-signed .apk, not something you can publish to the Play Store.",
-			"android": "Android"
+			"description": "Build a debug .apk for Android and/or an iOS app alongside your desktop release. Experimental: iOS requires running Packmaster on macOS with Xcode and XcodeGen installed.",
+			"android": "Android",
+			"ios": "iOS"
 		},
 		"advanced": {
 			"title": "Advanced"
@@ -94,7 +95,7 @@
 		"startButton": "Generate release",
 		"mobileAdvanced": {
 			"title": "Advanced settings",
-			"description": "Shared across every enabled mobile platform (for now, just Android).",
+			"description": "Android app name, screen orientation, and release signing.",
 			"useWebManifestLabel": "Use info from your web app manifest",
 			"useWebManifestFound": "Found {{file}} in your build output — using its name and orientation. Turn this off to set them manually instead.",
 			"useWebManifestNotFound": "No manifest.webmanifest, manifest.json, or site.webmanifest found in your build output — set these manually below, or add one to your project.",
@@ -128,6 +129,30 @@
 				"confirmImport": "Import",
 				"cancel": "Cancel"
 			}
+		},
+		"iosAdvanced": {
+			"title": "Advanced settings",
+			"description": "iOS app name, bundle identifier, and release signing.",
+			"appNameLabel": "App name",
+			"appNamePlaceholder": "Roves Game",
+			"bundleIdLabel": "Bundle identifier",
+			"bundleIdPlaceholder": "org.roves.game",
+			"signing": {
+				"title": "Release signing",
+				"description": "Archive and export a real, signed .ipa instead of an unsigned Simulator build. Needed before an app can be installed on a device or published anywhere.",
+				"enableLabel": "Build a signed release .ipa",
+				"configuredAs": "Using Apple Developer Team ID \"{{teamId}}\"",
+				"remove": "Remove certificate",
+				"noGenerateExplanation": "Unlike Android, an Apple Distribution certificate must be issued by Apple itself — import one from your own Apple Developer Program account instead of generating one here.",
+				"import": "Import certificate & provisioning profile",
+				"browse": "Browse…",
+				"certificatePathPlaceholder": "Certificate (.p12) file",
+				"certificatePasswordPlaceholder": "Certificate password",
+				"provisioningProfilePathPlaceholder": "Provisioning profile (.mobileprovision) file",
+				"teamIdPlaceholder": "Apple Developer Team ID",
+				"confirmImport": "Import",
+				"cancel": "Cancel"
+			}
 		}
 	},
 	"generating": {
@@ -142,7 +167,12 @@
 			"packaging": "Packaging the {{platform}} installer…",
 			"downloading-jre": "Downloading a Java runtime for Android…",
 			"downloading-sdk": "Downloading the Android SDK…",
-			"downloading-project": "Downloading the Android build project…"
+			"downloading-project": "Downloading the Android build project…",
+			"downloading-ios-project": "Downloading the iOS build project…",
+			"staging": "Staging your iOS project…",
+			"generating-project": "Generating the Xcode project…",
+			"signing": "Signing your iOS app…",
+			"building": "Building your iOS app…"
 		},
 		"doneTitle": "Your release is ready",
 		"doneDescription": "Packmaster saved everything to the {{folder}} folder.",
@@ -155,7 +185,8 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux",
-		"android": "Android"
+		"android": "Android",
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "About Roves Packmaster",

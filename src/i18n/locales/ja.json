@@ -89,12 +89,13 @@
 		"startButton": "リリースを生成",
 		"mobile": {
 			"title": "モバイル",
-			"description": "デスクトップ版と一緒に、Android 向けのデバッグ用 .apk を生成します。実験的機能: 現時点では Linux/macOS のみ対応で、生成されるのはデバッグ署名の .apk（Play ストアには公開できません）。",
-			"android": "Android"
+			"description": "デスクトップ版と一緒に、Android 向けのデバッグ用 .apk や iOS アプリをビルドします。実験的機能: iOS には、Xcode と XcodeGen をインストールした macOS 上で Packmaster を実行する必要があります。",
+			"android": "Android",
+			"ios": "iOS"
 		},
 		"mobileAdvanced": {
 			"title": "詳細設定",
-			"description": "有効なすべてのモバイルプラットフォームで共有されます（現時点では Android のみ）。",
+			"description": "Android のアプリ名、画面の向き、リリース署名。",
 			"useWebManifestLabel": "Web アプリマニフェストの情報を使用する",
 			"useWebManifestFound": "ビルド出力内に {{file}} が見つかりました — その名前と画面の向きが使用されます。手動で設定するにはオフにしてください。",
 			"useWebManifestNotFound": "ビルド出力内に manifest.webmanifest、manifest.json、site.webmanifest のいずれも見つかりませんでした — 以下で手動で設定するか、プロジェクトに追加してください。",
@@ -128,6 +129,30 @@
 				"confirmImport": "インポート",
 				"cancel": "キャンセル"
 			}
+		},
+		"iosAdvanced": {
+			"title": "詳細設定",
+			"description": "iOS のアプリ名、バンドル識別子、リリース署名。",
+			"appNameLabel": "アプリ名",
+			"appNamePlaceholder": "Roves Game",
+			"bundleIdLabel": "バンドル識別子",
+			"bundleIdPlaceholder": "org.roves.game",
+			"signing": {
+				"title": "リリース署名",
+				"description": "署名なしのシミュレータビルドの代わりに、実際に署名された .ipa をアーカイブしてエクスポートします。アプリをデバイスにインストールしたり、どこかに公開したりする前に必要です。",
+				"enableLabel": "署名済みリリース .ipa をビルド",
+				"configuredAs": "Apple Developer チームID「{{teamId}}」を使用中",
+				"remove": "証明書を削除",
+				"noGenerateExplanation": "Android と異なり、Apple Distribution 証明書は Apple 自身が発行する必要があります。ここで生成するのではなく、ご自身の Apple Developer Program アカウントからインポートしてください。",
+				"import": "証明書とプロビジョニングプロファイルをインポート",
+				"browse": "参照…",
+				"certificatePathPlaceholder": "証明書 (.p12) ファイル",
+				"certificatePasswordPlaceholder": "証明書のパスワード",
+				"provisioningProfilePathPlaceholder": "プロビジョニングプロファイル (.mobileprovision) ファイル",
+				"teamIdPlaceholder": "Apple Developer チームID",
+				"confirmImport": "インポート",
+				"cancel": "キャンセル"
+			}
 		}
 	},
 	"generating": {
@@ -142,7 +167,12 @@
 			"packaging": "{{platform}} インストーラーを作成しています…",
 			"downloading-jre": "Android 用の Java ランタイムをダウンロードしています…",
 			"downloading-sdk": "Android SDK をダウンロードしています…",
-			"downloading-project": "Android ビルドプロジェクトをダウンロードしています…"
+			"downloading-project": "Android ビルドプロジェクトをダウンロードしています…",
+			"downloading-ios-project": "iOS ビルドプロジェクトをダウンロード中…",
+			"staging": "iOS プロジェクトを準備中…",
+			"generating-project": "Xcode プロジェクトを生成中…",
+			"signing": "iOS アプリに署名中…",
+			"building": "iOS アプリをビルド中…"
 		},
 		"doneTitle": "リリースの準備ができました",
 		"doneDescription": "Packmaster はすべてを {{folder}} フォルダーに保存しました。",
@@ -155,7 +185,8 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux",
-		"android": "Android"
+		"android": "Android",
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "Roves Packmaster について",

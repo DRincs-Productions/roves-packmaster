@@ -74,7 +74,7 @@ pub async fn generate_release(
         .into_iter()
         .filter(|&p| settings.portable.get(p) || settings.installers.get(p).enabled)
         .collect();
-    if platforms.is_empty() && !settings.mobile.android.enabled {
+    if platforms.is_empty() && !settings.mobile.android.enabled && !settings.mobile.ios.enabled {
         return Err("no platform selected".to_string());
     }
 
@@ -222,6 +222,52 @@ pub async fn generate_release(
         let dest = release_dir.join(format!("{zip_stem}_android.apk"));
         std::fs::copy(&apk_path, &dest).map_err(|e| e.to_string())?;
         emit_progress(&app, "android", "done", 1.0);
+    }
+
+    if settings.mobile.ios.enabled {
+        emit_progress(&app, "ios", "checking", 0.0);
+        let (available, reason) = crate::ios::check_ios_availability();
+        if !available {
+            return Err(reason.unwrap_or_else(|| "iOS isn't available on this machine".to_string()));
+        }
+
+        let ios_signing_config = if settings.mobile.ios_advanced.release_signing_enabled {
+            match crate::ios_signing::load_ios_signing_config(&app)? {
+                Some(config) => Some(config),
+                None => {
+                    return Err(
+                        "Release signing is enabled, but no certificate/provisioning profile is configured yet -- import one first."
+                            .to_string(),
+                    );
+                },
+            }
+        } else {
+            None
+        };
+        let ios_options = crate::ios::IosBuildOptions {
+            content_dir: &content_dir,
+            app_name_override: &settings.mobile.ios_advanced.app_name,
+            bundle_id_override: &settings.mobile.ios_advanced.bundle_id,
+            signing: ios_signing_config.as_ref(),
+        };
+        let ios_output_path = crate::ios::build_ios(&app, &ios_options, |phase, fraction| {
+            emit_progress(&app, "ios", phase, fraction);
+        })
+        .await?;
+        // A signed build produces a single .ipa file; an unsigned build produces a
+        // RovesGame.app *directory* (a Simulator app bundle isn't a single file) -- copy
+        // accordingly rather than assuming either shape.
+        if ios_output_path.is_dir() {
+            let dest = release_dir.join(format!("{zip_stem}_ios.app"));
+            if dest.exists() {
+                std::fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
+            }
+            copy_dir_recursive(&ios_output_path, &dest)?;
+        } else {
+            let dest = release_dir.join(format!("{zip_stem}_ios.ipa"));
+            std::fs::copy(&ios_output_path, &dest).map_err(|e| e.to_string())?;
+        }
+        emit_progress(&app, "ios", "done", 1.0);
     }
 
     Ok(release_dir.to_string_lossy().into_owned())

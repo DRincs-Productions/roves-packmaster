@@ -2,6 +2,8 @@ mod android;
 mod bundle;
 mod icon;
 mod installer;
+mod ios;
+mod ios_signing;
 mod packer;
 mod settings;
 mod shell;
@@ -54,6 +56,32 @@ fn clear_android_signing(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn check_ios_availability() -> (bool, Option<String>) {
+    ios::check_ios_availability()
+}
+
+#[tauri::command]
+fn check_ios_signing_status(app: tauri::AppHandle) -> Result<ios_signing::IosSigningStatus, String> {
+    ios_signing::ios_signing_status(&app)
+}
+
+#[tauri::command]
+fn import_ios_signing(
+    app: tauri::AppHandle,
+    certificate_p12_path: String,
+    certificate_p12_password: String,
+    provisioning_profile_path: String,
+    team_id: String,
+) -> Result<ios_signing::IosSigningStatus, String> {
+    ios_signing::import_ios_signing(&app, certificate_p12_path, certificate_p12_password, provisioning_profile_path, team_id)
+}
+
+#[tauri::command]
+fn clear_ios_signing(app: tauri::AppHandle) -> Result<(), String> {
+    ios_signing::clear_ios_signing(&app)
+}
+
+#[tauri::command]
 fn shell_cache_size(app: tauri::AppHandle) -> Result<u64, String> {
     shell::cache_size(&app)
 }
@@ -80,6 +108,10 @@ pub fn run() {
             generate_android_signing_keystore,
             import_android_signing_keystore,
             clear_android_signing,
+            check_ios_availability,
+            check_ios_signing_status,
+            import_ios_signing,
+            clear_ios_signing,
             shell_cache_size,
             clear_shell_cache
         ])

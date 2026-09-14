@@ -81,9 +81,24 @@ export interface MobileAdvancedSettings {
   releaseSigningEnabled: boolean;
 }
 
+/** iOS's own equivalent of `MobileAdvancedSettings` -- a separate interface rather than
+ * reusing that one, since the two platforms' override fields genuinely differ (`bundleId`
+ * instead of `orientation`; iOS has no equivalent to Android's screen-orientation lock).
+ * Mirrors the engine's own `--ios-app-name`/`--ios-bundle-id` `mach bundle` flags. */
+export interface IosAdvancedSettings {
+  appName: string;
+  bundleId: string;
+  /** Archive and export a real, signed .ipa instead of the default unsigned Simulator build
+   * -- see lib/ios-signing.ts for the certificate/provisioning profile this relies on. Same
+   * separate-opt-in reasoning as Android's `releaseSigningEnabled`. */
+  releaseSigningEnabled: boolean;
+}
+
 export interface MobileSettings {
   android: MobilePlatformSettings;
   advanced: MobileAdvancedSettings;
+  ios: MobilePlatformSettings;
+  iosAdvanced: IosAdvancedSettings;
 }
 
 /** A single source icon (PNG), applied everywhere it's possible to apply it -- see
@@ -137,6 +152,8 @@ export const defaultSettings: PackmasterSettings = {
   mobile: {
     android: { enabled: false },
     advanced: { appName: "", orientation: "", releaseSigningEnabled: false },
+    ios: { enabled: false },
+    iosAdvanced: { appName: "", bundleId: "", releaseSigningEnabled: false },
   },
   plugins: {
     // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default
@@ -193,6 +210,8 @@ export async function loadSettings(): Promise<PackmasterSettings> {
     mobile: {
       android: { ...defaultSettings.mobile.android, ...stored.mobile?.android },
       advanced: { ...defaultSettings.mobile.advanced, ...stored.mobile?.advanced },
+      ios: { ...defaultSettings.mobile.ios, ...stored.mobile?.ios },
+      iosAdvanced: { ...defaultSettings.mobile.iosAdvanced, ...stored.mobile?.iosAdvanced },
     },
     plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },

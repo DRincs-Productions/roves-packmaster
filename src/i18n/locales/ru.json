@@ -89,12 +89,13 @@
 		"startButton": "Создать релиз",
 		"mobile": {
 			"title": "Мобильные",
-			"description": "Собрать отладочный .apk для Android вместе с версией для настольных систем. Экспериментально: пока только Linux/macOS, создаётся .apk с отладочной подписью, непригодный для публикации в Play Store.",
-			"android": "Android"
+			"description": "Собрать отладочный .apk для Android и/или приложение iOS вместе с версией для настольных систем. Экспериментально: для iOS требуется запускать Packmaster на macOS с установленными Xcode и XcodeGen.",
+			"android": "Android",
+			"ios": "iOS"
 		},
 		"mobileAdvanced": {
 			"title": "Дополнительные настройки",
-			"description": "Общие для всех включённых мобильных платформ (пока только Android).",
+			"description": "Название приложения, ориентация экрана и подпись релиза для Android.",
 			"useWebManifestLabel": "Использовать данные из веб-манифеста приложения",
 			"useWebManifestFound": "Найден файл {{file}} в папке сборки — будут использованы его название и ориентация. Отключите, чтобы задать их вручную.",
 			"useWebManifestNotFound": "В папке сборки не найден manifest.webmanifest, manifest.json или site.webmanifest — задайте эти значения вручную ниже или добавьте манифест в проект.",
@@ -128,6 +129,30 @@
 				"confirmImport": "Импортировать",
 				"cancel": "Отмена"
 			}
+		},
+		"iosAdvanced": {
+			"title": "Дополнительные настройки",
+			"description": "Название приложения, идентификатор пакета и подпись релиза для iOS.",
+			"appNameLabel": "Название приложения",
+			"appNamePlaceholder": "Roves Game",
+			"bundleIdLabel": "Идентификатор пакета",
+			"bundleIdPlaceholder": "org.roves.game",
+			"signing": {
+				"title": "Подпись релиза",
+				"description": "Архивирует и экспортирует по-настоящему подписанный .ipa вместо неподписанной сборки для симулятора. Необходимо, прежде чем приложение можно будет установить на устройство или опубликовать где-либо.",
+				"enableLabel": "Собрать подписанный релизный .ipa",
+				"configuredAs": "Используется Team ID Apple Developer «{{teamId}}»",
+				"remove": "Удалить сертификат",
+				"noGenerateExplanation": "В отличие от Android, сертификат Apple Distribution должен быть выдан самой Apple — импортируйте его из своей учётной записи Apple Developer Program, вместо того чтобы создавать здесь.",
+				"import": "Импортировать сертификат и профиль обеспечения",
+				"browse": "Обзор…",
+				"certificatePathPlaceholder": "Файл сертификата (.p12)",
+				"certificatePasswordPlaceholder": "Пароль сертификата",
+				"provisioningProfilePathPlaceholder": "Файл профиля обеспечения (.mobileprovision)",
+				"teamIdPlaceholder": "Team ID Apple Developer",
+				"confirmImport": "Импортировать",
+				"cancel": "Отмена"
+			}
 		}
 	},
 	"generating": {
@@ -142,7 +167,12 @@
 			"packaging": "Создание установщика {{platform}}…",
 			"downloading-jre": "Загрузка Java-среды для Android…",
 			"downloading-sdk": "Загрузка Android SDK…",
-			"downloading-project": "Загрузка проекта сборки Android…"
+			"downloading-project": "Загрузка проекта сборки Android…",
+			"downloading-ios-project": "Загрузка проекта сборки iOS…",
+			"staging": "Подготовка проекта iOS…",
+			"generating-project": "Создание проекта Xcode…",
+			"signing": "Подписание приложения iOS…",
+			"building": "Сборка приложения iOS…"
 		},
 		"doneTitle": "Релиз готов",
 		"doneDescription": "Packmaster сохранил всё в папку {{folder}}.",
@@ -155,7 +185,8 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux",
-		"android": "Android"
+		"android": "Android",
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "О Roves Packmaster",

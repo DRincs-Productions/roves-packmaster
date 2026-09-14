@@ -1,15 +1,13 @@
-import { AndroidLogo, type Icon } from "@phosphor-icons/react";
+import { AndroidLogo, AppleLogo, type Icon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
-// Only "android" today -- "ios" joins this union once that platform actually exists (see
-// settings.ts's own MobileSettings comment on why app name/orientation are already modeled
-// as shared across mobile platforms, not per-platform, in anticipation of that).
-export type MobilePlatform = "android";
+export type MobilePlatform = "android" | "ios";
 
 /** Exported so other mobile-specific UI uses the exact same icon per platform, mirroring
  * platform-toggle.tsx's own PLATFORM_ICONS for desktop. */
 export const MOBILE_PLATFORM_ICONS: Record<MobilePlatform, Icon> = {
   android: AndroidLogo,
+  ios: AppleLogo,
 };
 
 interface MobilePlatformToggleProps {

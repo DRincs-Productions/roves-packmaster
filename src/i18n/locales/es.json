@@ -89,12 +89,13 @@
 		"startButton": "Generar versión",
 		"mobile": {
 			"title": "Móvil",
-			"description": "Genera un .apk de depuración para Android junto con tu versión de escritorio. Experimental: por ahora solo Linux/macOS, y produce un .apk firmado en modo debug, no publicable en la Play Store.",
-			"android": "Android"
+			"description": "Genera un .apk de depuración para Android y/o una app de iOS junto con tu versión de escritorio. Experimental: iOS requiere ejecutar Packmaster en macOS con Xcode y XcodeGen instalados.",
+			"android": "Android",
+			"ios": "iOS"
 		},
 		"mobileAdvanced": {
 			"title": "Configuración avanzada",
-			"description": "Compartido entre todas las plataformas móviles habilitadas (por ahora, solo Android).",
+			"description": "Nombre de la app, orientación de pantalla y firma de la versión para Android.",
 			"useWebManifestLabel": "Usar información de tu manifiesto de app web",
 			"useWebManifestFound": "Se encontró {{file}} en la salida de tu compilación — se usarán su nombre y orientación. Desactívalo para configurarlos manualmente.",
 			"useWebManifestNotFound": "No se encontró manifest.webmanifest, manifest.json ni site.webmanifest en la salida de tu compilación — configúralos manualmente abajo, o añade uno a tu proyecto.",
@@ -128,6 +129,30 @@
 				"confirmImport": "Importar",
 				"cancel": "Cancelar"
 			}
+		},
+		"iosAdvanced": {
+			"title": "Configuración avanzada",
+			"description": "Nombre de la app, identificador de bundle y firma de la versión para iOS.",
+			"appNameLabel": "Nombre de la app",
+			"appNamePlaceholder": "Roves Game",
+			"bundleIdLabel": "Identificador de bundle",
+			"bundleIdPlaceholder": "org.roves.game",
+			"signing": {
+				"title": "Firma de la versión",
+				"description": "Archiva y exporta un .ipa realmente firmado en lugar de una compilación de Simulator sin firmar. Necesario antes de poder instalar la app en un dispositivo o publicarla en cualquier lugar.",
+				"enableLabel": "Generar un .ipa de versión firmado",
+				"configuredAs": "Usando el Team ID de Apple Developer \"{{teamId}}\"",
+				"remove": "Eliminar certificado",
+				"noGenerateExplanation": "A diferencia de Android, un certificado de Apple Distribution debe ser emitido por Apple: impórtalo desde tu propia cuenta de Apple Developer Program en lugar de generarlo aquí.",
+				"import": "Importar certificado y perfil de aprovisionamiento",
+				"browse": "Examinar…",
+				"certificatePathPlaceholder": "Archivo de certificado (.p12)",
+				"certificatePasswordPlaceholder": "Contraseña del certificado",
+				"provisioningProfilePathPlaceholder": "Archivo de perfil de aprovisionamiento (.mobileprovision)",
+				"teamIdPlaceholder": "Team ID de Apple Developer",
+				"confirmImport": "Importar",
+				"cancel": "Cancelar"
+			}
 		}
 	},
 	"generating": {
@@ -142,7 +167,12 @@
 			"packaging": "Creando el instalador de {{platform}}…",
 			"downloading-jre": "Descargando un runtime de Java para Android…",
 			"downloading-sdk": "Descargando el SDK de Android…",
-			"downloading-project": "Descargando el proyecto de compilación de Android…"
+			"downloading-project": "Descargando el proyecto de compilación de Android…",
+			"downloading-ios-project": "Descargando el proyecto de compilación de iOS…",
+			"staging": "Preparando tu proyecto de iOS…",
+			"generating-project": "Generando el proyecto de Xcode…",
+			"signing": "Firmando tu app de iOS…",
+			"building": "Compilando tu app de iOS…"
 		},
 		"doneTitle": "Tu versión está lista",
 		"doneDescription": "Packmaster guardó todo en la carpeta {{folder}}.",
@@ -155,7 +185,8 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux",
-		"android": "Android"
+		"android": "Android",
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "Acerca de Roves Packmaster",

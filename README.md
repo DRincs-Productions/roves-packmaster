@@ -54,11 +54,21 @@ availability check per platform, same as the portable/installable paths above.
      Steam-enabled shell variant and writes a `steam_appid.txt` next to the packaged
      executable; see "Status" above).
    - **Mobile (Android, experimental)** — builds a real, installable `.apk` alongside your
-     desktop release, downloading a JRE/Android SDK/NDK on first use — no Android Studio
-     needed. Debug-signed by default; the same card can also generate or import a signing
-     keystore to produce a real, release-signed `.apk`. See the
+     desktop release, downloading a JRE and the Android SDK on first use (no NDK needed, no
+     native/Rust compilation involved — the game runs on the system's own Android WebView) —
+     no Android Studio needed either. Debug-signed by default; the same card can also
+     generate or import a signing keystore to produce a real, release-signed `.apk`.
+   - **Mobile (iOS, experimental)** — builds an unsigned iOS Simulator app, or, with an
+     imported Apple Distribution certificate + provisioning profile, a real, signed `.ipa`.
+     Only available when Packmaster itself is running on macOS with Xcode and
+     [XcodeGen](https://github.com/yonaskolb/XcodeGen) installed — unlike Android, there's no
+     way around this (Apple's own toolchain has no cross-platform equivalent). Unlike
+     Android's keystore, the certificate/provisioning profile can't be generated locally —
+     only imported, from your own Apple Developer Program account.
+     See the
      [wiki](https://github.com/DRincs-Productions/roves-wiki/blob/main/content/docs/packmaster.mdx)
-     for the current caveats (Windows support is new and unverified against a real device).
+     for the current caveats (Windows Android support is new and unverified against a real
+     device; iOS is untested end to end on a real macOS machine).
 3. **Generate.** Downloads the shell (cached per version/platform after the first run),
    packs your content into it, and shows real, per-step progress. Opens the folder the
    release was written to when done — a `release/` folder next to wherever Packmaster

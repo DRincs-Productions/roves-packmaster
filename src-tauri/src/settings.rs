@@ -86,11 +86,28 @@ pub struct MobileAdvancedSettings {
     pub release_signing_enabled: bool,
 }
 
+/// iOS's own equivalent of `MobileAdvancedSettings` -- a separate struct rather than reusing
+/// that one, since the two platforms' override fields genuinely differ (`bundle_id` instead
+/// of `orientation`; iOS has no equivalent to Android's screen-orientation lock). Mirrors
+/// `src/lib/settings.ts`'s `IosAdvancedSettings`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IosAdvancedSettings {
+    pub app_name: String,
+    pub bundle_id: String,
+    /// Archive and export a real, signed `.ipa` (via `ios_signing.rs`'s imported certificate
+    /// + provisioning profile) instead of the default unsigned Simulator build. Same explicit
+    /// opt-in reasoning as Android's `release_signing_enabled` above.
+    pub release_signing_enabled: bool,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileSettings {
     pub android: MobilePlatformSettings,
     pub advanced: MobileAdvancedSettings,
+    pub ios: MobilePlatformSettings,
+    pub ios_advanced: IosAdvancedSettings,
 }
 
 #[derive(Debug, Deserialize)]

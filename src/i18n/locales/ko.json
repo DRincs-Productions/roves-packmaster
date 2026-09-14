@@ -89,12 +89,13 @@
 		"startButton": "릴리스 생성",
 		"mobile": {
 			"title": "모바일",
-			"description": "데스크톱 릴리스와 함께 Android용 디버그 .apk를 빌드합니다. 실험적 기능: 현재는 Linux/macOS에서만 지원되며, 디버그 서명된 .apk가 생성됩니다(Play 스토어에 게시 불가).",
-			"android": "Android"
+			"description": "데스크톱 릴리스와 함께 Android용 디버그 .apk 및/또는 iOS 앱을 빌드합니다. 실험적 기능: iOS는 Xcode와 XcodeGen이 설치된 macOS에서 Packmaster를 실행해야 합니다.",
+			"android": "Android",
+			"ios": "iOS"
 		},
 		"mobileAdvanced": {
 			"title": "고급 설정",
-			"description": "활성화된 모든 모바일 플랫폼에서 공유됩니다 (현재는 Android만 해당).",
+			"description": "Android의 앱 이름, 화면 방향, 릴리스 서명.",
 			"useWebManifestLabel": "웹 앱 매니페스트의 정보 사용",
 			"useWebManifestFound": "빌드 출력에서 {{file}}을(를) 찾았습니다 — 이름과 화면 방향을 사용합니다. 수동으로 설정하려면 꺼주세요.",
 			"useWebManifestNotFound": "빌드 출력에서 manifest.webmanifest, manifest.json, site.webmanifest를 찾을 수 없습니다 — 아래에서 직접 설정하거나 프로젝트에 매니페스트를 추가하세요.",
@@ -128,6 +129,30 @@
 				"confirmImport": "가져오기",
 				"cancel": "취소"
 			}
+		},
+		"iosAdvanced": {
+			"title": "고급 설정",
+			"description": "iOS의 앱 이름, 번들 식별자, 릴리스 서명.",
+			"appNameLabel": "앱 이름",
+			"appNamePlaceholder": "Roves Game",
+			"bundleIdLabel": "번들 식별자",
+			"bundleIdPlaceholder": "org.roves.game",
+			"signing": {
+				"title": "릴리스 서명",
+				"description": "서명되지 않은 시뮬레이터 빌드 대신 실제로 서명된 .ipa를 아카이브하고 내보냅니다. 앱을 기기에 설치하거나 어디에든 게시하기 전에 필요합니다.",
+				"enableLabel": "서명된 릴리스 .ipa 빌드",
+				"configuredAs": "Apple Developer 팀 ID \"{{teamId}}\" 사용 중",
+				"remove": "인증서 제거",
+				"noGenerateExplanation": "Android와 달리 Apple Distribution 인증서는 Apple에서 직접 발급해야 합니다. 여기서 생성하는 대신 자신의 Apple Developer Program 계정에서 가져오세요.",
+				"import": "인증서 및 프로비저닝 프로파일 가져오기",
+				"browse": "찾아보기…",
+				"certificatePathPlaceholder": "인증서(.p12) 파일",
+				"certificatePasswordPlaceholder": "인증서 비밀번호",
+				"provisioningProfilePathPlaceholder": "프로비저닝 프로파일(.mobileprovision) 파일",
+				"teamIdPlaceholder": "Apple Developer 팀 ID",
+				"confirmImport": "가져오기",
+				"cancel": "취소"
+			}
 		}
 	},
 	"generating": {
@@ -142,7 +167,12 @@
 			"packaging": "{{platform}} 설치 프로그램을 만드는 중…",
 			"downloading-jre": "Android용 Java 런타임을 다운로드하는 중…",
 			"downloading-sdk": "Android SDK를 다운로드하는 중…",
-			"downloading-project": "Android 빌드 프로젝트를 다운로드하는 중…"
+			"downloading-project": "Android 빌드 프로젝트를 다운로드하는 중…",
+			"downloading-ios-project": "iOS 빌드 프로젝트 다운로드 중…",
+			"staging": "iOS 프로젝트 준비 중…",
+			"generating-project": "Xcode 프로젝트 생성 중…",
+			"signing": "iOS 앱 서명 중…",
+			"building": "iOS 앱 빌드 중…"
 		},
 		"doneTitle": "릴리스가 준비되었습니다",
 		"doneDescription": "Packmaster가 모든 내용을 {{folder}} 폴더에 저장했습니다.",
@@ -155,7 +185,8 @@
 		"windows": "Windows",
 		"macos": "macOS",
 		"linux": "Linux",
-		"android": "Android"
+		"android": "Android",
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "Roves Packmaster 정보",
