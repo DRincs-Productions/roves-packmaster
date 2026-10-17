@@ -1,5 +1,8 @@
 # Roves Packmaster
 
+The shell target is **v0.7.12**, including bounded audio analysis transport, cheaper
+structured-clone storage, and verified idle-worker cleanup.
+
 A desktop GUI for packaging a web-built game into [Roves](https://github.com/DRincs-Productions/roves)
 distributions — portable binaries for Windows, macOS, and Linux — without needing Rust or
 Python installed. Point it at your game's built output, choose what to generate, and it
