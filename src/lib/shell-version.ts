@@ -1,7 +1,8 @@
-// The Roves engine shell version this build of Packmaster currently targets — see the
-// engine repo's own CLAUDE.md ("Cutting a versioned release" section), which requires
-// bumping this constant every time a new shell version is published.
-export const TARGET_SHELL_VERSION = "v0.7.12";
+// The same pin is embedded by the Rust packager. Update shell-version.txt after verifying
+// a new engine release; do not add another version literal in either layer.
+import pinnedShellVersion from "./shell-version.txt?raw";
+
+export const TARGET_SHELL_VERSION = pinnedShellVersion.trim();
 
 const LATEST_RELEASE_API_URL =
   "https://api.github.com/repos/DRincs-Productions/roves/releases/latest";

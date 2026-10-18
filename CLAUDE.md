@@ -106,11 +106,14 @@ without being able to try an option that can't work here.
 
 "Generate release" is real, not a mock — see `src-tauri/src/{shell,packer,bundle}.rs`:
 
+- **One shell pin:** update `src/lib/shell-version.txt` after verifying a new engine release.
+  Vite imports it as raw text for the frontend `TARGET_SHELL_VERSION`; Rust embeds the same
+  file with `include_str!`. Both trim whitespace. Never reintroduce a separate version literal:
+  the former Rust constant remained at v0.4.18 while the frontend reached v0.7.12.
 - **`shell.rs`** downloads (and caches, per version+platform, under this app's cache dir)
   the engine's own prebuilt `roves_shell_<platform>.zip` release asset — never compiles
-  one. `TARGET_SHELL_VERSION` here **must** stay in sync with `src/lib/shell-version.ts`'s
-  constant of the same name — see the engine repo's own `CLAUDE.md`, "Cutting a versioned
-  release" section, which is the authoritative place this sync obligation is documented.
+  one. Its pinned version comes from the shared file above; see the engine repo's
+  `AGENTS.md`, "Cutting a versioned release", for the release/pin verification procedure.
   That pinned tag is what a *real* Packmaster release always targets, for reproducibility —
   but a *test* build (`PACKMASTER_TEST_BUILD=1`, this project's own `test.yml`) targets
   whichever tag GitHub currently reports as the engine repo's own latest release instead

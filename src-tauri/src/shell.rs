@@ -1,9 +1,8 @@
 //! Fetches and caches the prebuilt Roves engine shell instead of compiling one — the whole
 //! point of Packmaster is that a game developer using it needs no Rust/Python toolchain (see
 //! this project's own README/CLAUDE.md). See the engine repo's own CLAUDE.md, "Cutting a
-//! versioned release" section: `TARGET_SHELL_VERSION` here must be bumped in step with
-//! `roves-packmaster`'s frontend `src/lib/shell-version.ts` constant of the same name whenever a new
-//! shell version is published.
+//! versioned release" section: src/lib/shell-version.txt is the shared pin, read here
+//! with include_str! and by the frontend with Vite's raw loader.
 
 use std::path::{Path, PathBuf};
 
@@ -11,7 +10,9 @@ use futures_util::StreamExt;
 use tauri::{AppHandle, Manager};
 use tokio::io::AsyncWriteExt;
 
-pub const TARGET_SHELL_VERSION: &str = "v0.4.18";
+fn pinned_shell_version() -> &'static str {
+    include_str!("../../src/lib/shell-version.txt").trim()
+}
 
 const LATEST_RELEASE_API_URL: &str =
     "https://api.github.com/repos/DRincs-Productions/roves/releases/latest";
@@ -24,13 +25,13 @@ fn is_test_build() -> bool {
     option_env!("PACKMASTER_TEST_BUILD").is_some()
 }
 
-/// A real, tagged Packmaster release always targets the exact pinned `TARGET_SHELL_VERSION`,
+/// A real, tagged Packmaster release always targets the shared pinned shell version,
 /// so the same build reliably produces the same output and can safely cache what it
 /// downloads. A *test* build instead targets whichever tag GitHub currently reports as the
 /// engine repo's latest release — test builds are rebuilt on every push anyway, so there's
 /// no reproducibility to protect, and always following "latest" means testing Packmaster
-/// against a newly cut engine release doesn't need a `TARGET_SHELL_VERSION` bump here just to
-/// notice it. Falls back to `TARGET_SHELL_VERSION` if the lookup itself fails (offline,
+/// against a newly cut engine release doesn't need a shared-pin bump just to
+/// notice it. Falls back to the pinned version if the lookup itself fails (offline,
 /// GitHub API rate-limited, etc.) — same "best-effort, never block on this" reasoning as the
 /// frontend's own `shell-version.ts`, `checkForNewShellVersion`.
 ///
@@ -40,9 +41,9 @@ fn is_test_build() -> bool {
 /// release" is what actually exists to target.)
 pub async fn resolve_shell_version() -> String {
     if !is_test_build() {
-        return TARGET_SHELL_VERSION.to_string();
+        return pinned_shell_version().to_string();
     }
-    fetch_latest_release_tag().await.unwrap_or_else(|| TARGET_SHELL_VERSION.to_string())
+    fetch_latest_release_tag().await.unwrap_or_else(|| pinned_shell_version().to_string())
 }
 
 async fn fetch_latest_release_tag() -> Option<String> {

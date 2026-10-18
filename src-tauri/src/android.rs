@@ -48,7 +48,7 @@ const BUILD_TOOLS_VERSION: &str = "36.0.0";
 const JRE_FEATURE_VERSION: &str = "21";
 
 /// Where `.github/workflows/android.yml` (this repo -- DRincs-Productions/roves) publishes
-/// `roves_android_project.zip`. Not `shell::TARGET_SHELL_VERSION` (a real, tagged release) --
+/// `roves_android_project.zip`. Not the pinned desktop shell version (a real, tagged release) --
 /// Android is still experimental (see README.md's "Supported platforms" table), so the
 /// rolling "test" tag is the only channel that has this asset at all today.
 const ANDROID_TEST_RELEASE_TAG: &str = "test";
