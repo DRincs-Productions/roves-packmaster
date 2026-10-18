@@ -12,6 +12,7 @@ name: 'Build Packmaster Test Distribution'
 
 on:
   push:
+    branches: ['**']
   workflow_dispatch: {}
 
 env:

@@ -4,6 +4,7 @@ The shell target is **v0.7.13**, including native V8 global-property lookup, wor
 intrinsic lookup improvements, and safe reporting of exceptions without source positions.
 The frontend and Rust packager read the same `src/lib/shell-version.txt` pin; the displayed
 version and downloaded release cannot drift through separate version constants.
+Packmaster v0.1.9 includes this correction in its versioned desktop builds.
 
 A desktop GUI for packaging a web-built game into [Roves](https://github.com/DRincs-Productions/roves)
 distributions — portable binaries for Windows, macOS, and Linux — without needing Rust or
