@@ -1,6 +1,6 @@
 # Roves Packmaster
 
-The shell target is **v0.7.13**, including native V8 global-property lookup, worker
+The shell target is **v0.7.14**, including native V8 global-property lookup, worker
 intrinsic lookup improvements, and safe reporting of exceptions without source positions.
 The frontend and Rust packager read the same `src/lib/shell-version.txt` pin; the displayed
 version and downloaded release cannot drift through separate version constants.
