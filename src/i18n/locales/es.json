@@ -153,6 +153,20 @@
 				"confirmImport": "Importar",
 				"cancel": "Cancelar"
 			}
+		},
+		"cefWindows": {
+			"title": "Reproductor CEF para Windows (experimental)",
+			"description": "Genera además un paquete experimental para Windows con el reproductor CEF en lugar del shell basado en Servo. Su base es el paquete del reproductor subido por una ejecución correcta de la CI del motor Roves: descarga ese artifact, extráelo y elige aquí su carpeta. Packmaster lo comprueba con su propio SHA256SUMS.txt y sustituye su carpeta game por tu build. La compresión, Steam y el icono no se aplican a este paquete.",
+			"enableLabel": "Generar el paquete CEF para Windows",
+			"baseLabel": "Paquete base del reproductor",
+			"baseDescription": "El artifact visual-novel-template-roves-cef-windows-x64 extraído (o el -mcp-, para usar el puente MCP local).",
+			"baseNone": "Ninguna carpeta seleccionada",
+			"browse": "Examinar…",
+			"browseTitle": "Selecciona el paquete del reproductor CEF extraído",
+			"baseError": "Selecciona la carpeta del paquete del reproductor CEF extraído o desactiva el paquete CEF para Windows.",
+			"mcpLabel": "Activar el puente MCP local (solo desarrollo)",
+			"mcpDescription": "Permite que un agente de IA o un IDE conectado mediante MCP (Model Context Protocol) lea el estado y la consola del juego en ejecución, ejecute JavaScript en la página y haga clic, pulse teclas y escriba en ella: útil para pruebas de juego automatizadas. Necesita un paquete base con MCP y Node.js 20+; consulta mcp\\README.md en el paquete. Si está desactivado, el paquete no contiene ningún archivo MCP.",
+			"mcpWarning": "No distribuyas nunca este paquete a los jugadores: mientras el juego se ejecuta, cualquier programa que se ejecute con tu usuario de Windows puede leerlo y controlarlo a través del puente."
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows (CEF, experimental)"
 	},
 	"info": {
 		"trigger": "Acerca de Roves Packmaster",

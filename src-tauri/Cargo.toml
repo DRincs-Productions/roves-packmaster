@@ -64,6 +64,11 @@ flate2 = "1"
 # Windows Vista / macOS 10.7), so no `ico`/`icns`-writing crate is needed either.
 image = { version = "0.25", default-features = false, features = ["png"] }
 
+# Experimental CEF Windows player package (see src/cef_player.rs): verifies the CI base
+# package against its own SHA256SUMS.txt and regenerates it for the output. Already in the
+# lock file through other dependencies.
+sha2 = "0.10"
+
 [dev-dependencies]
 tempfile = "3"
 

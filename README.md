@@ -75,6 +75,23 @@ availability check per platform, same as the portable/installable paths above.
      [wiki](https://github.com/DRincs-Productions/roves-wiki/blob/main/content/docs/packmaster.mdx)
      for the current caveats (Windows Android support is new and unverified against a real
      device; iOS is untested end to end on a real macOS machine).
+   - **CEF Windows player (experimental, Advanced)** — an extra
+     `<your-game-name>_windows_cef.zip` on the experimental CEF + SDL3 + wgpu player instead
+     of the Servo-based shell. There is no published release asset for it yet: download the
+     player package artifact of a **successful** engine CI run
+     (`visual-novel-template-roves-cef-windows-x64`), extract it and pick its folder. Packmaster
+     verifies it against its own `SHA256SUMS.txt`, keeps `play.exe`/`play.dll`/the CEF
+     runtime unchanged, replaces `game\` with your build and regenerates the checksums
+     (`src-tauri/src/cef_player.rs`). Compression, Steam and the icon setting don't apply.
+     The **local MCP bridge** checkbox (off by default) keeps the player's development
+     bridge, through which an AI agent or IDE connected over MCP can read the running game's
+     state and console, run JavaScript in the page, click, press keys and type
+     (`<name>_windows_cef_mcp.zip`). It needs the MCP-enabled artifact
+     (`visual-novel-template-roves-cef-mcp-windows-x64`) and is refused otherwise. Never ship
+     that package to players: any program running as your Windows user can control the game
+     through it. With the checkbox off the package contains no `mcp\` folder at all (no
+     activation marker, no MCP server), even when the base was the MCP-enabled artifact.
+     Packmaster cannot check which CI run a folder came from: picking a green run is up to you.
 3. **Generate.** Downloads the shell (cached per version/platform after the first run),
    packs your content into it, and shows real, per-step progress. Opens the folder the
    release was written to when done — a `release/` folder next to wherever Packmaster

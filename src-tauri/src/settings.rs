@@ -120,6 +120,21 @@ pub struct PackmasterSettings {
     pub plugins: PluginSettings,
     pub compression: CompressionSettings,
     pub icon: IconSettings,
+    #[serde(default)]
+    pub cef_windows: CefWindowsSettings,
+}
+
+/// Experimental CEF Windows player package (`cef_player.rs`). Mirrors `src/lib/settings.ts`'s
+/// `CefWindowsSettings`; absent in older stored settings, hence `Default` (everything off).
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CefWindowsSettings {
+    pub enabled: bool,
+    /// Extracted CI player artifact (the package folder or the folder containing it).
+    pub base_dir: Option<String>,
+    /// Keep the base's local MCP bridge (`mcp\enabled` + MCP server). Off by default; when
+    /// off, the output never contains `mcp\`.
+    pub enable_mcp: bool,
 }
 
 impl PortableSettings {

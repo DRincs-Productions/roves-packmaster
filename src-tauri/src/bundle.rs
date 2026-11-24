@@ -11,6 +11,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::android;
+use crate::cef_player;
 use crate::icon;
 use crate::installer;
 use crate::packer;
@@ -74,7 +75,11 @@ pub async fn generate_release(
         .into_iter()
         .filter(|&p| settings.portable.get(p) || settings.installers.get(p).enabled)
         .collect();
-    if platforms.is_empty() && !settings.mobile.android.enabled && !settings.mobile.ios.enabled {
+    if platforms.is_empty()
+        && !settings.mobile.android.enabled
+        && !settings.mobile.ios.enabled
+        && !settings.cef_windows.enabled
+    {
         return Err("no platform selected".to_string());
     }
 
@@ -183,6 +188,35 @@ pub async fn generate_release(
         }
 
         std::fs::remove_dir_all(&staging_dir).ok();
+        emit_progress(&app, platform, "done", 1.0);
+    }
+
+    // Experimental CEF Windows player (`cef_player.rs`): a separate output next to the
+    // Servo-based zips, built from a CI player artifact the user extracted. Compression,
+    // Steam and the icon setting do not apply to it (game\ is a plain copy).
+    if settings.cef_windows.enabled {
+        let platform = "cef-windows";
+        emit_progress(&app, platform, "checking", 0.0);
+        let base_dir = settings
+            .cef_windows
+            .base_dir
+            .as_deref()
+            .filter(|dir| !dir.trim().is_empty())
+            .ok_or_else(|| "the CEF Windows player is enabled, but no base package folder is selected".to_string())?;
+        let base = cef_player::inspect_base(&cef_player::locate_base(Path::new(base_dir))?)?;
+        let enable_mcp = settings.cef_windows.enable_mcp;
+        emit_progress(&app, platform, "assembling", 0.3);
+        let staging_dir = std::env::temp_dir().join(format!("roves-packmaster-{platform}-{}", process_id()));
+        if staging_dir.exists() {
+            std::fs::remove_dir_all(&staging_dir).map_err(|e| e.to_string())?;
+        }
+        cef_player::assemble(&base, &content_dir, &staging_dir, enable_mcp)?;
+        emit_progress(&app, platform, "zipping", 0.7);
+        let suffix = if enable_mcp { "windows_cef_mcp" } else { "windows_cef" };
+        let zip_path = release_dir.join(format!("{zip_stem}_{suffix}.zip"));
+        let zipped = zip_dir_as(&staging_dir, &package_name, &zip_path);
+        std::fs::remove_dir_all(&staging_dir).ok();
+        zipped?;
         emit_progress(&app, platform, "done", 1.0);
     }
 

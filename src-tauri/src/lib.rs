@@ -1,5 +1,6 @@
 mod android;
 mod bundle;
+mod cef_player;
 mod icon;
 mod installer;
 mod ios;

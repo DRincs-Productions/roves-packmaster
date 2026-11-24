@@ -153,6 +153,20 @@
 				"confirmImport": "Import",
 				"cancel": "Cancel"
 			}
+		},
+		"cefWindows": {
+			"title": "CEF Windows player (experimental)",
+			"description": "Also builds an experimental Windows package on the CEF player instead of the Servo-based shell. Its base is the player package uploaded by a successful Roves engine CI run: download that artifact, extract it, and pick its folder here. Packmaster checks it against its own SHA256SUMS.txt and replaces its game folder with your build. Compression, Steam and the icon setting don't apply to this package.",
+			"enableLabel": "Build the CEF Windows package",
+			"baseLabel": "Base player package",
+			"baseDescription": "The extracted visual-novel-template-roves-cef-windows-x64 artifact (or the -mcp- one, to use the local MCP bridge).",
+			"baseNone": "No folder selected",
+			"browse": "Browse…",
+			"browseTitle": "Select the extracted CEF player package",
+			"baseError": "Select the extracted CEF player package folder, or turn the CEF Windows package off.",
+			"mcpLabel": "Enable the local MCP bridge (development only)",
+			"mcpDescription": "Lets an AI agent or IDE connected through MCP (Model Context Protocol) read the running game's state and console, run JavaScript in the page, and click, press keys and type in it — useful for automated playtests. Needs an MCP-enabled base package and Node.js 20+; see mcp\\README.md in the package. When off, the package contains no MCP files at all.",
+			"mcpWarning": "Never ship this package to players: while the game runs, any program running as your Windows user can read and control it through the bridge."
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows (CEF, experimental)"
 	},
 	"info": {
 		"trigger": "About Roves Packmaster",

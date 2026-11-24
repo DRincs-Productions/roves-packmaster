@@ -153,6 +153,20 @@
 				"confirmImport": "导入",
 				"cancel": "取消"
 			}
+		},
+		"cefWindows": {
+			"title": "CEF Windows 播放器（实验性）",
+			"description": "额外生成一个基于 CEF 播放器（而非基于 Servo 的外壳）的实验性 Windows 包。其基础是 Roves 引擎 CI 成功运行后上传的播放器包：下载该 artifact，解压后在此选择其文件夹。Packmaster 会用其自带的 SHA256SUMS.txt 进行校验，并用你的构建替换其 game 文件夹。压缩、Steam 和图标设置不适用于此包。",
+			"enableLabel": "生成 CEF Windows 包",
+			"baseLabel": "基础播放器包",
+			"baseDescription": "解压后的 visual-novel-template-roves-cef-windows-x64 artifact（或 -mcp- 版本，以使用本地 MCP 桥接）。",
+			"baseNone": "未选择文件夹",
+			"browse": "浏览…",
+			"browseTitle": "选择解压后的 CEF 播放器包",
+			"baseError": "请选择解压后的 CEF 播放器包文件夹，或关闭 CEF Windows 包。",
+			"mcpLabel": "启用本地 MCP 桥接（仅限开发）",
+			"mcpDescription": "允许通过 MCP（Model Context Protocol）连接的 AI 智能体或 IDE 读取运行中游戏的状态和控制台、在页面中执行 JavaScript，以及点击、按键和输入文字——适用于自动化试玩测试。需要启用 MCP 的基础包和 Node.js 20+；请参阅包内的 mcp\\README.md。关闭时，包中不包含任何 MCP 文件。",
+			"mcpWarning": "切勿将此包分发给玩家：游戏运行期间，以你的 Windows 用户身份运行的任何程序都可以通过该桥接读取并控制游戏。"
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows（CEF，实验性）"
 	},
 	"info": {
 		"trigger": "关于 Roves Packmaster",

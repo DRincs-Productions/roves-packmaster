@@ -153,6 +153,20 @@
 				"confirmImport": "Importa",
 				"cancel": "Annulla"
 			}
+		},
+		"cefWindows": {
+			"title": "Player CEF per Windows (sperimentale)",
+			"description": "Genera anche un pacchetto Windows sperimentale basato sul player CEF invece della shell basata su Servo. La base è il pacchetto del player caricato da un'esecuzione riuscita della CI del motore Roves: scarica quell'artifact, estrailo e seleziona qui la sua cartella. Packmaster lo verifica con il suo SHA256SUMS.txt e ne sostituisce la cartella game con la tua build. Compressione, Steam e l'icona non si applicano a questo pacchetto.",
+			"enableLabel": "Genera il pacchetto CEF per Windows",
+			"baseLabel": "Pacchetto player di base",
+			"baseDescription": "L'artifact visual-novel-template-roves-cef-windows-x64 estratto (oppure quello -mcp-, per usare il bridge MCP locale).",
+			"baseNone": "Nessuna cartella selezionata",
+			"browse": "Sfoglia…",
+			"browseTitle": "Seleziona il pacchetto del player CEF estratto",
+			"baseError": "Seleziona la cartella del pacchetto del player CEF estratto, oppure disattiva il pacchetto CEF per Windows.",
+			"mcpLabel": "Attiva il bridge MCP locale (solo sviluppo)",
+			"mcpDescription": "Permette a un agente IA o a un IDE collegato tramite MCP (Model Context Protocol) di leggere lo stato e la console del gioco in esecuzione, eseguire JavaScript nella pagina, fare clic, premere tasti e digitare testo: utile per i playtest automatici. Richiede un pacchetto di base con MCP e Node.js 20+; vedi mcp\\README.md nel pacchetto. Se disattivato, il pacchetto non contiene alcun file MCP.",
+			"mcpWarning": "Non distribuire mai questo pacchetto ai giocatori: mentre il gioco è in esecuzione, qualsiasi programma avviato con il tuo utente Windows può leggerlo e controllarlo tramite il bridge."
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows (CEF, sperimentale)"
 	},
 	"info": {
 		"trigger": "Informazioni su Roves Packmaster",

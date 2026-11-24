@@ -16,6 +16,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -99,6 +100,7 @@ function ConfigureView() {
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
   const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam"]);
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
+  const [showCefBaseError, setShowCefBaseError] = useState(false);
   const [webManifestInfo, setWebManifestInfo] = useState<WebManifestInfo | null>(null);
   const [useWebManifest, setUseWebManifest] = useState(true);
   const [androidAvailable, setAndroidAvailable] = useState<{
@@ -420,11 +422,33 @@ function ConfigureView() {
     }
   };
 
+  const cefBaseMissing = settings.cefWindows.enabled && !settings.cefWindows.baseDir;
+
+  // Experimental CEF Windows player: the base is an extracted engine CI artifact (a folder),
+  // validated by bundle.rs/cef_player.rs when the release is generated.
+  const handleBrowseCefBase = async () => {
+    const path = await open({
+      directory: true,
+      multiple: false,
+      title: t("configure.cefWindows.browseTitle"),
+    });
+    if (typeof path === "string") {
+      updateSettings({ cefWindows: { ...settings.cefWindows, baseDir: path } });
+    }
+  };
+
   const handleGenerateClick = () => {
     if (steamAppIdInvalid) {
       setShowSteamAppIdError(true);
       setOpenAccordionItems((current) =>
         current.includes("steam") ? current : [...current, "steam"],
+      );
+      return;
+    }
+    if (cefBaseMissing) {
+      setShowCefBaseError(true);
+      setOpenAccordionItems((current) =>
+        current.includes("cef-windows") ? current : [...current, "cef-windows"],
       );
       return;
     }
@@ -1237,6 +1261,78 @@ function ConfigureView() {
               )}
             </AccordionContent>
           </AccordionItem>
+
+          <AccordionItem
+            value="cef-windows"
+            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+          >
+            <AccordionTrigger>{t("configure.cefWindows.title")}</AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              <p className="text-muted-foreground text-sm">
+                {t("configure.cefWindows.description")}
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <Label>{t("configure.cefWindows.enableLabel")}</Label>
+                <Switch
+                  checked={settings.cefWindows.enabled}
+                  onCheckedChange={(checked) =>
+                    updateSettings({ cefWindows: { ...settings.cefWindows, enabled: checked } })
+                  }
+                />
+              </div>
+              {settings.cefWindows.enabled && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>{t("configure.cefWindows.baseLabel")}</Label>
+                    <p className="text-muted-foreground text-xs">
+                      {t("configure.cefWindows.baseDescription")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-xs">
+                        {settings.cefWindows.baseDir ?? t("configure.cefWindows.baseNone")}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBrowseCefBase}
+                      >
+                        {t("configure.cefWindows.browse")}
+                      </Button>
+                    </div>
+                    {showCefBaseError && cefBaseMissing && (
+                      <p className="text-destructive text-xs">
+                        {t("configure.cefWindows.baseError")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="cef-enable-mcp"
+                      checked={settings.cefWindows.enableMcp}
+                      onCheckedChange={(checked) =>
+                        updateSettings({
+                          cefWindows: { ...settings.cefWindows, enableMcp: checked === true },
+                        })
+                      }
+                    />
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="cef-enable-mcp">{t("configure.cefWindows.mcpLabel")}</Label>
+                      <p className="text-muted-foreground text-xs">
+                        {t("configure.cefWindows.mcpDescription")}
+                      </p>
+                    </div>
+                  </div>
+                  {settings.cefWindows.enableMcp && (
+                    <Alert>
+                      <WarningCircle />
+                      <AlertDescription>{t("configure.cefWindows.mcpWarning")}</AlertDescription>
+                    </Alert>
+                  )}
+                </>
+              )}
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       </div>
 
@@ -1245,6 +1341,14 @@ function ConfigureView() {
           <WarningCircle />
           <AlertTitle>{t("configure.errors.title")}</AlertTitle>
           <AlertDescription>{t("configure.steam.appIdError")}</AlertDescription>
+        </Alert>
+      )}
+
+      {showCefBaseError && cefBaseMissing && (
+        <Alert variant="destructive">
+          <WarningCircle />
+          <AlertTitle>{t("configure.errors.title")}</AlertTitle>
+          <AlertDescription>{t("configure.cefWindows.baseError")}</AlertDescription>
         </Alert>
       )}
 

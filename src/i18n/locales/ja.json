@@ -153,6 +153,20 @@
 				"confirmImport": "インポート",
 				"cancel": "キャンセル"
 			}
+		},
+		"cefWindows": {
+			"title": "CEF Windows プレーヤー（実験的）",
+			"description": "Servo ベースのシェルの代わりに CEF プレーヤーを使った実験的な Windows パッケージも生成します。ベースは Roves エンジンの CI が成功したときにアップロードされたプレーヤーパッケージです。その artifact をダウンロードして展開し、ここでフォルダーを選択してください。Packmaster は同梱の SHA256SUMS.txt で検証し、game フォルダーをあなたのビルドに置き換えます。圧縮、Steam、アイコンの設定はこのパッケージには適用されません。",
+			"enableLabel": "CEF Windows パッケージを生成する",
+			"baseLabel": "ベースのプレーヤーパッケージ",
+			"baseDescription": "展開した visual-novel-template-roves-cef-windows-x64 artifact（ローカル MCP ブリッジを使う場合は -mcp- 版）。",
+			"baseNone": "フォルダーが選択されていません",
+			"browse": "参照…",
+			"browseTitle": "展開した CEF プレーヤーパッケージを選択",
+			"baseError": "展開した CEF プレーヤーパッケージのフォルダーを選択するか、CEF Windows パッケージをオフにしてください。",
+			"mcpLabel": "ローカル MCP ブリッジを有効にする（開発専用）",
+			"mcpDescription": "MCP（Model Context Protocol）で接続した AI エージェントや IDE が、実行中のゲームの状態とコンソールを読み取り、ページで JavaScript を実行し、クリック・キー入力・文字入力を行えるようにします。自動プレイテストに便利です。MCP 対応のベースパッケージと Node.js 20 以上が必要です。パッケージ内の mcp\\README.md を参照してください。オフの場合、パッケージに MCP ファイルは一切含まれません。",
+			"mcpWarning": "このパッケージを絶対にプレイヤーに配布しないでください。ゲームの実行中は、あなたの Windows ユーザーで動作するどのプログラムもブリッジ経由でゲームを読み取り、操作できます。"
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows（CEF、実験的）"
 	},
 	"info": {
 		"trigger": "Roves Packmaster について",

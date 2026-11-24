@@ -130,6 +130,18 @@ export interface PackmasterSettings {
   plugins: PluginSettings;
   compression: CompressionSettings;
   icon: IconSettings;
+  cefWindows: CefWindowsSettings;
+}
+
+/** Experimental CEF Windows player package (src-tauri/src/cef_player.rs): an extracted engine
+ * CI player artifact used as the base, with its game\ folder replaced by the user's build.
+ * Not a published release asset, so there is no download URL: the user picks the folder. */
+export interface CefWindowsSettings {
+  enabled: boolean;
+  baseDir: string | null;
+  /** Keep the base's local MCP bridge (an AI agent can read and control the running game).
+   * Off by default; requires an MCP-enabled base. When off, the output has no mcp\ folder. */
+  enableMcp: boolean;
 }
 
 // Mirrors `mach bundle`'s own defaults (see the engine's
@@ -169,6 +181,11 @@ export const defaultSettings: PackmasterSettings = {
   },
   icon: {
     path: null,
+  },
+  cefWindows: {
+    enabled: false,
+    baseDir: null,
+    enableMcp: false,
   },
 };
 
@@ -216,6 +233,7 @@ export async function loadSettings(): Promise<PackmasterSettings> {
     plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
     compression: { ...defaultSettings.compression, ...stored.compression },
     icon: { ...defaultSettings.icon, ...stored.icon },
+    cefWindows: { ...defaultSettings.cefWindows, ...stored.cefWindows },
   };
 }
 

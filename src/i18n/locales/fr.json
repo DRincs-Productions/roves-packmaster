@@ -153,6 +153,20 @@
 				"confirmImport": "Importer",
 				"cancel": "Annuler"
 			}
+		},
+		"cefWindows": {
+			"title": "Lecteur CEF pour Windows (expérimental)",
+			"description": "Génère aussi un paquet Windows expérimental basé sur le lecteur CEF au lieu du shell basé sur Servo. Sa base est le paquet du lecteur publié par une exécution réussie de la CI du moteur Roves : téléchargez cet artifact, extrayez-le et sélectionnez ici son dossier. Packmaster le vérifie avec son propre SHA256SUMS.txt et remplace son dossier game par votre build. La compression, Steam et l'icône ne s'appliquent pas à ce paquet.",
+			"enableLabel": "Générer le paquet CEF pour Windows",
+			"baseLabel": "Paquet de base du lecteur",
+			"baseDescription": "L'artifact visual-novel-template-roves-cef-windows-x64 extrait (ou celui en -mcp-, pour utiliser le pont MCP local).",
+			"baseNone": "Aucun dossier sélectionné",
+			"browse": "Parcourir…",
+			"browseTitle": "Sélectionnez le paquet du lecteur CEF extrait",
+			"baseError": "Sélectionnez le dossier du paquet du lecteur CEF extrait, ou désactivez le paquet CEF pour Windows.",
+			"mcpLabel": "Activer le pont MCP local (développement uniquement)",
+			"mcpDescription": "Permet à un agent IA ou à un IDE connecté via MCP (Model Context Protocol) de lire l'état et la console du jeu en cours, d'exécuter du JavaScript dans la page, d'y cliquer, d'appuyer sur des touches et de saisir du texte : utile pour les tests de jeu automatisés. Nécessite un paquet de base avec MCP et Node.js 20+ ; voir mcp\\README.md dans le paquet. Désactivé, le paquet ne contient aucun fichier MCP.",
+			"mcpWarning": "Ne distribuez jamais ce paquet aux joueurs : pendant que le jeu tourne, tout programme exécuté sous votre utilisateur Windows peut le lire et le contrôler via le pont."
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows (CEF, expérimental)"
 	},
 	"info": {
 		"trigger": "À propos de Roves Packmaster",

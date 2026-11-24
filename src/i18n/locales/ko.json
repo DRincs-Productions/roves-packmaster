@@ -153,6 +153,20 @@
 				"confirmImport": "가져오기",
 				"cancel": "취소"
 			}
+		},
+		"cefWindows": {
+			"title": "CEF Windows 플레이어 (실험적)",
+			"description": "Servo 기반 셸 대신 CEF 플레이어를 사용하는 실험적인 Windows 패키지도 생성합니다. 기반은 Roves 엔진 CI가 성공적으로 실행된 뒤 업로드한 플레이어 패키지입니다. 해당 artifact를 다운로드해 압축을 풀고 여기에서 폴더를 선택하세요. Packmaster는 패키지에 포함된 SHA256SUMS.txt로 검증한 뒤 game 폴더를 여러분의 빌드로 교체합니다. 압축, Steam, 아이콘 설정은 이 패키지에 적용되지 않습니다.",
+			"enableLabel": "CEF Windows 패키지 생성",
+			"baseLabel": "기본 플레이어 패키지",
+			"baseDescription": "압축을 푼 visual-novel-template-roves-cef-windows-x64 artifact(로컬 MCP 브리지를 사용하려면 -mcp- 버전).",
+			"baseNone": "선택된 폴더 없음",
+			"browse": "찾아보기…",
+			"browseTitle": "압축을 푼 CEF 플레이어 패키지 선택",
+			"baseError": "압축을 푼 CEF 플레이어 패키지 폴더를 선택하거나 CEF Windows 패키지를 끄세요.",
+			"mcpLabel": "로컬 MCP 브리지 사용 (개발 전용)",
+			"mcpDescription": "MCP(Model Context Protocol)로 연결된 AI 에이전트나 IDE가 실행 중인 게임의 상태와 콘솔을 읽고, 페이지에서 JavaScript를 실행하고, 클릭·키 입력·텍스트 입력을 할 수 있게 합니다. 자동 플레이테스트에 유용합니다. MCP가 활성화된 기본 패키지와 Node.js 20 이상이 필요합니다. 패키지의 mcp\\README.md를 참고하세요. 끄면 패키지에 MCP 파일이 전혀 포함되지 않습니다.",
+			"mcpWarning": "이 패키지를 플레이어에게 배포하지 마세요. 게임이 실행되는 동안 여러분의 Windows 사용자로 실행되는 모든 프로그램이 브리지를 통해 게임을 읽고 제어할 수 있습니다."
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows (CEF, 실험적)"
 	},
 	"info": {
 		"trigger": "Roves Packmaster 정보",

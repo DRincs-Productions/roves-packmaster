@@ -153,6 +153,20 @@
 				"confirmImport": "Importieren",
 				"cancel": "Abbrechen"
 			}
+		},
+		"cefWindows": {
+			"title": "CEF-Player für Windows (experimentell)",
+			"description": "Erstellt zusätzlich ein experimentelles Windows-Paket mit dem CEF-Player statt der Servo-basierten Shell. Basis ist das Player-Paket, das ein erfolgreicher CI-Lauf der Roves-Engine hochgeladen hat: Lade dieses Artifact herunter, entpacke es und wähle hier seinen Ordner. Packmaster prüft es anhand seiner eigenen SHA256SUMS.txt und ersetzt seinen game-Ordner durch deinen Build. Komprimierung, Steam und die Symboleinstellung gelten für dieses Paket nicht.",
+			"enableLabel": "CEF-Paket für Windows erstellen",
+			"baseLabel": "Basis-Player-Paket",
+			"baseDescription": "Das entpackte Artifact visual-novel-template-roves-cef-windows-x64 (oder die -mcp--Variante, um die lokale MCP-Brücke zu nutzen).",
+			"baseNone": "Kein Ordner ausgewählt",
+			"browse": "Durchsuchen…",
+			"browseTitle": "Entpacktes CEF-Player-Paket auswählen",
+			"baseError": "Wähle den Ordner des entpackten CEF-Player-Pakets oder deaktiviere das CEF-Paket für Windows.",
+			"mcpLabel": "Lokale MCP-Brücke aktivieren (nur Entwicklung)",
+			"mcpDescription": "Erlaubt einem KI-Agenten oder einer IDE, die über MCP (Model Context Protocol) verbunden ist, Zustand und Konsole des laufenden Spiels zu lesen, JavaScript in der Seite auszuführen sowie zu klicken, Tasten zu drücken und Text einzugeben – nützlich für automatisierte Playtests. Erfordert ein MCP-fähiges Basispaket und Node.js 20+; siehe mcp\\README.md im Paket. Deaktiviert enthält das Paket keine MCP-Dateien.",
+			"mcpWarning": "Gib dieses Paket niemals an Spieler weiter: Während das Spiel läuft, kann jedes Programm, das unter deinem Windows-Benutzer läuft, es über die Brücke lesen und steuern."
 		}
 	},
 	"generating": {
@@ -186,7 +200,8 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS"
+		"ios": "iOS",
+		"cef-windows": "Windows (CEF, experimentell)"
 	},
 	"info": {
 		"trigger": "Über Roves Packmaster",

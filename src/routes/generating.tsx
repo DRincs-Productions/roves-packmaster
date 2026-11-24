@@ -59,6 +59,7 @@ function GeneratingView() {
       settings.portable.linux,
       settings.portable.macos,
       settings.mobile.android.enabled,
+      settings.cefWindows.enabled,
     ].filter(Boolean).length;
 
     async function run() {
