@@ -62,7 +62,9 @@ flate2 = "1"
 # and resize only -- both .ico/.icns containers are hand-written (see that module), storing
 # plain PNG-encoded frames directly (a well-supported convention on both formats since
 # Windows Vista / macOS 10.7), so no `ico`/`icns`-writing crate is needed either.
-image = { version = "0.25", default-features = false, features = ["png"] }
+# `ico` (decoder only, part of `image`, no extra crate): validates a game's icon.ico/favicon.ico
+# for the CEF Windows player's project icon contract (src/cef_player.rs).
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 
 # Experimental CEF Windows player package (see src/cef_player.rs): verifies the CI base
 # package against its own SHA256SUMS.txt and regenerates it for the output. Already in the

@@ -156,7 +156,7 @@
 		},
 		"cefWindows": {
 			"title": "CEF Windows 播放器（实验性）",
-			"description": "额外生成一个基于 CEF 播放器（而非基于 Servo 的外壳）的实验性 Windows 包。其基础是 Roves 引擎 CI 成功运行后上传的播放器包：下载该 artifact，解压后在此选择其文件夹。Packmaster 会用其自带的 SHA256SUMS.txt 进行校验，并用你的构建替换其 game 文件夹。压缩、Steam 和图标设置不适用于此包。",
+			"description": "额外生成一个基于 CEF 播放器（而非基于 Servo 的外壳）的实验性 Windows 包。其基础是 Roves 引擎 CI 成功运行后上传的播放器包：下载该 artifact，解压后在此选择其文件夹。Packmaster 会用其自带的 SHA256SUMS.txt 进行校验，并用你的构建替换其 game 文件夹。压缩和 Steam 不适用于此包。游戏图标（或构建中的 icon.png、icon.ico、favicon.ico）用于其窗口和 play.exe，没有时使用 Roves 图标。",
 			"enableLabel": "生成 CEF Windows 包",
 			"baseLabel": "基础播放器包",
 			"baseDescription": "解压后的 visual-novel-template-roves-cef-windows-x64 artifact（或 -mcp- 版本，以使用本地 MCP 桥接）。",

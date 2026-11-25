@@ -192,8 +192,9 @@ pub async fn generate_release(
     }
 
     // Experimental CEF Windows player (`cef_player.rs`): a separate output next to the
-    // Servo-based zips, built from a CI player artifact the user extracted. Compression,
-    // Steam and the icon setting do not apply to it (game\ is a plain copy).
+    // Servo-based zips, built from a CI player artifact the user extracted. Compression and
+    // Steam do not apply to it (game\ is a plain copy); the icon follows the engine's project
+    // icon contract (`cef_player::resolve_project_icon`).
     if settings.cef_windows.enabled {
         let platform = "cef-windows";
         emit_progress(&app, platform, "checking", 0.0);
@@ -210,7 +211,25 @@ pub async fn generate_release(
         if staging_dir.exists() {
             std::fs::remove_dir_all(&staging_dir).map_err(|e| e.to_string())?;
         }
-        cef_player::assemble(&base, &content_dir, &staging_dir, enable_mcp)?;
+        let icon_work = std::env::temp_dir().join(format!("roves-packmaster-cef-icon-{}", process_id()));
+        if icon_work.exists() {
+            std::fs::remove_dir_all(&icon_work).map_err(|e| e.to_string())?;
+        }
+        let icon = cef_player::resolve_project_icon(
+            settings.icon.path.as_deref().map(Path::new),
+            &content_dir,
+            &base.root,
+            &icon_work,
+        )?;
+        for warning in &icon.warnings {
+            eprintln!("project icon: {warning}");
+        }
+        let rcedit = if icon.exe_ico.is_some() { Some(ensure_rcedit(&app).await?) } else { None };
+        let assembled = cef_player::assemble(&base, &content_dir, &staging_dir, enable_mcp, &icon, &|exe, ico| {
+            run_rcedit(rcedit.as_deref().ok_or("rcedit is not available")?, exe, ico)
+        });
+        std::fs::remove_dir_all(&icon_work).ok();
+        assembled?;
         emit_progress(&app, platform, "zipping", 0.7);
         let suffix = if enable_mcp { "windows_cef_mcp" } else { "windows_cef" };
         let zip_path = release_dir.join(format!("{zip_stem}_{suffix}.zip"));
@@ -378,7 +397,8 @@ async fn apply_icon(
                 std::env::temp_dir().join(format!("roves-packmaster-icon-{}.ico", process_id()));
             icon::generate_ico(icon_path, &generated_ico)?;
             let exe_path = binary_dir.join("play.exe");
-            patch_windows_exe_icon(app, &exe_path, &generated_ico.to_string_lossy()).await?;
+            let rcedit = ensure_rcedit(app).await?;
+            run_rcedit(&rcedit, &exe_path, &generated_ico)?;
             std::fs::remove_file(&generated_ico).ok();
         },
         _ => {
@@ -389,6 +409,9 @@ async fn apply_icon(
 }
 
 const RCEDIT_URL: &str = "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe";
+/// SHA-256 of that release asset, the same pin as the engine's and roves-action's CEF
+/// workflows; a cached or downloaded file that does not match is never run.
+const RCEDIT_SHA256: &str = "3e7801db1a5edbec91b49a24a094aad776cb4515488ea5a4ca2289c400eade2a";
 
 /// Downloads (once; cached under this app's cache dir) `rcedit-x64.exe` and uses it to patch
 /// `exe_path`'s own icon resource in place — see the engine repo's own
@@ -396,9 +419,13 @@ const RCEDIT_URL: &str = "https://github.com/electron/rcedit/releases/download/v
 /// this mirrors exactly (same tool, same pinned release, same reasoning: rcedit is what
 /// Electron itself uses to give a prebuilt shell a different icon per app, no recompile
 /// needed).
-async fn patch_windows_exe_icon(app: &AppHandle, exe_path: &Path, ico_path: &str) -> Result<(), String> {
+async fn ensure_rcedit(app: &AppHandle) -> Result<PathBuf, String> {
+    use sha2::Digest;
     let cache_dir = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("tools");
     let rcedit_path = cache_dir.join("rcedit-x64.exe");
+    if rcedit_path.exists() && sha256_file(&rcedit_path)? != RCEDIT_SHA256 {
+        std::fs::remove_file(&rcedit_path).map_err(|e| e.to_string())?;
+    }
     if !rcedit_path.exists() {
         std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
         let response = reqwest::get(RCEDIT_URL).await.map_err(|e| format!("downloading rcedit: {e}"))?;
@@ -406,9 +433,23 @@ async fn patch_windows_exe_icon(app: &AppHandle, exe_path: &Path, ico_path: &str
             return Err(format!("downloading rcedit: HTTP {}", response.status()));
         }
         let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+        let digest: String = sha2::Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
+        if digest != RCEDIT_SHA256 {
+            return Err(format!("downloaded rcedit has SHA-256 {digest}, expected {RCEDIT_SHA256}"));
+        }
         std::fs::write(&rcedit_path, &bytes).map_err(|e| e.to_string())?;
     }
-    let status = std::process::Command::new(&rcedit_path)
+    Ok(rcedit_path)
+}
+
+fn sha256_file(path: &Path) -> Result<String, String> {
+    use sha2::Digest;
+    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(sha2::Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect())
+}
+
+fn run_rcedit(rcedit_path: &Path, exe_path: &Path, ico_path: &Path) -> Result<(), String> {
+    let status = std::process::Command::new(rcedit_path)
         .arg(exe_path)
         .arg("--set-icon")
         .arg(ico_path)

@@ -39,7 +39,16 @@ const ICO_SIZES: [u32; 5] = [16, 32, 48, 128, 256];
 /// frame stored as its own PNG -- the ICONDIR/ICONDIRENTRY structure itself is the classic,
 /// unchanged binary format (`bWidth`/`bHeight` of 0 conventionally means 256, per the spec).
 pub fn generate_ico(source_png: &Path, dest_ico: &Path) -> Result<(), String> {
-    let frames = resized_png_frames(source_png, &ICO_SIZES)?;
+    generate_ico_with_sizes(source_png, dest_ico, &ICO_SIZES)
+}
+
+/// `generate_ico` with an explicit frame list (the CEF player's project icon contract uses
+/// the engine's sizes, never upscaling: see `cef_player.rs`).
+pub fn generate_ico_with_sizes(source_png: &Path, dest_ico: &Path, sizes: &[u32]) -> Result<(), String> {
+    if sizes.is_empty() {
+        return Err("no icon size to generate".to_string());
+    }
+    let frames = resized_png_frames(source_png, sizes)?;
 
     let mut file = std::fs::File::create(dest_ico).map_err(|e| e.to_string())?;
     file.write_all(&0u16.to_le_bytes()).map_err(|e| e.to_string())?; // reserved

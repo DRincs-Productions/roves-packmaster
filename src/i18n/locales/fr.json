@@ -156,7 +156,7 @@
 		},
 		"cefWindows": {
 			"title": "Lecteur CEF pour Windows (expérimental)",
-			"description": "Génère aussi un paquet Windows expérimental basé sur le lecteur CEF au lieu du shell basé sur Servo. Sa base est le paquet du lecteur publié par une exécution réussie de la CI du moteur Roves : téléchargez cet artifact, extrayez-le et sélectionnez ici son dossier. Packmaster le vérifie avec son propre SHA256SUMS.txt et remplace son dossier game par votre build. La compression, Steam et l'icône ne s'appliquent pas à ce paquet.",
+			"description": "Génère aussi un paquet Windows expérimental basé sur le lecteur CEF au lieu du shell basé sur Servo. Sa base est le paquet du lecteur publié par une exécution réussie de la CI du moteur Roves : téléchargez cet artifact, extrayez-le et sélectionnez ici son dossier. Packmaster le vérifie avec son propre SHA256SUMS.txt et remplace son dossier game par votre build. La compression et Steam ne s'appliquent pas à ce paquet. L'icône du jeu (ou l'icon.png, icon.ico ou favicon.ico de votre build) sert pour sa fenêtre et pour play.exe, avec l'icône Roves par défaut.",
 			"enableLabel": "Générer le paquet CEF pour Windows",
 			"baseLabel": "Paquet de base du lecteur",
 			"baseDescription": "L'artifact visual-novel-template-roves-cef-windows-x64 extrait (ou celui en -mcp-, pour utiliser le pont MCP local).",

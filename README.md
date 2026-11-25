@@ -82,7 +82,12 @@ availability check per platform, same as the portable/installable paths above.
      (`visual-novel-template-roves-cef-windows-x64`), extract it and pick its folder. Packmaster
      verifies it against its own `SHA256SUMS.txt`, keeps `play.exe`/`play.dll`/the CEF
      runtime unchanged, replaces `game\` with your build and regenerates the checksums
-     (`src-tauri/src/cef_player.rs`). Compression, Steam and the icon setting don't apply.
+     (`src-tauri/src/cef_player.rs`). Compression and Steam don't apply. The icon follows
+     the engine's project icon contract: the Release info icon, else your build's `icon.png`
+     (or the largest frame of its `icon.ico`/`favicon.ico`) becomes the window icon and
+     `play.exe`'s icon (patched with the same pinned rcedit, SHA-256 checked), with the
+     official Roves icon (`roves.ico` in the base) as the fallback; the sample game's icon
+     is never carried over.
      The **local MCP bridge** checkbox (off by default) keeps the player's development
      bridge, through which an AI agent or IDE connected over MCP can read the running game's
      state and console, run JavaScript in the page, click, press keys and type

@@ -156,7 +156,7 @@
 		},
 		"cefWindows": {
 			"title": "CEF Windows 플레이어 (실험적)",
-			"description": "Servo 기반 셸 대신 CEF 플레이어를 사용하는 실험적인 Windows 패키지도 생성합니다. 기반은 Roves 엔진 CI가 성공적으로 실행된 뒤 업로드한 플레이어 패키지입니다. 해당 artifact를 다운로드해 압축을 풀고 여기에서 폴더를 선택하세요. Packmaster는 패키지에 포함된 SHA256SUMS.txt로 검증한 뒤 game 폴더를 여러분의 빌드로 교체합니다. 압축, Steam, 아이콘 설정은 이 패키지에 적용되지 않습니다.",
+			"description": "Servo 기반 셸 대신 CEF 플레이어를 사용하는 실험적인 Windows 패키지도 생성합니다. 기반은 Roves 엔진 CI가 성공적으로 실행된 뒤 업로드한 플레이어 패키지입니다. 해당 artifact를 다운로드해 압축을 풀고 여기에서 폴더를 선택하세요. Packmaster는 패키지에 포함된 SHA256SUMS.txt로 검증한 뒤 game 폴더를 여러분의 빌드로 교체합니다. 압축과 Steam은 이 패키지에 적용되지 않습니다. 게임 아이콘(또는 빌드의 icon.png, icon.ico, favicon.ico)이 창과 play.exe에 사용되며, 없으면 Roves 아이콘이 사용됩니다.",
 			"enableLabel": "CEF Windows 패키지 생성",
 			"baseLabel": "기본 플레이어 패키지",
 			"baseDescription": "압축을 푼 visual-novel-template-roves-cef-windows-x64 artifact(로컬 MCP 브리지를 사용하려면 -mcp- 버전).",

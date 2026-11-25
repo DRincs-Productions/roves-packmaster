@@ -17,6 +17,15 @@
 //!   Packmaster never adds MCP files of its own; a base without them is an error, not a
 //!   package that silently runs without the bridge.
 //!
+//! **Project icon** (engine `support/cef-netrender-probe/README.md`, "Project icon"; the same
+//! rules as the engine's and roves-action's `project_icon.py`, keep the three in step): the
+//! game's icon comes first, the official Roves icon is the fallback. The window icon is an
+//! `icon.png` next to `play.exe` (the Release info icon, else `<build>/icon.png`, else the
+//! largest frame of `<build>/icon.ico`/`favicon.ico`; none: the player shows the Roves logo);
+//! `play.exe`'s icon resource gets an ICO generated from that PNG, else the game's ICO, else
+//! the base's `roves.ico` (bases without it keep their own `play.exe` icon). The base's own
+//! `icon.png` belongs to its sample game and is never copied.
+//!
 //! Every base is checked against its own `SHA256SUMS.txt` first (every file listed, every
 //! listed file present with that hash, nothing unlisted), so a modified or partially extracted
 //! artifact is rejected. That proves the files are the ones the CI packaged, not that the CI
@@ -29,6 +38,16 @@ use std::path::{Component, Path, PathBuf};
 use sha2::{Digest, Sha256};
 
 const CHECKSUMS: &str = "SHA256SUMS.txt";
+/// Window icon next to `play.exe` (read by the player at startup).
+const PROJECT_ICON_FILE: &str = "icon.png";
+/// The official Roves icon the engine CI ships in the base, the `play.exe` fallback.
+const ROVES_FALLBACK_ICO: &str = "roves.ico";
+const MAX_ICON_BYTES: u64 = 8 * 1024 * 1024;
+const MIN_ICON_PX: u32 = 16;
+const MAX_ICON_PX: u32 = 2048;
+const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
+/// Frames of a generated `play.exe` icon (those not larger than the source).
+const ICO_SIZES: [u32; 7] = [16, 24, 32, 48, 64, 128, 256];
 const PROVENANCE: &str = "PROVENANCE.txt";
 const GAME_DIR: &str = "game";
 const MCP_DIR: &str = "mcp";
@@ -176,18 +195,24 @@ fn excluded(rel: &str, enable_mcp: bool) -> bool {
     first == GAME_DIR
         || rel == CHECKSUMS
         || rel == PROVENANCE
+        // The base's sample game's window icon; the output gets the resolved one.
+        || rel == PROJECT_ICON_FILE
         // Provenance of the base's own sample game, which the output no longer contains.
         || rel.starts_with("provenance/visual-novel-template-")
         || (!enable_mcp && (first == MCP_DIR || rel.starts_with("provenance/mcp-")))
 }
 
 /// Copies `base` to `dest` (which must not exist) with `game\` replaced by `content_dir`,
-/// applies the MCP choice, rewrites `PROVENANCE.txt` and regenerates `SHA256SUMS.txt`.
+/// applies the MCP choice and the resolved project icon (`patch_exe(play.exe, ico)` patches
+/// the executable's icon resource; rcedit in `bundle.rs`), rewrites `PROVENANCE.txt` and
+/// regenerates `SHA256SUMS.txt`.
 pub fn assemble(
     base: &BasePackage,
     content_dir: &Path,
     dest: &Path,
     enable_mcp: bool,
+    icon: &ProjectIcon,
+    patch_exe: &dyn Fn(&Path, &Path) -> Result<(), String>,
 ) -> Result<(), String> {
     if enable_mcp && !base.mcp_capable {
         return Err(
@@ -239,10 +264,18 @@ pub fn assemble(
         }
     }
 
+    if let Some(png) = &icon.window_png {
+        std::fs::copy(png, dest.join(PROJECT_ICON_FILE))
+            .map_err(|e| format!("{}: {e}", png.display()))?;
+    }
+    if let Some(ico) = &icon.exe_ico {
+        patch_exe(&dest.join("play.exe"), ico)?;
+    }
+
     let provenance = std::fs::read_to_string(root.join(PROVENANCE)).map_err(|e| e.to_string())?;
     std::fs::write(
         dest.join(PROVENANCE),
-        rewrite_provenance(&provenance, enable_mcp),
+        rewrite_provenance(&provenance, enable_mcp, icon),
     )
     .map_err(|e| e.to_string())?;
     write_checksums(dest)?;
@@ -257,7 +290,7 @@ pub fn assemble(
     Ok(())
 }
 
-fn rewrite_provenance(base: &str, enable_mcp: bool) -> String {
+fn rewrite_provenance(base: &str, enable_mcp: bool, icon: &ProjectIcon) -> String {
     let mut lines: Vec<&str> = base.trim_start_matches('\u{feff}').lines().collect();
     if !enable_mcp {
         if let Some(at) = lines
@@ -274,9 +307,17 @@ fn rewrite_provenance(base: &str, enable_mcp: bool) -> String {
     out.push_str(
         "\r\n\r\nGame replaced by Roves Packmaster\r\n\
          \x20 game\\ contains the developer's own build output, not the sample game described in\r\n\
-         \x20 the \"Game\" section above; the sample game's provenance files were removed. The\r\n\
-         \x20 engine files (play.exe, play.dll, CEF runtime) are the base package's, unmodified.\r\n",
+         \x20 the \"Game\" section above; the sample game's provenance files were removed. The\r\n",
     );
+    out.push_str(if icon.exe_ico.is_some() {
+        "  engine files (play.exe, play.dll, CEF runtime) are the base package's; only play.exe's\r\n\
+         \x20 icon resource was replaced (electron/rcedit v2.0.0).\r\n"
+    } else {
+        "  engine files (play.exe, play.dll, CEF runtime) are the base package's, unmodified.\r\n"
+    });
+    if !icon.summary.is_empty() {
+        out.push_str(&format!("  icons: {}\r\n", icon.summary));
+    }
     out.push_str(if enable_mcp {
         "  Local MCP bridge: ON (mcp\\enabled kept). Development and playtests only: any program\r\n\
          \x20 running as your Windows user can read and control the running game. Never ship to players.\r\n"
@@ -303,6 +344,204 @@ fn write_checksums(dest: &Path) -> Result<(), String> {
         write!(file, "{line}\r\n").map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// Resolved project icon (see the module documentation).
+#[derive(Debug, Default)]
+pub struct ProjectIcon {
+    /// Copied as `icon.png` next to `play.exe`; `None`: the player shows the Roves logo.
+    pub window_png: Option<PathBuf>,
+    /// Patched into `play.exe`; `None`: `play.exe` keeps the base's icon.
+    pub exe_ico: Option<PathBuf>,
+    /// `window <project|roves> (...); play.exe <project|roves|unchanged> (...)`.
+    pub summary: String,
+    /// Invalid icon files found in the build output and skipped.
+    pub warnings: Vec<String>,
+}
+
+fn read_icon_file(path: &Path) -> Result<Vec<u8>, String> {
+    let metadata = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    if !metadata.is_file() {
+        return Err("not a file".to_string());
+    }
+    if metadata.len() > MAX_ICON_BYTES {
+        return Err(format!(
+            "{} bytes exceeds the {MAX_ICON_BYTES}-byte limit",
+            metadata.len()
+        ));
+    }
+    std::fs::read(path).map_err(|e| e.to_string())
+}
+
+fn check_edge(width: u32, height: u32) -> Result<(), String> {
+    if width != height {
+        return Err(format!("{width}x{height} is not square"));
+    }
+    if !(MIN_ICON_PX..=MAX_ICON_PX).contains(&width) {
+        return Err(format!(
+            "{width}x{height} is outside {MIN_ICON_PX}..={MAX_ICON_PX} px"
+        ));
+    }
+    Ok(())
+}
+
+/// Edge of a valid project PNG: at most 8 MiB, PNG signature with `IHDR` first, square
+/// 16..=2048 px, fully decodable with the header's size.
+fn check_png(path: &Path) -> Result<u32, String> {
+    let data = read_icon_file(path)?;
+    if data.len() < 33 || &data[..8] != PNG_SIGNATURE || data[8..16] != *b"\0\0\0\x0dIHDR" {
+        return Err("not a PNG file (signature or IHDR missing)".to_string());
+    }
+    let be = |at: usize| u32::from_be_bytes([data[at], data[at + 1], data[at + 2], data[at + 3]]);
+    let (width, height) = (be(16), be(20));
+    check_edge(width, height)?;
+    let image = image::load_from_memory_with_format(&data, image::ImageFormat::Png)
+        .map_err(|e| format!("decode: {e}"))?;
+    if (image.width(), image.height()) != (width, height) {
+        return Err(format!(
+            "decoded as {}x{}",
+            image.width(),
+            image.height()
+        ));
+    }
+    Ok(width)
+}
+
+/// Every frame of an ICO, each decoded on its own (as a one-entry icon directory).
+fn ico_frames(data: &[u8]) -> Result<Vec<image::DynamicImage>, String> {
+    let le16 = |at: usize| u16::from_le_bytes([data[at], data[at + 1]]);
+    let le32 = |at: usize| u32::from_le_bytes([data[at], data[at + 1], data[at + 2], data[at + 3]]);
+    if data.len() < 22 || data[..4] != [0, 0, 1, 0] || le16(4) == 0 {
+        return Err("not an ICO file (icon directory header missing)".to_string());
+    }
+    let count = usize::from(le16(4));
+    let directory_end = 6 + count * 16;
+    if directory_end > data.len() {
+        return Err("icon directory truncated".to_string());
+    }
+    (0..count)
+        .map(|i| {
+            let entry = 6 + i * 16;
+            let (size, offset) = (le32(entry + 8) as usize, le32(entry + 12) as usize);
+            let end = offset.checked_add(size).filter(|&end| end <= data.len());
+            let Some(end) = end.filter(|_| offset >= directory_end && size > 0) else {
+                return Err(format!("frame {i} lies outside the file"));
+            };
+            let mut single = Vec::with_capacity(22 + size);
+            single.extend_from_slice(&[0, 0, 1, 0, 1, 0]);
+            single.extend_from_slice(&data[entry..entry + 12]);
+            single.extend_from_slice(&22u32.to_le_bytes());
+            single.extend_from_slice(&data[offset..end]);
+            image::load_from_memory_with_format(&single, image::ImageFormat::Ico)
+                .map_err(|e| format!("decode frame {i}: {e}"))
+        })
+        .collect()
+}
+
+fn largest_frame(frames: Vec<image::DynamicImage>) -> Option<image::DynamicImage> {
+    frames
+        .into_iter()
+        .max_by_key(|frame| u64::from(frame.width()) * u64::from(frame.height()))
+}
+
+/// Largest frame edge of a valid project ICO: at most 8 MiB, every frame decodable, the
+/// largest frame a square of at least 16 px.
+fn check_ico(path: &Path) -> Result<u32, String> {
+    let data = read_icon_file(path)?;
+    let largest = largest_frame(ico_frames(&data)?).ok_or("no frame")?;
+    let (width, height) = (largest.width(), largest.height());
+    if width != height || width < MIN_ICON_PX {
+        return Err(format!(
+            "largest frame {width}x{height} is not a square of at least {MIN_ICON_PX} px"
+        ));
+    }
+    Ok(width)
+}
+
+/// First valid candidate `(path, label, edge)`. An explicit candidate that breaks the rules
+/// is an error; a file found in the build output is a warning and the next one is tried.
+fn pick_icon(
+    candidates: &[(PathBuf, &str, bool)],
+    check: fn(&Path) -> Result<u32, String>,
+    warnings: &mut Vec<String>,
+) -> Result<Option<(PathBuf, String, u32)>, String> {
+    for (path, label, explicit) in candidates {
+        if !explicit && !path.is_file() {
+            continue;
+        }
+        match check(path) {
+            Ok(edge) => return Ok(Some((path.clone(), label.to_string(), edge))),
+            Err(error) if *explicit => return Err(format!("{label} {}: {error}", path.display())),
+            Err(error) => warnings.push(format!("ignoring {label} ({error}); trying the next source")),
+        }
+    }
+    Ok(None)
+}
+
+/// Resolves the project icon for a package assembled from `base_root`, writing generated
+/// files into `work_dir` (created if needed). `explicit_png` is Packmaster's Release info
+/// icon.
+pub fn resolve_project_icon(
+    explicit_png: Option<&Path>,
+    content_dir: &Path,
+    base_root: &Path,
+    work_dir: &Path,
+) -> Result<ProjectIcon, String> {
+    std::fs::create_dir_all(work_dir).map_err(|e| e.to_string())?;
+    let mut warnings = Vec::new();
+    let mut png_candidates = Vec::new();
+    if let Some(path) = explicit_png {
+        png_candidates.push((path.to_path_buf(), "Release info icon", true));
+    }
+    png_candidates.push((content_dir.join(PROJECT_ICON_FILE), "game icon.png", false));
+    let png = pick_icon(&png_candidates, check_png, &mut warnings)?;
+    let ico = pick_icon(
+        &[
+            (content_dir.join("icon.ico"), "game icon.ico", false),
+            (content_dir.join("favicon.ico"), "game favicon.ico", false),
+        ],
+        check_ico,
+        &mut warnings,
+    )?;
+
+    let (window_png, window) = if let Some((path, label, edge)) = &png {
+        (Some(path.clone()), format!("project ({label} {edge}x{edge})"))
+    } else if let Some((path, label, edge)) = &ico {
+        let data = read_icon_file(path)?;
+        let frame = largest_frame(ico_frames(&data)?).ok_or("no frame")?;
+        let out = work_dir.join(PROJECT_ICON_FILE);
+        frame
+            .to_rgba8()
+            .save_with_format(&out, image::ImageFormat::Png)
+            .map_err(|e| format!("writing {}: {e}", out.display()))?;
+        check_png(&out)?;
+        (Some(out), format!("project (largest frame of {label} {edge}x{edge})"))
+    } else {
+        (None, "roves (no project icon: embedded Roves logo)".to_string())
+    };
+
+    let fallback = base_root.join(ROVES_FALLBACK_ICO);
+    let (exe_ico, exe) = if let Some((path, label, edge)) = &png {
+        let out = work_dir.join("play.ico");
+        let sizes: Vec<u32> = ICO_SIZES.into_iter().filter(|&size| size <= *edge).collect();
+        crate::icon::generate_ico_with_sizes(path, &out, &sizes)?;
+        check_ico(&out)?;
+        (Some(out), format!("project (ICO generated from {label})"))
+    } else if let Some((path, label, _)) = &ico {
+        (Some(path.clone()), format!("project ({label})"))
+    } else if fallback.is_file() {
+        check_ico(&fallback).map_err(|e| format!("the base's {ROVES_FALLBACK_ICO}: {e}"))?;
+        (Some(fallback), "roves (Roves fallback icon)".to_string())
+    } else {
+        (None, "unchanged (no project icon and no Roves fallback icon in the base)".to_string())
+    };
+
+    Ok(ProjectIcon {
+        window_png,
+        exe_ico,
+        summary: format!("window {window}; play.exe {exe}"),
+        warnings,
+    })
 }
 
 #[cfg(test)]
@@ -358,6 +597,150 @@ mod tests {
         out
     }
 
+    fn no_patch(_: &Path, _: &Path) -> Result<(), String> {
+        panic!("play.exe must not be patched without a resolved icon")
+    }
+
+    fn png(path: &Path, edge: u32, rgba: [u8; 4]) -> PathBuf {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::RgbaImage::from_pixel(edge, edge, image::Rgba(rgba))
+            .save_with_format(path, image::ImageFormat::Png)
+            .unwrap();
+        path.to_path_buf()
+    }
+
+    fn ico(path: &Path, edge: u32, rgba: [u8; 4]) -> PathBuf {
+        let source = path.with_extension("source.png");
+        png(&source, edge, rgba);
+        crate::icon::generate_ico_with_sizes(&source, path, &[16, edge]).unwrap();
+        std::fs::remove_file(source).unwrap();
+        path.to_path_buf()
+    }
+
+    fn first_pixel(path: &Path) -> [u8; 4] {
+        image::open(path).unwrap().to_rgba8().get_pixel(0, 0).0
+    }
+
+    /// A base as the engine CI now ships it: the sample game's `icon.png` and `roves.ico`.
+    fn icon_base(root: &Path, with_fallback: bool) -> BasePackage {
+        fake_base(root, false);
+        png(&root.join(PROJECT_ICON_FILE), 64, [0, 0, 255, 255]);
+        if with_fallback {
+            ico(&root.join(ROVES_FALLBACK_ICO), 256, [20, 20, 24, 255]);
+        }
+        write_checksums(root).unwrap();
+        inspect_base(root).unwrap()
+    }
+
+    /// Assembles with a recording `patch_exe`; returns the ICO it was called with.
+    fn assemble_with_icon(base: &BasePackage, content: &Path, out: &Path, icon: &ProjectIcon) -> Option<PathBuf> {
+        let patched = std::cell::RefCell::new(None);
+        assemble(base, content, out, false, icon, &|exe, ico| {
+            assert_eq!(exe, out.join("play.exe"));
+            *patched.borrow_mut() = Some(ico.to_path_buf());
+            Ok(())
+        })
+        .unwrap();
+        verify_checksums(out).unwrap();
+        patched.into_inner()
+    }
+
+    #[test]
+    fn the_game_icon_png_is_used_for_window_and_play_exe() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
+        let base = icon_base(&tmp.path().join("pkg"), true);
+        dist(&content);
+        png(&content.join("icon.png"), 512, [200, 30, 30, 255]);
+        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        assert!(icon.summary.starts_with("window project (game icon.png 512x512); play.exe project"), "{}", icon.summary);
+        let patched = assemble_with_icon(&base, &content, &out, &icon).unwrap();
+        assert_eq!(check_ico(&patched), Ok(256));
+        assert_eq!(first_pixel(&out.join(PROJECT_ICON_FILE)), [200, 30, 30, 255]);
+        let provenance = std::fs::read_to_string(out.join(PROVENANCE)).unwrap();
+        assert!(provenance.contains("icon resource was replaced"));
+    }
+
+    #[test]
+    fn no_game_icon_falls_back_to_roves_and_drops_the_sample_icon() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
+        let base = icon_base(&tmp.path().join("pkg"), true);
+        dist(&content);
+        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        assert!(icon.window_png.is_none());
+        let patched = assemble_with_icon(&base, &content, &out, &icon).unwrap();
+        assert_eq!(patched, base.root.join(ROVES_FALLBACK_ICO));
+        assert!(!out.join(PROJECT_ICON_FILE).exists(), "the sample game's icon must not leak");
+        assert!(out.join(ROVES_FALLBACK_ICO).is_file());
+    }
+
+    #[test]
+    fn an_old_base_without_the_fallback_leaves_play_exe_unchanged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
+        let base = icon_base(&tmp.path().join("pkg"), false);
+        dist(&content);
+        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        assert!(icon.exe_ico.is_none() && icon.summary.contains("play.exe unchanged"));
+        assemble(&base, &content, &out, false, &icon, &no_patch).unwrap();
+        let provenance = std::fs::read_to_string(out.join(PROVENANCE)).unwrap();
+        assert!(provenance.contains("unmodified"));
+    }
+
+    #[test]
+    fn a_favicon_only_game_gets_its_icon_everywhere() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
+        let base = icon_base(&tmp.path().join("pkg"), true);
+        dist(&content);
+        let favicon = ico(&content.join("favicon.ico"), 48, [30, 30, 200, 255]);
+        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        let patched = assemble_with_icon(&base, &content, &out, &icon).unwrap();
+        assert_eq!(patched, favicon);
+        let window = image::open(out.join(PROJECT_ICON_FILE)).unwrap();
+        assert_eq!((window.width(), window.height()), (48, 48));
+        assert_eq!(first_pixel(&out.join(PROJECT_ICON_FILE)), [30, 30, 200, 255]);
+    }
+
+    #[test]
+    fn the_release_info_icon_wins_and_must_be_valid() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work) = (tmp.path().join("dist"), tmp.path().join("work"));
+        let base = icon_base(&tmp.path().join("pkg"), true);
+        dist(&content);
+        png(&content.join("icon.png"), 256, [1, 1, 1, 255]);
+        let own = png(&tmp.path().join("own.png"), 128, [10, 200, 10, 255]);
+        let icon = resolve_project_icon(Some(&own), &content, &base.root, &work).unwrap();
+        assert_eq!(icon.window_png.as_deref(), Some(own.as_path()));
+        let bad = tmp.path().join("bad.png");
+        std::fs::write(&bad, b"\x89PNG\r\n\x1a\n not really").unwrap();
+        let error = resolve_project_icon(Some(&bad), &content, &base.root, &work).unwrap_err();
+        assert!(error.starts_with("Release info icon"), "{error}");
+    }
+
+    #[test]
+    fn malformed_or_out_of_bounds_game_icons_warn_and_fall_back() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work) = (tmp.path().join("dist"), tmp.path().join("work"));
+        let base = icon_base(&tmp.path().join("pkg"), true);
+        dist(&content);
+        write(&content, "icon.png", b"<html>not an image</html>");
+        write(&content, "favicon.ico", &[0, 0, 1, 0, 1, 0].iter().copied().chain([0xff; 30]).collect::<Vec<u8>>());
+        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        assert!(icon.summary.contains("window roves") && icon.summary.contains("play.exe roves"), "{}", icon.summary);
+        assert_eq!(icon.warnings.len(), 2, "{:?}", icon.warnings);
+        for (name, edge, height) in [("non-square", 256, 128), ("tiny", 8, 8), ("huge", 4096, 4096)] {
+            let path = tmp.path().join(format!("{name}.png"));
+            image::RgbaImage::new(edge, height).save_with_format(&path, image::ImageFormat::Png).unwrap();
+            assert!(check_png(&path).is_err(), "{name}");
+        }
+        let good = png(&tmp.path().join("good.png"), 256, [0, 0, 0, 255]);
+        let bytes = std::fs::read(&good).unwrap();
+        std::fs::write(&good, &bytes[..bytes.len() / 2]).unwrap();
+        assert!(check_png(&good).is_err(), "truncated");
+    }
+
     fn dist(root: &Path) {
         write(root, "index.html", b"<p>mine</p>");
         write(root, "assets/app.js", b"mine");
@@ -375,7 +758,7 @@ mod tests {
         dist(&content);
         let base = inspect_base(&locate_base(&tmp.path().join("art")).unwrap()).unwrap();
         assert!(base.mcp_capable);
-        assemble(&base, &content, &out, false).unwrap();
+        assemble(&base, &content, &out, false, &ProjectIcon::default(), &no_patch).unwrap();
         let listed = files(&out);
         assert!(
             listed
@@ -413,7 +796,7 @@ mod tests {
         fake_base(&base_dir, true);
         dist(&content);
         let base = inspect_base(&base_dir).unwrap();
-        assemble(&base, &content, &out, true).unwrap();
+        assemble(&base, &content, &out, true, &ProjectIcon::default(), &no_patch).unwrap();
         for file in MCP_REQUIRED {
             assert!(out.join(file).is_file(), "{file}");
         }
@@ -432,9 +815,9 @@ mod tests {
         dist(&content);
         let base = inspect_base(&base_dir).unwrap();
         assert!(!base.mcp_capable);
-        assert!(assemble(&base, &content, &out, true).is_err());
+        assert!(assemble(&base, &content, &out, true, &ProjectIcon::default(), &no_patch).is_err());
         assert!(!out.exists());
-        assemble(&base, &content, &out, false).unwrap();
+        assemble(&base, &content, &out, false, &ProjectIcon::default(), &no_patch).unwrap();
         assert!(!out.join(MCP_DIR).exists());
     }
 
@@ -467,6 +850,6 @@ mod tests {
         fake_base(&base_dir, false);
         write(&content, "main.js", b"x");
         let base = inspect_base(&base_dir).unwrap();
-        assert!(assemble(&base, &content, &tmp.path().join("out"), false).is_err());
+        assert!(assemble(&base, &content, &tmp.path().join("out"), false, &ProjectIcon::default(), &no_patch).is_err());
     }
 }

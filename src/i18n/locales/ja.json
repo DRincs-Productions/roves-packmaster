@@ -156,7 +156,7 @@
 		},
 		"cefWindows": {
 			"title": "CEF Windows プレーヤー（実験的）",
-			"description": "Servo ベースのシェルの代わりに CEF プレーヤーを使った実験的な Windows パッケージも生成します。ベースは Roves エンジンの CI が成功したときにアップロードされたプレーヤーパッケージです。その artifact をダウンロードして展開し、ここでフォルダーを選択してください。Packmaster は同梱の SHA256SUMS.txt で検証し、game フォルダーをあなたのビルドに置き換えます。圧縮、Steam、アイコンの設定はこのパッケージには適用されません。",
+			"description": "Servo ベースのシェルの代わりに CEF プレーヤーを使った実験的な Windows パッケージも生成します。ベースは Roves エンジンの CI が成功したときにアップロードされたプレーヤーパッケージです。その artifact をダウンロードして展開し、ここでフォルダーを選択してください。Packmaster は同梱の SHA256SUMS.txt で検証し、game フォルダーをあなたのビルドに置き換えます。圧縮と Steam はこのパッケージには適用されません。ゲームのアイコン（またはビルド内の icon.png、icon.ico、favicon.ico）がウィンドウと play.exe に使われ、ない場合は Roves のアイコンが使われます。",
 			"enableLabel": "CEF Windows パッケージを生成する",
 			"baseLabel": "ベースのプレーヤーパッケージ",
 			"baseDescription": "展開した visual-novel-template-roves-cef-windows-x64 artifact（ローカル MCP ブリッジを使う場合は -mcp- 版）。",

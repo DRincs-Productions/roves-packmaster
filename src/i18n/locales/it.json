@@ -156,7 +156,7 @@
 		},
 		"cefWindows": {
 			"title": "Player CEF per Windows (sperimentale)",
-			"description": "Genera anche un pacchetto Windows sperimentale basato sul player CEF invece della shell basata su Servo. La base è il pacchetto del player caricato da un'esecuzione riuscita della CI del motore Roves: scarica quell'artifact, estrailo e seleziona qui la sua cartella. Packmaster lo verifica con il suo SHA256SUMS.txt e ne sostituisce la cartella game con la tua build. Compressione, Steam e l'icona non si applicano a questo pacchetto.",
+			"description": "Genera anche un pacchetto Windows sperimentale basato sul player CEF invece della shell basata su Servo. La base è il pacchetto del player caricato da un'esecuzione riuscita della CI del motore Roves: scarica quell'artifact, estrailo e seleziona qui la sua cartella. Packmaster lo verifica con il suo SHA256SUMS.txt e ne sostituisce la cartella game con la tua build. Compressione e Steam non si applicano a questo pacchetto. L'icona del gioco (o icon.png, icon.ico o favicon.ico della tua build) viene usata per la finestra e per play.exe, con l'icona di Roves come ripiego.",
 			"enableLabel": "Genera il pacchetto CEF per Windows",
 			"baseLabel": "Pacchetto player di base",
 			"baseDescription": "L'artifact visual-novel-template-roves-cef-windows-x64 estratto (oppure quello -mcp-, per usare il bridge MCP locale).",
