@@ -104,57 +104,51 @@ without being able to try an option that can't work here.
 
 ## Real bundling backend
 
-"Generate release" is real, not a mock — see `src-tauri/src/{shell,packer,bundle}.rs`:
+"Generate release" is real, not a mock — see `src-tauri/src/{shell,cef_player,bundle}.rs`:
 
 - **One shell pin:** update `src/lib/shell-version.txt` after verifying a new engine release.
   Vite imports it as raw text for the frontend `TARGET_SHELL_VERSION`; Rust embeds the same
   file with `include_str!`. Both trim whitespace. Never reintroduce a separate version literal:
   the former Rust constant remained at v0.4.18 while the frontend reached v0.7.12.
-- **`shell.rs`** downloads (and caches, per version+platform, under this app's cache dir)
-  the engine's own prebuilt `roves_shell_<platform>.zip` release asset — never compiles
-  one. Its pinned version comes from the shared file above; see the engine repo's
-  `AGENTS.md`, "Cutting a versioned release", for the release/pin verification procedure.
-  That pinned tag is what a *real* Packmaster release always targets, for reproducibility —
+- **`shell.rs`** downloads (and caches, per version+asset, under this app's cache dir) the
+  engine's own prebuilt desktop player package — never compiles one. Since engine v0.9.0
+  these are the CEF players: `roves_shell_<platform>.zip`, `..._steam.zip`, and the
+  Windows-only `roves_shell_windows_mcp.zip` (`shell::asset_name`; Steam + MCP and MCP on
+  macOS/Linux are errors, the engine publishes no such package). The cache keeps the zip
+  itself, never an extraction. Its pinned version comes from the shared file above; see the
+  engine repo's `AGENTS.md`, "Cutting a versioned release", for the release/pin verification
+  procedure. **The pin still says v0.7.15 (the last Servo shell, a different layout):
+  bumping it to the v0.9.0 tag is the only change desktop generation needs.** That pinned
+  tag is what a *real* Packmaster release always targets, for reproducibility —
   but a *test* build (`PACKMASTER_TEST_BUILD=1`, this project's own `test.yml`) targets
   whichever tag GitHub currently reports as the engine repo's own latest release instead
   (`resolve_shell_version()`, a live lookup against
   `api.github.com/repos/DRincs-Productions/roves/releases/latest`, falling back to
   `TARGET_SHELL_VERSION` if that lookup fails) — so testing Packmaster against a newly cut
-  engine release doesn't need a `TARGET_SHELL_VERSION` bump here just to pick it up. (An
-  earlier version of this pointed a test build at the engine's own rolling `test` tag
-  instead, assuming it published a bare shell the way a real release does — it doesn't, so
-  that found nothing published for any platform; "latest real release" is what actually
-  exists to target.) The on-disk shell cache is also bypassed entirely for a test build
-  (`ensure_shell`), since "latest" can change between runs.
-- **`packer.rs`** places the user's content into the downloaded shell — either packed (by
-  linking the engine repo's `roves-content-packer` crate directly as a Cargo library
-  dependency, so packing happens in-process, no separate toolchain or sidecar binary
-  needed) or plain-copied, matching `compression.enabled`. Mirrors `python/servo/
-  post_build_commands.py`'s `_place_bundle_content`/`_write_launch_config`/
-  `_resolve_window_title` in the engine repo — consult that file before changing this
-  one, since the two must keep producing bundles the shipped engine binary can actually
-  launch (see `ports/servoshell/desktop/bundle_launch.rs` for the runtime contract:
-  `launch.json`'s schema, and where packed content must live relative to the binary).
-  Content (the `.pack`/`manifest.json` archives, or the loose files when uncompressed)
-  lands in a `content/` subfolder (`packer::CONTENT_SUBDIR`) rather than flat next to the
-  binary — `bundle_launch.rs`'s `content_dir`/`url` fields are read as an arbitrary
-  relative path already, so this needed no engine-side change, only pointing that path at
-  a real subfolder instead of `""`. Keeps the bundle root down to just the engine's own
-  files (play.exe/play, diagnose.bat/sh, launch.json, DLLs/dylibs) plus `steam_appid.txt`
-  when Steam is enabled (has to stay flat — Valve's own convention for testing outside the
-  real Steam client) — see `packer.rs`'s own tests for the exact file-layout contract this
-  guards against regressing.
-- **`bundle.rs`** orchestrates both per selected platform (and per format, for installers —
-  see below), emits `bundle-progress` events the frontend listens for, and zips the
-  portable output. macOS's portable zip is a special case: `play.app` (already the single,
-  self-contained, double-click-to-run thing a player needs — Finder never shows what's
-  inside it) gets zipped as `<game name>.app` directly at the archive root, not wrapped in
-  an extra folder the way Windows/Linux's many loose files genuinely need — see `bundle.rs`'s
-  own test for the exact resulting archive layout this guards against regressing.
-- **`installer.rs`** wraps the same staging dir `bundle.rs` already assembled into a real
-  `.msi`/`.dmg`/`.deb`, porting `post_build_commands.py`'s `_wrap_windows_msi`/
-  `_wrap_macos_dmg`/`_bundle_linux_deb` (and `support/windows/roves-bundle.wxs.mako` for
-  the WiX source) to Rust. Each format only works when Packmaster itself is running on its
+  engine release doesn't need a `TARGET_SHELL_VERSION` bump here just to pick it up. The
+  on-disk cache is also bypassed entirely for a test build (`ensure_asset`), since "latest"
+  can change between runs.
+- **`cef_player.rs`** assembles a package **zip to zip**: every engine entry is copied raw
+  (`zip` 9's `raw_copy_file_rename` keeps the external attributes: executables, the setuid
+  `chrome-sandbox`, symlinks) and only the replaced files are written. Per platform (see the
+  module doc and README "Desktop packages"): the sample `game/` is replaced by the user's
+  build (Windows/Linux next to the executable, macOS `Contents/Resources/game/`), the
+  project icon applied, `steam_appid.txt` written next to the executable for Steam packages,
+  and the Windows package verified against its own `SHA256SUMS.txt` (regenerated for the
+  output, `PROVENANCE.txt` rewritten) with the MCP files kept only when MCP is on. The macOS
+  executable and `.icns` names come from `Info.plist` (`plist` crate), the Linux executable
+  is the only non-helper executable at the package root — the same lookups as roves-action's
+  `cef/assemble.sh`; keep the two (and the engine READMEs) in step.
+- **`bundle.rs`** orchestrates per selected platform (and per format, for installers),
+  emits `bundle-progress` events the frontend listens for, and writes the portable zip:
+  `<name>/...` on Windows/Linux, the renamed `<name>.app` directly at the archive root on
+  macOS (Finder never shows what's inside it, so no extra wrapper folder). Installers
+  extract that zip again on their own host (where modes and symlinks are restored).
+- **`installer.rs`** wraps the extracted package into a real `.msi`/`.dmg`/`.deb`, porting
+  `post_build_commands.py`'s `_wrap_windows_msi`/`_wrap_macos_dmg`/`_bundle_linux_deb` (and
+  `support/windows/roves-bundle.wxs.mako` for the WiX source) to Rust; the `.deb` links
+  `/usr/bin/<name>` to the player executable and installs `chrome-sandbox` as root 4755.
+  Each format only works when Packmaster itself is running on its
   matching OS *and* that OS's native tool (WiX/`hdiutil`/`dpkg-deb`) is already installed —
   `check_installer_availability` is a real, live check for this (host OS + tool-on-PATH),
   not an assumption; `configure.tsx`'s installer cards disable themselves accordingly.
@@ -179,38 +173,33 @@ Xcode; real verification is this repo's own CI (`.github/workflows/test.yml`, wh
 Packmaster's portable output on real runners, macOS included) plus, ultimately, someone
 actually running a generated iOS build on a device/simulator.
 
-**Steam plugin:** the engine now publishes a Steam-enabled shell variant alongside the plain
-one (`roves_shell_<platform>_steam.zip` — see the engine repo's own `release.yml`/`CLAUDE.md`),
-so `configure.tsx`'s "Steam" panel is a real control now, not informational-only: a `Switch`
-(`settings.plugins.steam.enabled`) and an App ID `Input` (`settings.plugins.steam.appId`),
-matching the Compression section's own toggle+fields pattern. `shell.rs`'s
-`ensure_shell`/`is_shell_available` take a `steam: bool` and pick the matching asset (cached
-separately per variant); `bundle.rs`'s `generate_release` validates the App ID (non-empty,
-digits only) and writes it into a `steam_appid.txt` next to the packaged executable (Valve's
-own convention for testing outside the real Steam client) — see `write_steam_appid`.
+**Steam plugin:** the engine publishes a Steam variant of every desktop player
+(`roves_shell_<platform>_steam.zip`, with the Steamworks redistributable next to the
+executable), so `configure.tsx`'s "Steam" panel is a real control: a `Switch`
+(`settings.plugins.steam.enabled`) and an App ID `Input` (`settings.plugins.steam.appId`).
+`bundle.rs` validates the App ID (non-empty, digits only), picks the `_steam` asset, and
+`cef_player.rs` checks the redistributable is there (and absent from a standard asset) and
+writes the App ID into `steam_appid.txt` next to the executable (Valve's own convention for
+testing outside the real Steam client; macOS: `Contents/MacOS/`).
 
-**Game icon:** a single source PNG (`settings.icon.path`), picked in the "Release info" card
-(not a separate accordion — consolidated 2026-09-02, see `TODO.md` #1's resolution) via
-`@tauri-apps/plugin-dialog`'s `open()`, applied everywhere it's actually possible to apply it
-— see `bundle.rs`'s own `apply_icon` doc comment for the exact per-platform list. Windows/
-Linux: copied next to the packaged binary as `icon.png`, read back at launch by the engine's
-own `runtime_window_icon_bytes` — mirrors the engine's `mach bundle --icon-png` default,
-nothing Packmaster-specific to keep in sync there. Windows additionally: `icon.rs`'s
-`generate_ico` derives a real multi-size `.ico` from that same PNG (no separate `.ico` input
-needed anymore), which `patch_windows_exe_icon` patches into the packaged `play.exe`'s own
-icon resource via `rcedit` (downloaded once, cached under this app's own cache dir — same
-tool/pinned release/reasoning as the engine's own `_ensure_rcedit`). **macOS is now
-supported** (previously a known gap — no `.icns`/Dock-icon mechanism existed anywhere in this
-codebase): `icon.rs`'s `generate_icns` derives a real `.icns` from the same source PNG and
-`apply_icon` overwrites `play.app/Contents/Resources/servo.icns` with it directly — no
-`Info.plist` edit needed, since `CFBundleIconFile` already points at that exact filename.
-Android: the same resolved icon path is passed straight through to `android.rs`'s
-`AndroidBuildOptions.icon_png`, which replaces `res/mipmap/servo.*`. If `settings.icon.path`
-isn't set, `apply_icon`/`configure.tsx` both auto-detect an `icon.png` sitting directly in the
-user's content directory before falling back to Roves' own branding — mirrors the engine's
-own identical `mach bundle` default (see the engine's CUSTOMIZATIONS.md, 2026-08-27 entry) so
-a game whose bundler already emits one for its own PWA manifest gets its own icon for free
-with no setting needed. An explicitly picked file always overrides this.
+**AI interaction (MCP):** `settings.plugins.mcp.enabled`, off by default, Windows only:
+the Windows output uses `roves_shell_windows_mcp.zip` and is named `<name>_windows_mcp.zip`.
+The switch is disabled while Steam is on (enabling Steam turns it off) or when Windows isn't
+selected; the Rust side refuses the impossible combinations too.
+
+**Game icon:** a single source PNG (`settings.icon.path`), picked in the "Release info"
+card via `@tauri-apps/plugin-dialog`'s `open()`. Desktop players follow
+`cef_player::resolve_project_icon` (the engine's and roves-action's `project_icon.py` rules):
+Release info icon, else the build's `icon.png`, else the largest frame of its
+`icon.ico`/`favicon.ico`; that PNG becomes the window `icon.png`, a generated `.ico` is
+set as `play.exe`'s main icon group with the `editpe` crate on every host (the old group,
+which the engine CI set to the sample game's icon, is removed; version info and manifest
+are kept), and a generated `.icns` (`icns` crate, never upscaled)
+replaces the macOS bundle icon. With no project icon the Windows base's `roves.ico` is the
+`play.exe` fallback and the macOS `.icns` stays the Roves one. Both containers come from
+maintained encoders (`image`'s `IcoEncoder`, `icns`), nothing hand-written, so they work on
+every host. Android: the same explicit/auto-detected `icon.png` is passed to `android.rs`'s
+`AndroidBuildOptions.icon_png`, which replaces `res/mipmap/servo.*`.
 
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster
 (portable output) on every push and publishes it to a rolling "test" GitHub Release,

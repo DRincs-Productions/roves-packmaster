@@ -5,7 +5,6 @@ mod icon;
 mod installer;
 mod ios;
 mod ios_signing;
-mod packer;
 mod settings;
 mod shell;
 mod signing;

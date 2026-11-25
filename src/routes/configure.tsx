@@ -16,7 +16,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { checkAndroidAvailability } from "@/lib/android-availability";
 import {
   type AndroidSigningStatus,
@@ -100,7 +98,6 @@ function ConfigureView() {
   const [versionFromPackageJson, setVersionFromPackageJson] = useState(false);
   const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(["steam"]);
   const [showSteamAppIdError, setShowSteamAppIdError] = useState(false);
-  const [showCefBaseError, setShowCefBaseError] = useState(false);
   const [webManifestInfo, setWebManifestInfo] = useState<WebManifestInfo | null>(null);
   const [useWebManifest, setUseWebManifest] = useState(true);
   const [androidAvailable, setAndroidAvailable] = useState<{
@@ -296,15 +293,17 @@ function ConfigureView() {
     }
   }
 
-  // Real, live check ("is this actually distributable") against the targeted shell
-  // release's actual assets — not assumed just because it's a supported platform. Re-run
-  // whenever the Steam toggle changes: a platform whose plain shell is published might not
-  // (yet) have a published Steam-enabled variant, and vice versa.
+  // Real, live check ("is this actually distributable") against the targeted engine
+  // release's actual player packages — not assumed just because it's a supported platform.
+  // Re-run whenever the Steam or MCP toggle changes: each picks a different package (MCP
+  // only for Windows).
   useEffect(() => {
-    checkShellAvailability([...PORTABLE_PLATFORMS], settings.plugins.steam.enabled).then(
-      setAvailability,
-    );
-  }, [settings.plugins.steam.enabled]);
+    checkShellAvailability(
+      [...PORTABLE_PLATFORMS],
+      settings.plugins.steam.enabled,
+      settings.plugins.mcp.enabled,
+    ).then(setAvailability);
+  }, [settings.plugins.steam.enabled, settings.plugins.mcp.enabled]);
 
   // Derives name/version for this exact source folder. package.json's own value always wins
   // when present, for both fields — a developer bumping it (or renaming their package)
@@ -422,33 +421,22 @@ function ConfigureView() {
     }
   };
 
-  const cefBaseMissing = settings.cefWindows.enabled && !settings.cefWindows.baseDir;
-
-  // Experimental CEF Windows player: the base is an extracted engine CI artifact (a folder),
-  // validated by bundle.rs/cef_player.rs when the release is generated.
-  const handleBrowseCefBase = async () => {
-    const path = await open({
-      directory: true,
-      multiple: false,
-      title: t("configure.cefWindows.browseTitle"),
-    });
-    if (typeof path === "string") {
-      updateSettings({ cefWindows: { ...settings.cefWindows, baseDir: path } });
-    }
-  };
+  // The local MCP bridge only exists in the Windows player, and the engine publishes no
+  // Steam + MCP package: the switch is unavailable (and shown off) in both cases.
+  const windowsSelected = settings.portable.windows || settings.installers.windows.enabled;
+  const steamEnabled = settings.plugins.steam.enabled;
+  const mcpUnavailableReason = steamEnabled
+    ? t("configure.mcp.steamConflict")
+    : !windowsSelected
+      ? t("configure.mcp.windowsOnly")
+      : null;
+  const mcpChecked = settings.plugins.mcp.enabled && !steamEnabled;
 
   const handleGenerateClick = () => {
     if (steamAppIdInvalid) {
       setShowSteamAppIdError(true);
       setOpenAccordionItems((current) =>
         current.includes("steam") ? current : [...current, "steam"],
-      );
-      return;
-    }
-    if (cefBaseMissing) {
-      setShowCefBaseError(true);
-      setOpenAccordionItems((current) =>
-        current.includes("cef-windows") ? current : [...current, "cef-windows"],
       );
       return;
     }
@@ -1119,7 +1107,11 @@ function ConfigureView() {
                   checked={settings.plugins.steam.enabled}
                   onCheckedChange={(checked) =>
                     updateSettings({
-                      plugins: { steam: { ...settings.plugins.steam, enabled: checked } },
+                      plugins: {
+                        steam: { ...settings.plugins.steam, enabled: checked },
+                        // No Steam + MCP player package exists.
+                        mcp: { enabled: checked ? false : settings.plugins.mcp.enabled },
+                      },
                     })
                   }
                 />
@@ -1139,7 +1131,10 @@ function ConfigureView() {
                     onChange={(e) => {
                       const digitsOnly = e.target.value.replace(/\D/g, "");
                       updateSettings({
-                        plugins: { steam: { ...settings.plugins.steam, appId: digitsOnly } },
+                        plugins: {
+                          ...settings.plugins,
+                          steam: { ...settings.plugins.steam, appId: digitsOnly },
+                        },
                       });
                     }}
                   />
@@ -1153,183 +1148,34 @@ function ConfigureView() {
           </AccordionItem>
 
           <AccordionItem
-            value="compression"
+            value="mcp"
             className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
           >
-            <AccordionTrigger>{t("configure.compression.title")}</AccordionTrigger>
-            <AccordionContent className="flex flex-col gap-4">
-              <p className="text-muted-foreground text-sm">
-                {t("configure.compression.description")}
-              </p>
+            <AccordionTrigger>{t("configure.mcp.title")}</AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              <p className="text-muted-foreground text-sm">{t("configure.mcp.description")}</p>
               <div className="flex items-center justify-between gap-4">
-                <Label>{t("configure.compression.enable")}</Label>
+                <Label htmlFor="mcp-enabled">{t("configure.mcp.enableLabel")}</Label>
                 <Switch
-                  checked={settings.compression.enabled}
+                  id="mcp-enabled"
+                  checked={mcpChecked}
+                  disabled={mcpUnavailableReason !== null}
                   onCheckedChange={(checked) =>
                     updateSettings({
-                      compression: { ...settings.compression, enabled: checked },
+                      plugins: { ...settings.plugins, mcp: { enabled: checked } },
                     })
                   }
                 />
               </div>
-              {settings.compression.enabled && (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="compression-level">
-                      {t("configure.compression.levelLabel")}
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      {t("configure.compression.levelDescription")}
-                    </p>
-                    <Input
-                      id="compression-level"
-                      type="number"
-                      min={1}
-                      max={19}
-                      value={settings.compression.level}
-                      onChange={(e) =>
-                        updateSettings({
-                          compression: {
-                            ...settings.compression,
-                            level: Number(e.target.value),
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="max-pack-size">
-                      {t("configure.compression.maxPackSizeLabel")}
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      {t("configure.compression.maxPackSizeDescription")}
-                    </p>
-                    <Input
-                      id="max-pack-size"
-                      value={settings.compression.maxPackSize}
-                      onChange={(e) =>
-                        updateSettings({
-                          compression: {
-                            ...settings.compression,
-                            maxPackSize: e.target.value,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="exclude">{t("configure.compression.excludeLabel")}</Label>
-                    <p className="text-muted-foreground text-xs">
-                      {t("configure.compression.excludeDescription")}
-                    </p>
-                    <Textarea
-                      id="exclude"
-                      placeholder={t("configure.compression.excludePlaceholder")}
-                      value={settings.compression.exclude.join("\n")}
-                      onChange={(e) =>
-                        updateSettings({
-                          compression: {
-                            ...settings.compression,
-                            exclude: e.target.value.split("\n").filter(Boolean),
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="boot-include">
-                      {t("configure.compression.bootIncludeLabel")}
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      {t("configure.compression.bootIncludeDescription")}
-                    </p>
-                    <Textarea
-                      id="boot-include"
-                      placeholder={t("configure.compression.bootIncludePlaceholder")}
-                      value={settings.compression.bootInclude.join("\n")}
-                      onChange={(e) =>
-                        updateSettings({
-                          compression: {
-                            ...settings.compression,
-                            bootInclude: e.target.value.split("\n").filter(Boolean),
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                </>
+              {mcpUnavailableReason && (
+                <p className="text-muted-foreground text-xs">{mcpUnavailableReason}</p>
               )}
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem
-            value="cef-windows"
-            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
-          >
-            <AccordionTrigger>{t("configure.cefWindows.title")}</AccordionTrigger>
-            <AccordionContent className="flex flex-col gap-3">
-              <p className="text-muted-foreground text-sm">
-                {t("configure.cefWindows.description")}
-              </p>
-              <div className="flex items-center justify-between gap-4">
-                <Label>{t("configure.cefWindows.enableLabel")}</Label>
-                <Switch
-                  checked={settings.cefWindows.enabled}
-                  onCheckedChange={(checked) =>
-                    updateSettings({ cefWindows: { ...settings.cefWindows, enabled: checked } })
-                  }
-                />
-              </div>
-              {settings.cefWindows.enabled && (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <Label>{t("configure.cefWindows.baseLabel")}</Label>
-                    <p className="text-muted-foreground text-xs">
-                      {t("configure.cefWindows.baseDescription")}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-xs">
-                        {settings.cefWindows.baseDir ?? t("configure.cefWindows.baseNone")}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleBrowseCefBase}
-                      >
-                        {t("configure.cefWindows.browse")}
-                      </Button>
-                    </div>
-                    {showCefBaseError && cefBaseMissing && (
-                      <p className="text-destructive text-xs">
-                        {t("configure.cefWindows.baseError")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="cef-enable-mcp"
-                      checked={settings.cefWindows.enableMcp}
-                      onCheckedChange={(checked) =>
-                        updateSettings({
-                          cefWindows: { ...settings.cefWindows, enableMcp: checked === true },
-                        })
-                      }
-                    />
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor="cef-enable-mcp">{t("configure.cefWindows.mcpLabel")}</Label>
-                      <p className="text-muted-foreground text-xs">
-                        {t("configure.cefWindows.mcpDescription")}
-                      </p>
-                    </div>
-                  </div>
-                  {settings.cefWindows.enableMcp && (
-                    <Alert>
-                      <WarningCircle />
-                      <AlertDescription>{t("configure.cefWindows.mcpWarning")}</AlertDescription>
-                    </Alert>
-                  )}
-                </>
+              <p className="text-muted-foreground text-xs">{t("configure.mcp.details")}</p>
+              {mcpChecked && windowsSelected && (
+                <Alert>
+                  <WarningCircle />
+                  <AlertDescription>{t("configure.mcp.warning")}</AlertDescription>
+                </Alert>
               )}
             </AccordionContent>
           </AccordionItem>
@@ -1341,14 +1187,6 @@ function ConfigureView() {
           <WarningCircle />
           <AlertTitle>{t("configure.errors.title")}</AlertTitle>
           <AlertDescription>{t("configure.steam.appIdError")}</AlertDescription>
-        </Alert>
-      )}
-
-      {showCefBaseError && cefBaseMissing && (
-        <Alert variant="destructive">
-          <WarningCircle />
-          <AlertTitle>{t("configure.errors.title")}</AlertTitle>
-          <AlertDescription>{t("configure.cefWindows.baseError")}</AlertDescription>
         </Alert>
       )}
 

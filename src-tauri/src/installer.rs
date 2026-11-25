@@ -330,7 +330,14 @@ pub fn build_dmg(stage_dir: &Path, output_dir: &Path, package_name: &str, versio
 
 // ── Linux: .deb via dpkg-deb ─────────────────────────────────────────────────────────────
 
-pub fn build_deb(stage_dir: &Path, output_dir: &Path, package_name: &str, version: &str) -> Result<PathBuf, String> {
+/// `exe` is the player executable's file name inside `stage_dir` (`cef_player::Platform::exe`).
+pub fn build_deb(
+    stage_dir: &Path,
+    output_dir: &Path,
+    package_name: &str,
+    version: &str,
+    exe: &str,
+) -> Result<PathBuf, String> {
     if !tool_on_path("dpkg-deb") {
         return Err("--deb requires dpkg-deb (from dpkg-dev), which was not found".to_string());
     }
@@ -353,28 +360,37 @@ pub fn build_deb(stage_dir: &Path, output_dir: &Path, package_name: &str, versio
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
 
-    // stage_dir is already exactly the flat portable layout (binary + .so deps + packed
-    // content + launch.json) that /usr/lib/<package_name>/ should contain — no need to
-    // re-place content from scratch, just copy what's already there.
+    // stage_dir is already exactly the flat portable layout (player executable + CEF
+    // runtime + game/) that /usr/lib/<package_name>/ should contain — no need to re-place
+    // content from scratch, just copy what's already there.
     copy_dir_recursive(stage_dir, &lib_dir)?;
+    #[cfg(not(unix))]
+    let _ = exe;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let play_path = lib_dir.join("play");
-        if play_path.exists() {
-            fs::set_permissions(&play_path, fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+        let exe_path = lib_dir.join(exe);
+        if exe_path.exists() {
+            fs::set_permissions(&exe_path, fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+        }
+        // Chromium's setuid sandbox helper (engine `support/cef-linux-gate/README.md`,
+        // "Sandbox"): root-owned (`dpkg-deb --root-owner-group`) with mode 4755 once
+        // installed, so hosts that restrict unprivileged user namespaces still get a sandbox.
+        let sandbox = lib_dir.join("chrome-sandbox");
+        if sandbox.exists() {
+            fs::set_permissions(&sandbox, fs::Permissions::from_mode(0o4755)).map_err(|e| e.to_string())?;
         }
     }
 
     // /usr/lib/<package_name> isn't on PATH, so /usr/bin/<package_name> needs to point at
-    // the real binary — a symlink, not a wrapper script: the engine finds its own .so
-    // dependencies via the $ORIGIN rpath and resolves its own launch args in-process.
+    // the real binary — a symlink, not a wrapper script: the player finds libcef.so via its
+    // $ORIGIN run path and its game/ next to its resolved executable path.
     #[cfg(unix)]
-    std::os::unix::fs::symlink(Path::new("/usr/lib").join(package_name).join("play"), bin_dir.join(package_name))
+    std::os::unix::fs::symlink(Path::new("/usr/lib").join(package_name).join(exe), bin_dir.join(package_name))
         .map_err(|e| e.to_string())?;
 
     let desktop_entry = format!(
-        "[Desktop Entry]\nType=Application\nName={package_name}\nExec=/usr/bin/{package_name}\nTerminal=false\nCategories=Network;WebBrowser;\n"
+        "[Desktop Entry]\nType=Application\nName={package_name}\nExec=/usr/bin/{package_name}\nTerminal=false\nCategories=Game;\n"
     );
     fs::write(applications_dir.join(format!("{package_name}.desktop")), desktop_entry).map_err(|e| e.to_string())?;
 
@@ -390,7 +406,7 @@ pub fn build_deb(stage_dir: &Path, output_dir: &Path, package_name: &str, versio
         / 1024;
 
     let control = format!(
-        "Package: {package_name}\nVersion: {version}\nSection: web\nPriority: optional\nArchitecture: {debian_arch}\nInstalled-Size: {installed_size_kb}\nMaintainer: unspecified <unspecified@example.com>\nDescription: {package_name} (Roves-based application bundle)\n Packaged by Roves Packmaster.\n"
+        "Package: {package_name}\nVersion: {version}\nSection: games\nPriority: optional\nArchitecture: {debian_arch}\nInstalled-Size: {installed_size_kb}\nMaintainer: unspecified <unspecified@example.com>\nDescription: {package_name} (Roves-based application bundle)\n Packaged by Roves Packmaster.\n"
     );
     fs::write(debian_dir.join("control"), control).map_err(|e| e.to_string())?;
 

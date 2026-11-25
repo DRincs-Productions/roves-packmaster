@@ -32,17 +32,18 @@ tauri-plugin-store = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Real bundling (see src/bundle.rs): downloads a prebuilt Roves shell release instead of
-# compiling one (no Rust/Python toolchain needed on a game developer's machine), then packs
-# their content into it in-process by linking the engine repo's own content-packer crate as
-# a library — see the engine repo's CLAUDE.md, "Cutting a versioned release" section, on why
-# roves-packmaster/roves-action must track a specific shell tag.
-roves-content-packer = { git = "https://github.com/DRincs-Productions/roves", tag = "v0.1.0" }
+# Real bundling (see src/bundle.rs): downloads a prebuilt Roves CEF player release asset
+# instead of compiling one (no Rust/Python toolchain needed on a game developer's machine)
+# and replaces its game -- see the engine repo's AGENTS.md, "Cutting a versioned release"
+# section, on why roves-packmaster/roves-action must track a specific release tag.
 glob = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
 tokio = { version = "1", features = ["fs", "io-util", "time"] }
 futures-util = "0.3"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+# 9.x: raw entry copies keep the external attributes (Unix mode incl. setuid, file type), which
+# src/cef_player.rs relies on to carry the engine package's executables, the setuid
+# chrome-sandbox and any symlink through unchanged on every host; 2.x reduced them to 0o777.
+zip = { version = "9", default-features = false, features = ["deflate"] }
 walkdir = "2"
 
 # Real installer generation (see src/installer.rs): WiX (Windows), hdiutil (macOS), dpkg-deb
@@ -56,19 +57,24 @@ uuid = { version = "1", features = ["v4", "v5"] }
 tar = "0.4"
 flate2 = "1"
 
-# Single-icon-in, everywhere-out icon generation (see src/icon.rs): derives the Windows .ico
-# and macOS .icns the platform-native packaging steps need from the one PNG a game developer
-# picks, instead of asking them to supply pre-made .ico/.icns files themselves. PNG-decode
-# and resize only -- both .ico/.icns containers are hand-written (see that module), storing
-# plain PNG-encoded frames directly (a well-supported convention on both formats since
-# Windows Vista / macOS 10.7), so no `ico`/`icns`-writing crate is needed either.
-# `ico` (decoder only, part of `image`, no extra crate): validates a game's icon.ico/favicon.ico
-# for the CEF Windows player's project icon contract (src/cef_player.rs).
+# Project icon (see src/icon.rs, src/cef_player.rs): `image` decodes/resizes the PNG, validates
+# a game's icon.ico/favicon.ico and encodes the Windows .ico (IcoEncoder); `icns` encodes the
+# macOS bundle .icns (the iconutil element types), so neither container is hand-written and
+# both work on every host.
 image = { version = "0.25", default-features = false, features = ["png", "ico"] }
+icns = { version = "0.5", default-features = false, features = ["pngio"] }
+# Reads the macOS player's Info.plist (CFBundleExecutable, CFBundleIconFile) like roves-action does
+# with PlistBuddy, instead of hard-coding the engine's bundle names.
+plist = "1"
 
-# Experimental CEF Windows player package (see src/cef_player.rs): verifies the CI base
-# package against its own SHA256SUMS.txt and regenerates it for the output. Already in the
-# lock file through other dependencies.
+# Sets play.exe's icon resource in-process on every host (replaces the pinned electron/rcedit
+# download, which only ran on Windows); only its resource editing is used, the ICO comes from
+# src/icon.rs.
+editpe = { version = "0.2.4", default-features = false, features = ["std"] }
+
+# CEF player packages (see src/cef_player.rs): verifies the Windows base against its own
+# SHA256SUMS.txt and regenerates it for the output. Already in the lock file through other
+# dependencies.
 sha2 = "0.10"
 
 [dev-dependencies]

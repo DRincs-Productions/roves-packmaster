@@ -54,12 +54,15 @@ function GeneratingView() {
     let cancelled = false;
     let unlisten: UnlistenFn | undefined;
     const platformProgress = new Map<string, number>();
+    // One progress stream per output platform (bundle.rs emits `bundle-progress` per platform
+    // id): a desktop platform counts once whether it builds the portable zip, installers or
+    // both, plus each mobile platform.
     const platformCount = [
-      settings.portable.windows,
-      settings.portable.linux,
-      settings.portable.macos,
+      ...(["windows", "linux", "macos"] as const).map(
+        (p) => settings.portable[p] || settings.installers[p].enabled,
+      ),
       settings.mobile.android.enabled,
-      settings.cefWindows.enabled,
+      settings.mobile.ios.enabled,
     ].filter(Boolean).length;
 
     async function run() {
@@ -68,7 +71,7 @@ function GeneratingView() {
         platformProgress.set(platform, fraction);
         if (platformCount > 0) {
           const total = [...platformProgress.values()].reduce((sum, value) => sum + value, 0);
-          setProgress(Math.round((total / platformCount) * 100));
+          setProgress(Math.min(100, Math.round((total / platformCount) * 100)));
         }
         setPhaseText(t(`generating.phase.${phase}`, { platform: t(`system.${platform}`) }));
       });

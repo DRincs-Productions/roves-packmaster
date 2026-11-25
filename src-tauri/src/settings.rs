@@ -33,26 +33,25 @@ pub struct SteamSettings {
     pub app_id: String,
 }
 
+/// The Windows player's local MCP bridge (`cef_player.rs`): picks the
+/// `roves_shell_windows_mcp.zip` asset. Off by default; never applies to macOS/Linux and
+/// can't be combined with Steam (no such engine package). Absent in older stored settings.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct McpSettings {
+    pub enabled: bool,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginSettings {
     pub steam: SteamSettings,
+    #[serde(default)]
+    pub mcp: McpSettings,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CompressionSettings {
-    pub enabled: bool,
-    pub level: i32,
-    pub max_pack_size: String,
-    pub exclude: Vec<String>,
-    pub boot_include: Vec<String>,
-}
-
-/// A single source icon, applied everywhere it's possible to apply it -- see `bundle.rs`'s
-/// own `apply_icon` and `icon.rs` for what "everywhere possible" means per platform, and why
-/// it used to be two separate settings (a PNG for the runtime window icon, a pre-made `.ico`
-/// for the packaged `.exe`'s own icon resource) instead of one.
+/// The Release info icon (a PNG), the first source of the project icon -- see
+/// `cef_player::resolve_project_icon` for the per-platform precedence and fallbacks.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IconSettings {
@@ -96,7 +95,7 @@ pub struct IosAdvancedSettings {
     pub app_name: String,
     pub bundle_id: String,
     /// Archive and export a real, signed `.ipa` (via `ios_signing.rs`'s imported certificate
-    /// + provisioning profile) instead of the default unsigned Simulator build. Same explicit
+    /// and provisioning profile) instead of the default unsigned Simulator build. Same explicit
     /// opt-in reasoning as Android's `release_signing_enabled` above.
     pub release_signing_enabled: bool,
 }
@@ -118,23 +117,7 @@ pub struct PackmasterSettings {
     pub installers: InstallerSettings,
     pub mobile: MobileSettings,
     pub plugins: PluginSettings,
-    pub compression: CompressionSettings,
     pub icon: IconSettings,
-    #[serde(default)]
-    pub cef_windows: CefWindowsSettings,
-}
-
-/// Experimental CEF Windows player package (`cef_player.rs`). Mirrors `src/lib/settings.ts`'s
-/// `CefWindowsSettings`; absent in older stored settings, hence `Default` (everything off).
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct CefWindowsSettings {
-    pub enabled: bool,
-    /// Extracted CI player artifact (the package folder or the folder containing it).
-    pub base_dir: Option<String>,
-    /// Keep the base's local MCP bridge (`mcp\enabled` + MCP server). Off by default; when
-    /// off, the output never contains `mcp\`.
-    pub enable_mcp: bool,
 }
 
 impl PortableSettings {
@@ -145,15 +128,6 @@ impl PortableSettings {
             "macos" => self.macos,
             _ => false,
         }
-    }
-
-    /// `(platform_id, enabled)` pairs, in the same order release.yml's own matrix builds
-    /// them — used to iterate only the platforms the user actually asked for.
-    pub fn selected(&self) -> Vec<&'static str> {
-        [("windows", self.windows), ("linux", self.linux), ("macos", self.macos)]
-            .into_iter()
-            .filter_map(|(platform, enabled)| enabled.then_some(platform))
-            .collect()
     }
 }
 

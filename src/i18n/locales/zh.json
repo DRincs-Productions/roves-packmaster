@@ -40,7 +40,7 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "未找到以下平台已发布的外壳构建版本：{{platforms}}——请稍后再试。"
+			"shellUnavailable": "未找到以下平台已发布的播放器包：{{platforms}}——请稍后再试。"
 		},
 		"installers": {
 			"title": "安装包",
@@ -58,28 +58,13 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "Packmaster 可以下载支持 Steam 的外壳，而不是普通版本，从而让你的游戏可以与 Steamworks 通信。",
+			"description": "Packmaster 使用 Roves 播放器的 Steam 版本（带 Steamworks 库）而非标准版本，从而让你的游戏可以与 Steamworks 通信。",
 			"enableLabel": "启用 Steam",
 			"appIdLabel": "Steam 应用 ID",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "会写入游戏可执行文件旁边的 steam_appid.txt 文件——用于在真实 Steam 客户端之外进行测试。游戏实际发布后，Steam 会自行设置该值。",
 			"appIdError": "请输入有效的 Steam 应用 ID（仅数字），或关闭 Steam。",
 			"apiHint": "你游戏自己的代码通过 @drincs/roves-api/steam 与其通信——通过 Steamworks 提供成就、统计、DLC、悬浮窗和商店功能。"
-		},
-		"compression": {
-			"title": "内容压缩",
-			"description": "将游戏内容打包成少量压缩归档文件，而不是以可单独浏览的松散文件形式发布。首次运行游戏时会自动解压。",
-			"enable": "压缩游戏内容",
-			"levelLabel": "压缩级别",
-			"levelDescription": "数值越低，启动时解压越快；数值越高，下载体积越小。",
-			"maxPackSizeLabel": "归档文件最大大小",
-			"maxPackSizeDescription": "拆分归档文件，确保没有一个超过此大小。",
-			"excludeLabel": "永不压缩这些文件",
-			"excludeDescription": "每行一个 glob 模式——适用于需要保持为可写普通文件的存档或用户配置文件夹。",
-			"excludePlaceholder": "例如 saves/**",
-			"bootIncludeLabel": "始终预先解压这些文件",
-			"bootIncludeDescription": "每行一个 glob 模式，用于游戏启动时立即需要的额外文件（除了 HTML 文件及其直接引用的内容）。",
-			"bootIncludePlaceholder": "例如 splash.png"
 		},
 		"icon": {
 			"browse": "选择文件…",
@@ -154,28 +139,22 @@
 				"cancel": "取消"
 			}
 		},
-		"cefWindows": {
-			"title": "CEF Windows 播放器（实验性）",
-			"description": "额外生成一个基于 CEF 播放器（而非基于 Servo 的外壳）的实验性 Windows 包。其基础是 Roves 引擎 CI 成功运行后上传的播放器包：下载该 artifact，解压后在此选择其文件夹。Packmaster 会用其自带的 SHA256SUMS.txt 进行校验，并用你的构建替换其 game 文件夹。压缩和 Steam 不适用于此包。游戏图标（或构建中的 icon.png、icon.ico、favicon.ico）用于其窗口和 play.exe，没有时使用 Roves 图标。",
-			"enableLabel": "生成 CEF Windows 包",
-			"baseLabel": "基础播放器包",
-			"baseDescription": "解压后的 visual-novel-template-roves-cef-windows-x64 artifact（或 -mcp- 版本，以使用本地 MCP 桥接）。",
-			"baseNone": "未选择文件夹",
-			"browse": "浏览…",
-			"browseTitle": "选择解压后的 CEF 播放器包",
-			"baseError": "请选择解压后的 CEF 播放器包文件夹，或关闭 CEF Windows 包。",
-			"mcpLabel": "启用本地 MCP 桥接（仅限开发）",
-			"mcpDescription": "允许通过 MCP（Model Context Protocol）连接的 AI 智能体或 IDE 读取运行中游戏的状态和控制台、在页面中执行 JavaScript，以及点击、按键和输入文字——适用于自动化试玩测试。需要启用 MCP 的基础包和 Node.js 20+；请参阅包内的 mcp\\README.md。关闭时，包中不包含任何 MCP 文件。",
-			"mcpWarning": "切勿将此包分发给玩家：游戏运行期间，以你的 Windows 用户身份运行的任何程序都可以通过该桥接读取并控制游戏。"
+		"mcp": {
+			"title": "AI 交互（MCP，仅 Windows）",
+			"description": "使用引擎启用 MCP 的开发版播放器（而非标准播放器）构建 Windows 包。只有 Windows 播放器具有此桥接；macOS 和 Linux 包不会改变。其 zip 命名为 …_windows_mcp.zip，不会与要发布的包混淆。",
+			"enableLabel": "启用本地 MCP 桥接（仅限开发）",
+			"details": "允许通过 MCP（Model Context Protocol）连接的 AI 智能体或 IDE 读取运行中游戏的状态和控制台、在页面中执行 JavaScript，以及点击、按键和输入文字——适用于自动化试玩测试。需要 Node.js 20+；请参阅包内的 mcp\\README.md。关闭时，包中不包含任何 MCP 文件。",
+			"warning": "切勿将此包分发给玩家：游戏运行期间，以你的 Windows 用户身份运行的任何程序都可以通过该桥接读取并控制游戏。",
+			"windowsOnly": "请选择 Windows（便携版或安装程序）以使用此功能。",
+			"steamConflict": "无法与 Steam 同时使用：启用 MCP 的播放器不支持 Steam。请关闭 Steam 以使用此功能。"
 		}
 	},
 	"generating": {
 		"title": "正在生成你的发行版…",
 		"phase": {
 			"checking": "正在检查 {{platform}} 的可用性…",
-			"downloading": "正在下载 {{platform}} 外壳…",
+			"downloading": "正在下载 {{platform}} 播放器…",
 			"assembling": "正在组装 {{platform}} 软件包…",
-			"packing": "正在为 {{platform}} 打包内容…",
 			"zipping": "正在打包 {{platform}} 版本…",
 			"done": "{{platform}} 已完成",
 			"packaging": "正在创建 {{platform}} 安装程序……",
@@ -200,19 +179,18 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS",
-		"cef-windows": "Windows（CEF，实验性）"
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "关于 Roves Packmaster",
 		"description": "Roves 是一个基于网页的游戏引擎，可将你的游戏发布为真正的桌面应用，而不是浏览器标签页。Packmaster 就是为你打包它的工具。",
 		"packmasterVersion": "Packmaster 版本",
-		"shellVersion": "引擎外壳版本",
+		"shellVersion": "播放器版本",
 		"shellStatus": "状态",
 		"updateAvailable": "有可用更新",
 		"upToDate": "已是最新",
 		"downloadLatest": "下载最新版本",
-		"cacheSize": "已下载的引擎外壳",
+		"cacheSize": "已下载的播放器",
 		"clearCache": "清除缓存"
 	}
 }

@@ -1,105 +1,82 @@
-//! Derives a Windows `.ico` and a macOS `.icns` from the single PNG icon a game developer
-//! picks in "Release info" (see `bundle.rs`'s own `apply_icon`) — consolidating what used to
-//! be two separate pickers (a PNG for the runtime window icon, a pre-made `.ico` for the
-//! packaged `.exe`'s own icon resource) into one source image applied everywhere it's
-//! possible to apply it.
-//!
-//! Both container formats accept plain PNG-encoded frames directly, at their real pixel
-//! size, without a legacy raw-bitmap conversion — a well-supported convention since Windows
-//! Vista (`.ico`) and macOS 10.7 (`.icns`). So generating either one is just "resize the
-//! source PNG to each required size, PNG-encode each, wrap them in a small, hand-written
-//! container" — no `ico`/`icns`-writing crate needed, just `image` for the resize/encode.
+//! Derives the Windows `.ico` (patched into `play.exe`) and the macOS `.icns` (the `.app`'s
+//! bundle icon) from one square PNG, the project icon `cef_player::resolve_project_icon`
+//! picked. Both containers come from maintained encoders, nothing is hand-written: `image`'s
+//! `IcoEncoder` (PNG-encoded frames) and the `icns` crate (the same element types `iconutil`
+//! writes for an `.iconset`). Neither depends on a host tool, so Packmaster produces both on
+//! Windows, macOS and Linux alike.
 
-use std::io::{Cursor, Write};
 use std::path::Path;
 
 use image::imageops::FilterType;
 
-fn resized_png_frames(source_png: &Path, sizes: &[u32]) -> Result<Vec<(u32, Vec<u8>)>, String> {
-    let image = image::open(source_png).map_err(|e| format!("reading {source_png:?}: {e}"))?;
-    sizes
-        .iter()
-        .map(|&size| {
-            let resized = image.resize_exact(size, size, FilterType::Lanczos3);
-            let mut png_bytes = Vec::new();
-            resized
-                .write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
-                .map_err(|e| format!("encoding {size}x{size} frame: {e}"))?;
-            Ok((size, png_bytes))
-        })
-        .collect()
+fn open_rgba(source_png: &Path) -> Result<image::DynamicImage, String> {
+    image::open(source_png).map_err(|e| format!("reading {}: {e}", source_png.display()))
 }
 
-/// Standard Windows icon sizes -- 16/32/48 for classic small contexts (title bar, Alt-Tab),
-/// 128/256 for large-icon views in Explorer (all still real destinations for the .exe's own
-/// resource, patched in-place by `rcedit` -- see `bundle.rs`).
-const ICO_SIZES: [u32; 5] = [16, 32, 48, 128, 256];
-
-/// Writes a Windows `.ico` containing `source_png` resized to each of `ICO_SIZES`, each
-/// frame stored as its own PNG -- the ICONDIR/ICONDIRENTRY structure itself is the classic,
-/// unchanged binary format (`bWidth`/`bHeight` of 0 conventionally means 256, per the spec).
-pub fn generate_ico(source_png: &Path, dest_ico: &Path) -> Result<(), String> {
-    generate_ico_with_sizes(source_png, dest_ico, &ICO_SIZES)
+fn resized_rgba(image: &image::DynamicImage, size: u32) -> Vec<u8> {
+    let resized = if image.width() == size && image.height() == size {
+        image.to_rgba8()
+    } else {
+        image.resize_exact(size, size, FilterType::Lanczos3).to_rgba8()
+    };
+    resized.into_raw()
 }
 
-/// `generate_ico` with an explicit frame list (the CEF player's project icon contract uses
-/// the engine's sizes, never upscaling: see `cef_player.rs`).
+/// Writes a `.ico` with one PNG-encoded frame per entry of `sizes` (1..=256 px each).
 pub fn generate_ico_with_sizes(source_png: &Path, dest_ico: &Path, sizes: &[u32]) -> Result<(), String> {
     if sizes.is_empty() {
         return Err("no icon size to generate".to_string());
     }
-    let frames = resized_png_frames(source_png, sizes)?;
-
-    let mut file = std::fs::File::create(dest_ico).map_err(|e| e.to_string())?;
-    file.write_all(&0u16.to_le_bytes()).map_err(|e| e.to_string())?; // reserved
-    file.write_all(&1u16.to_le_bytes()).map_err(|e| e.to_string())?; // type: icon
-    file.write_all(&(frames.len() as u16).to_le_bytes()).map_err(|e| e.to_string())?;
-
-    let mut offset = 6 + (frames.len() as u32) * 16; // header + one ICONDIRENTRY per frame
-    for (size, png_bytes) in &frames {
-        let size_byte = if *size >= 256 { 0u8 } else { *size as u8 };
-        file.write_all(&[size_byte, size_byte, 0, 0]).map_err(|e| e.to_string())?; // w, h, palette, reserved
-        file.write_all(&1u16.to_le_bytes()).map_err(|e| e.to_string())?; // color planes
-        file.write_all(&32u16.to_le_bytes()).map_err(|e| e.to_string())?; // bits per pixel
-        file.write_all(&(png_bytes.len() as u32).to_le_bytes()).map_err(|e| e.to_string())?;
-        file.write_all(&offset.to_le_bytes()).map_err(|e| e.to_string())?;
-        offset += png_bytes.len() as u32;
-    }
-    for (_, png_bytes) in &frames {
-        file.write_all(png_bytes).map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    let image = open_rgba(source_png)?;
+    let pixels: Vec<(u32, Vec<u8>)> = sizes.iter().map(|&size| (size, resized_rgba(&image, size))).collect();
+    let frames = pixels
+        .iter()
+        .map(|(size, rgba)| {
+            image::codecs::ico::IcoFrame::as_png(rgba, *size, *size, image::ExtendedColorType::Rgba8)
+                .map_err(|e| format!("encoding the {size}x{size} frame: {e}"))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let file = std::fs::File::create(dest_ico).map_err(|e| format!("{}: {e}", dest_ico.display()))?;
+    image::codecs::ico::IcoEncoder::new(std::io::BufWriter::new(file))
+        .encode_images(&frames)
+        .map_err(|e| format!("writing {}: {e}", dest_ico.display()))
 }
 
-/// `(OSType code, pixel size)` -- a minimal but real modern icon family (128/256/512/1024px,
-/// covering `ic07`/`ic08`/`ic09`/`ic10`). Not the full Apple-recommended set (this skips the
-/// small 16/32/64px legacy sizes and the explicit `@2x` variants of each) -- good enough for
-/// the Dock/Finder to show a correct, sharp icon at every size actually used there, which is
-/// all this needs to solve; a more exhaustive set can be added later if a real gap shows up.
-const ICNS_TYPES: [(&[u8; 4], u32); 4] = [(b"ic07", 128), (b"ic08", 256), (b"ic09", 512), (b"ic10", 1024)];
+/// The element types of an `iconutil` `.iconset` (16, 32, 128, 256 and 512 pt, each at 1x and
+/// 2x), as `(type, pixel edge)`.
+const ICNS_TYPES: [(icns::IconType, u32); 10] = [
+    (icns::IconType::RGBA32_16x16, 16),
+    (icns::IconType::RGBA32_16x16_2x, 32),
+    (icns::IconType::RGBA32_32x32, 32),
+    (icns::IconType::RGBA32_32x32_2x, 64),
+    (icns::IconType::RGBA32_128x128, 128),
+    (icns::IconType::RGBA32_128x128_2x, 256),
+    (icns::IconType::RGBA32_256x256, 256),
+    (icns::IconType::RGBA32_256x256_2x, 512),
+    (icns::IconType::RGBA32_512x512, 512),
+    (icns::IconType::RGBA32_512x512_2x, 1024),
+];
 
-/// Writes a macOS `.icns` containing `source_png` resized to each of `ICNS_TYPES`'s sizes --
-/// see `bundle.rs`'s own doc comment on where this replaces the shell's default
-/// `Contents/Resources/servo.icns` (the exact filename `Info.plist`'s `CFBundleIconFile`
-/// already references, so no `Info.plist` edit is needed, just overwriting that one file).
+/// Writes a `.icns` from a square PNG. Like the engine's `packaging/icns.sh`, sizes above the
+/// source edge are left out rather than upscaled (a 16 px source still gets its 16 px element).
 pub fn generate_icns(source_png: &Path, dest_icns: &Path) -> Result<(), String> {
-    let sizes: Vec<u32> = ICNS_TYPES.iter().map(|&(_, size)| size).collect();
-    let frames = resized_png_frames(source_png, &sizes)?;
-
-    let mut body = Vec::new();
-    for ((type_code, _), (_, png_bytes)) in ICNS_TYPES.iter().zip(frames.iter()) {
-        body.extend_from_slice(*type_code);
-        let entry_len = 8 + png_bytes.len() as u32; // type + length fields + payload
-        body.extend_from_slice(&entry_len.to_be_bytes());
-        body.extend_from_slice(png_bytes);
+    let image = open_rgba(source_png)?;
+    let edge = image.width().min(image.height());
+    let mut family = icns::IconFamily::new();
+    for (icon_type, size) in ICNS_TYPES.into_iter().filter(|&(_, size)| size <= edge) {
+        let element = icns::Image::from_data(icns::PixelFormat::RGBA, size, size, resized_rgba(&image, size))
+            .map_err(|e| format!("building the {size}x{size} element: {e}"))?;
+        family
+            .add_icon_with_type(&element, icon_type)
+            .map_err(|e| format!("encoding the {size}x{size} element: {e}"))?;
     }
-
-    let mut file = std::fs::File::create(dest_icns).map_err(|e| e.to_string())?;
-    file.write_all(b"icns").map_err(|e| e.to_string())?;
-    let total_len = 8 + body.len() as u32; // "icns" + length field + body
-    file.write_all(&total_len.to_be_bytes()).map_err(|e| e.to_string())?;
-    file.write_all(&body).map_err(|e| e.to_string())?;
-    Ok(())
+    if family.is_empty() {
+        return Err(format!("{} is smaller than 16x16", source_png.display()));
+    }
+    let file = std::fs::File::create(dest_icns).map_err(|e| format!("{}: {e}", dest_icns.display()))?;
+    family
+        .write(std::io::BufWriter::new(file))
+        .map_err(|e| format!("writing {}: {e}", dest_icns.display()))
 }
 
 #[cfg(test)]
@@ -108,60 +85,51 @@ mod tests {
 
     fn make_test_png(dir: &Path, size: u32) -> std::path::PathBuf {
         let path = dir.join("icon.png");
-        let image = image::DynamicImage::new_rgba8(size, size);
-        image.save(&path).unwrap();
+        image::RgbaImage::from_pixel(size, size, image::Rgba([200, 30, 30, 255]))
+            .save(&path)
+            .unwrap();
         path
     }
 
     #[test]
-    fn ico_has_a_valid_header_and_one_directory_entry_per_size() {
+    fn ico_has_one_decodable_frame_per_size() {
         let dir = tempfile::tempdir().unwrap();
         let source = make_test_png(dir.path(), 512);
         let dest = dir.path().join("out.ico");
-
-        generate_ico(&source, &dest).unwrap();
+        generate_ico_with_sizes(&source, &dest, &[16, 32, 256]).unwrap();
         let bytes = std::fs::read(&dest).unwrap();
-
-        assert_eq!(&bytes[0..2], &0u16.to_le_bytes(), "reserved field must be 0");
-        assert_eq!(&bytes[2..4], &1u16.to_le_bytes(), "type field must be 1 (icon)");
-        let count = u16::from_le_bytes([bytes[4], bytes[5]]);
-        assert_eq!(count as usize, ICO_SIZES.len());
-        // Every frame's embedded image starts with the real PNG signature -- confirms the
-        // "store a real PNG, not a raw DIB" convention actually produced valid PNG data.
-        for i in 0..count as usize {
-            let entry = &bytes[6 + i * 16..6 + (i + 1) * 16];
-            let data_size = u32::from_le_bytes(entry[8..12].try_into().unwrap()) as usize;
-            let data_offset = u32::from_le_bytes(entry[12..16].try_into().unwrap()) as usize;
-            let frame = &bytes[data_offset..data_offset + data_size];
-            assert_eq!(&frame[0..8], b"\x89PNG\r\n\x1a\n", "frame {i} isn't a valid PNG");
-        }
+        assert_eq!(&bytes[0..4], &[0, 0, 1, 0]);
+        assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 3);
+        // The decoder picks the largest frame.
+        let decoded = image::load_from_memory_with_format(&bytes, image::ImageFormat::Ico).unwrap();
+        assert_eq!((decoded.width(), decoded.height()), (256, 256));
     }
 
     #[test]
-    fn icns_has_a_valid_magic_and_length_matching_the_actual_file_size() {
+    fn icns_has_every_iconset_element_up_to_the_source_edge() {
         let dir = tempfile::tempdir().unwrap();
-        let source = make_test_png(dir.path(), 512);
+        let source = make_test_png(dir.path(), 1024);
         let dest = dir.path().join("out.icns");
-
         generate_icns(&source, &dest).unwrap();
-        let bytes = std::fs::read(&dest).unwrap();
+        let family = icns::IconFamily::read(std::fs::File::open(&dest).unwrap()).unwrap();
+        let mut types = family.available_icons();
+        types.sort_by_key(|t| (t.pixel_width(), t.pixel_density()));
+        assert_eq!(types.len(), ICNS_TYPES.len());
+        let big = family.get_icon_with_type(icns::IconType::RGBA32_512x512_2x).unwrap();
+        assert_eq!((big.width(), big.height()), (1024, 1024));
+        assert_eq!(&big.data()[..4], &[200, 30, 30, 255]);
+    }
 
-        assert_eq!(&bytes[0..4], b"icns");
-        let declared_len = u32::from_be_bytes(bytes[4..8].try_into().unwrap()) as usize;
-        assert_eq!(declared_len, bytes.len(), "declared length must match the real file size");
-
-        // Walk the entries and confirm each one's own length field is internally consistent
-        // and its payload is a real PNG.
-        let mut offset = 8;
-        let mut seen_types = Vec::new();
-        while offset < bytes.len() {
-            let type_code = &bytes[offset..offset + 4];
-            let entry_len = u32::from_be_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
-            let payload = &bytes[offset + 8..offset + entry_len];
-            assert_eq!(&payload[0..8], b"\x89PNG\r\n\x1a\n", "entry payload isn't a valid PNG");
-            seen_types.push(String::from_utf8_lossy(type_code).into_owned());
-            offset += entry_len;
-        }
-        assert_eq!(seen_types, vec!["ic07", "ic08", "ic09", "ic10"]);
+    #[test]
+    fn icns_never_upscales_a_small_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = make_test_png(dir.path(), 48);
+        let dest = dir.path().join("out.icns");
+        generate_icns(&source, &dest).unwrap();
+        let family = icns::IconFamily::read(std::fs::File::open(&dest).unwrap()).unwrap();
+        assert!(family.available_icons().iter().all(|t| t.pixel_width() <= 48));
+        assert!(family.has_icon_with_type(icns::IconType::RGBA32_16x16));
+        assert!(family.has_icon_with_type(icns::IconType::RGBA32_16x16_2x));
+        assert!(!family.has_icon_with_type(icns::IconType::RGBA32_128x128));
     }
 }

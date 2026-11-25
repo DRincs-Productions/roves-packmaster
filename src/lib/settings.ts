@@ -24,23 +24,25 @@ export interface InstallerSettings {
 }
 
 export interface SteamSettings {
+  /** Use the engine's Steam player packages (`roves_shell_<platform>_steam.zip`). */
   enabled: boolean;
   /** Steam App ID, digits only. Written into a `steam_appid.txt` next to the packaged
    * game's executable when `enabled` (Valve's own convention for local testing outside the
-   * Steam client) -- see bundle.rs's `generate_release`. */
+   * Steam client) -- see src-tauri/src/cef_player.rs. */
   appId: string;
+}
+
+/** The Windows player's local MCP bridge (src-tauri/src/cef_player.rs): the Windows output
+ * uses the engine's `roves_shell_windows_mcp.zip` development package. Off by default; never
+ * applies to macOS/Linux and can't be combined with Steam (the engine publishes no such
+ * package), so configure.tsx turns it off when Steam is turned on. */
+export interface McpSettings {
+  enabled: boolean;
 }
 
 export interface PluginSettings {
   steam: SteamSettings;
-}
-
-export interface CompressionSettings {
-  enabled: boolean;
-  level: number;
-  maxPackSize: string;
-  exclude: string[];
-  bootInclude: string[];
+  mcp: McpSettings;
 }
 
 export type MobileOrientation =
@@ -101,13 +103,11 @@ export interface MobileSettings {
   iosAdvanced: IosAdvancedSettings;
 }
 
-/** A single source icon (PNG), applied everywhere it's possible to apply it -- see
- * bundle.rs's own `apply_icon`/`icon.rs`. Used as-is for the Windows/Linux runtime window
- * icon; a `.ico`/`.icns` are derived from it for the packaged Windows `.exe`'s own icon
- * resource and the macOS `.app`'s Dock icon, respectively -- previously two separate
- * settings (a PNG here, a pre-made `.ico` for Windows), and macOS had no icon override at
- * all. `null` means auto-detect an `icon.png` sitting directly in the project's build
- * output, same as `mach bundle`'s own default. */
+/** The Release info icon (a PNG), the first source of the project icon. It becomes the
+ * window icon of every desktop player, and a `.ico`/`.icns` derived from it the Windows
+ * `play.exe` icon and the macOS bundle icon -- see src-tauri/src/cef_player.rs's
+ * `resolve_project_icon` for the fallbacks (the build's own icon.png/icon.ico/favicon.ico,
+ * then the Roves icon). `null` means use those fallbacks. Android uses it too. */
 export interface IconSettings {
   path: string | null;
 }
@@ -128,26 +128,11 @@ export interface PackmasterSettings {
   installers: InstallerSettings;
   mobile: MobileSettings;
   plugins: PluginSettings;
-  compression: CompressionSettings;
   icon: IconSettings;
-  cefWindows: CefWindowsSettings;
 }
 
-/** Experimental CEF Windows player package (src-tauri/src/cef_player.rs): an extracted engine
- * CI player artifact used as the base, with its game\ folder replaced by the user's build.
- * Not a published release asset, so there is no download URL: the user picks the folder. */
-export interface CefWindowsSettings {
-  enabled: boolean;
-  baseDir: string | null;
-  /** Keep the base's local MCP bridge (an AI agent can read and control the running game).
-   * Off by default; requires an MCP-enabled base. When off, the output has no mcp\ folder. */
-  enableMcp: boolean;
-}
-
-// Mirrors `mach bundle`'s own defaults (see the engine's
-// python/servo/post_build_commands.py) so a user who never touches these
-// screens still gets exactly what a plain `mach bundle` invocation would
-// have produced.
+// Defaults: every portable desktop player, nothing else (no installer, no mobile, no Steam,
+// no MCP); the project icon comes from the build itself when none is picked.
 export const defaultSettings: PackmasterSettings = {
   sourceDir: null,
   releaseInfoByPath: {},
@@ -171,21 +156,10 @@ export const defaultSettings: PackmasterSettings = {
     // 480 is Valve's own well-known Steamworks test App ID (Spacewar) — a sensible default
     // to try things with, rather than an empty field that always needs typing into first.
     steam: { enabled: false, appId: "480" },
-  },
-  compression: {
-    enabled: true, // --content-compress=auto is the engine's own default
-    level: 1,
-    maxPackSize: "500M",
-    exclude: [],
-    bootInclude: [],
+    mcp: { enabled: false },
   },
   icon: {
     path: null,
-  },
-  cefWindows: {
-    enabled: false,
-    baseDir: null,
-    enableMcp: false,
   },
 };
 
@@ -213,10 +187,17 @@ export async function loadSettings(): Promise<PackmasterSettings> {
     return defaultSettings;
   }
   // Shallow-merged with defaults so a Packmaster upgrade that adds a new
-  // setting doesn't crash on an older, incomplete stored settings file.
+  // setting doesn't crash on an older, incomplete stored settings file. Settings removed
+  // since (the Servo shell's `compression`, the manual CEF base folder `cefWindows`) are
+  // dropped instead of being carried along forever.
+  const {
+    compression: _compression,
+    cefWindows: _cefWindows,
+    ...current
+  } = stored as PackmasterSettings & { compression?: unknown; cefWindows?: unknown };
   return {
     ...defaultSettings,
-    ...stored,
+    ...current,
     releaseInfoByPath: { ...defaultSettings.releaseInfoByPath, ...stored.releaseInfoByPath },
     portable: { ...defaultSettings.portable, ...stored.portable },
     installers: {
@@ -230,10 +211,11 @@ export async function loadSettings(): Promise<PackmasterSettings> {
       ios: { ...defaultSettings.mobile.ios, ...stored.mobile?.ios },
       iosAdvanced: { ...defaultSettings.mobile.iosAdvanced, ...stored.mobile?.iosAdvanced },
     },
-    plugins: { steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam } },
-    compression: { ...defaultSettings.compression, ...stored.compression },
+    plugins: {
+      steam: { ...defaultSettings.plugins.steam, ...stored.plugins?.steam },
+      mcp: { ...defaultSettings.plugins.mcp, ...stored.plugins?.mcp },
+    },
     icon: { ...defaultSettings.icon, ...stored.icon },
-    cefWindows: { ...defaultSettings.cefWindows, ...stored.cefWindows },
   };
 }
 

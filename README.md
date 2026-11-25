@@ -1,10 +1,11 @@
 # Roves Packmaster
 
-The shell target is **v0.7.15**, including native V8 global-property lookup, worker
-intrinsic lookup improvements, and safe reporting of exceptions without source positions.
+The desktop outputs are built from the engine's **CEF players** (engine v0.9.0 and later).
 The frontend and Rust packager read the same `src/lib/shell-version.txt` pin; the displayed
-version and downloaded release cannot drift through separate version constants.
-Packmaster v0.1.9 includes this correction in its versioned desktop builds.
+version and downloaded release cannot drift through separate version constants. The pin
+still says v0.7.15, the last Servo shell release, whose assets have a different layout:
+desktop generation works once the pin is bumped to the v0.9.0 tag, which is the only change
+needed when that release is published.
 
 A desktop GUI for packaging a web-built game into [Roves](https://github.com/DRincs-Productions/roves)
 distributions — portable binaries for Windows, macOS, and Linux — without needing Rust or
@@ -14,26 +15,57 @@ produces the releases for you.
 Built with [Tauri](https://tauri.app/) (Rust + a native webview) so Packmaster itself
 ships as a single, ordinary desktop app: the *user running Packmaster* never needs a Rust
 or Python toolchain. Real bundling never shells out to `mach`/Python either — it downloads
-the engine's own prebuilt, versioned shell release (`roves_shell_<platform>.zip`, see the
-engine repo's [README](../README.md)) instead of compiling one, and packs your content into
-it by linking the engine's `roves-content-packer` crate directly as a Rust library (see
-`src-tauri/src/bundle.rs`). Building *Packmaster itself* is the only place a Rust toolchain
+the engine's own prebuilt, versioned player package (`roves_shell_<platform>.zip`, see the
+engine repo's [README](../README.md)) instead of compiling one, and replaces its sample game
+with yours (see `src-tauri/src/bundle.rs` and `src-tauri/src/cef_player.rs`). Building *Packmaster itself* is the only place a Rust toolchain
 is still needed — see "Development" below, or grab a build from this repo's own [rolling
 test release](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/test) instead.
 
 ## Status
 
-Real, not a mock: "Generate release" actually downloads the targeted shell version
-(`src/lib/shell-version.ts`'s `TARGET_SHELL_VERSION`), packs your content into it, and
+Real, not a mock: "Generate release" actually downloads the targeted engine release's player
+package (`src/lib/shell-version.ts`'s `TARGET_SHELL_VERSION`), puts your build in it, and
 writes a real, runnable release to disk. Installers (`.msi`/`.dmg`/`.deb`) are real too
 (`src-tauri/src/installer.rs`, porting the engine's own WiX/`hdiutil`/`dpkg-deb` logic to
 Rust) — but unlike the portable path, each one only works when Packmaster itself is running
 on its matching OS *and* that OS's native tool is already installed (WiX on Windows,
 `hdiutil` on macOS — built in, `dpkg-deb` on Linux); Packmaster shows a real, live check for
 this per platform rather than assuming. Steam is real too: toggling it on (and entering your
-Steam App ID) downloads the engine's Steam-enabled shell variant instead of the plain one,
-and writes a `steam_appid.txt` next to the packaged executable, with its own live
-availability check per platform, same as the portable/installable paths above.
+Steam App ID) downloads the engine's Steam player package (`roves_shell_<platform>_steam.zip`)
+instead of the plain one, and writes a `steam_appid.txt` next to the packaged executable
+(`Contents/MacOS/` inside the macOS app), with its own live availability check per platform,
+same as the portable/installable paths above.
+
+### Desktop packages (CEF players)
+
+| Platform | Engine asset | Your game goes to | Window icon | Executable/bundle icon |
+| --- | --- | --- | --- | --- |
+| Windows | `roves_shell_windows[_steam\|_mcp].zip` | `game\` next to `play.exe` | `icon.png` next to `play.exe` | `play.exe` icon resource |
+| macOS (arm64) | `roves_shell_macos[_steam].zip` | `<name>.app/Contents/Resources/game/` | `Contents/Resources/icon.png` | the `CFBundleIconFile` `.icns` |
+| Linux (x64) | `roves_shell_linux[_steam].zip` | `game/` next to the executable | `icon.png` next to the executable | — (no `.desktop` entry) |
+
+- The engine files are copied unchanged, entry by entry, so executable modes, the setuid
+  `chrome-sandbox` mode and any symlink survive whichever OS Packmaster runs on. Extracting
+  the Linux zip as a normal user still drops the setuid bit and root owner: on hosts that
+  restrict unprivileged user namespaces players must re-apply
+  `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox` (the `.deb` installs
+  it that way already).
+- The Windows package is checked against its own `SHA256SUMS.txt` (every file, hidden ones
+  included) and gets a regenerated one; macOS/Linux packages are checked for the files the
+  engine documents (and the Steam library exactly in the Steam variant).
+- **Project icon**: the Release info icon, else your build's `icon.png`, else the largest frame
+  of its `icon.ico`/`favicon.ico`; with none, the Roves icon is used (`roves.ico` from the
+  Windows package for `play.exe`). The `.ico`, the macOS `.icns` and the `play.exe` icon
+  resource are all produced in-process, so Packmaster on any OS gives the same result. The
+  sample game's icon is never carried over (the base `play.exe` carries it, so its main icon
+  group is always replaced).
+- **AI interaction (MCP, Windows only, Advanced)**: off by default. When on, the Windows output
+  is built from `roves_shell_windows_mcp.zip` and named `<name>_windows_mcp.zip`; an AI agent
+  or IDE connected over MCP can then read the running game's state and console, run
+  JavaScript in the page, click, press keys and type (needs Node.js 20+, see `mcp\README.md`
+  in the package). Never ship that package to players: any program running as your Windows
+  user can control the game through it. It can't be combined with Steam (no such engine
+  package) and never affects macOS/Linux. When off, the package contains no `mcp\` folder.
 
 ## What it does
 
@@ -47,18 +79,17 @@ availability check per platform, same as the portable/installable paths above.
    - **Release info** — game name and version, read from the build folder's parent
      `package.json` when present (the version always follows it fresh; the name is
      remembered per source folder otherwise) and editable either way. These name the
-     generated files and the bundled window title.
+     generated files and packages.
    - **Portable** — a self-contained, double-click-to-run bundle per platform. Each
      platform shows a real, live check (a HEAD request against the targeted shell
      release's actual asset) for whether it's currently distributable, rather than
      assuming it always is.
    - **Installable** — a real `.msi`/`.dmg`/`.deb` per platform, each with its own live
      host-OS-and-tool availability check (see "Status" above).
-   - **Advanced** — Compression (packs your game's content into compressed archives
-     instead of loose files, with the same tunables as the engine's own `mach bundle
-     --content-compress` flags) and Steam (a toggle plus your Steam App ID — downloads the
-     Steam-enabled shell variant and writes a `steam_appid.txt` next to the packaged
-     executable; see "Status" above).
+   - **Advanced** — Steam (a toggle plus your Steam App ID — downloads the Steam player
+     package and writes a `steam_appid.txt` next to the packaged executable; see "Status"
+     above) and AI interaction (the Windows player's local MCP bridge, see "Desktop
+     packages").
    - **Mobile (Android, experimental)** — builds a real, installable `.apk` alongside your
      desktop release, downloading a JRE and the Android SDK on first use (no NDK needed, no
      native/Rust compilation involved — the game runs on the system's own Android WebView) —
@@ -75,32 +106,11 @@ availability check per platform, same as the portable/installable paths above.
      [wiki](https://github.com/DRincs-Productions/roves-wiki/blob/main/content/docs/packmaster.mdx)
      for the current caveats (Windows Android support is new and unverified against a real
      device; iOS is untested end to end on a real macOS machine).
-   - **CEF Windows player (experimental, Advanced)** — an extra
-     `<your-game-name>_windows_cef.zip` on the experimental CEF + SDL3 + wgpu player instead
-     of the Servo-based shell. There is no published release asset for it yet: download the
-     player package artifact of a **successful** engine CI run
-     (`visual-novel-template-roves-cef-windows-x64`), extract it and pick its folder. Packmaster
-     verifies it against its own `SHA256SUMS.txt`, keeps `play.exe`/`play.dll`/the CEF
-     runtime unchanged, replaces `game\` with your build and regenerates the checksums
-     (`src-tauri/src/cef_player.rs`). Compression and Steam don't apply. The icon follows
-     the engine's project icon contract: the Release info icon, else your build's `icon.png`
-     (or the largest frame of its `icon.ico`/`favicon.ico`) becomes the window icon and
-     `play.exe`'s icon (patched with the same pinned rcedit, SHA-256 checked), with the
-     official Roves icon (`roves.ico` in the base) as the fallback; the sample game's icon
-     is never carried over.
-     The **local MCP bridge** checkbox (off by default) keeps the player's development
-     bridge, through which an AI agent or IDE connected over MCP can read the running game's
-     state and console, run JavaScript in the page, click, press keys and type
-     (`<name>_windows_cef_mcp.zip`). It needs the MCP-enabled artifact
-     (`visual-novel-template-roves-cef-mcp-windows-x64`) and is refused otherwise. Never ship
-     that package to players: any program running as your Windows user can control the game
-     through it. With the checkbox off the package contains no `mcp\` folder at all (no
-     activation marker, no MCP server), even when the base was the MCP-enabled artifact.
-     Packmaster cannot check which CI run a folder came from: picking a green run is up to you.
-3. **Generate.** Downloads the shell (cached per version/platform after the first run),
-   packs your content into it, and shows real, per-step progress. Opens the folder the
-   release was written to when done — a `release/` folder next to wherever Packmaster
-   itself is running from, containing one `<your-game-name>_<platform>.zip` per platform.
+3. **Generate.** Downloads the player package (cached per version/asset after the first
+   run), replaces its sample game with your build, and shows real, per-step progress. Opens
+   the folder the release was written to when done — a `release/` folder next to wherever
+   Packmaster itself is running from, containing one `<your-game-name>_<platform>.zip` per
+   platform (`<name>/` inside on Windows/Linux, the `<name>.app` itself on macOS).
 
 Every screen shows the Roves icon and wordmark, and is available in nine languages
 (English, Italian, Chinese, Japanese, Korean, Spanish, French, Russian, German) — see

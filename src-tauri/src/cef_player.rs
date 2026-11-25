@@ -1,361 +1,448 @@
-//! Experimental CEF Windows player package (engine branch `codex/cef-sdl3-wgpu-probe`,
-//! `support/cef-netrender-probe`): unlike every other desktop output, nothing is downloaded
-//! here. The base is a player package the engine CI uploaded as a workflow artifact
-//! (`visual-novel-template-roves-cef-windows-x64`, or the MCP-enabled
-//! `visual-novel-template-roves-cef-mcp-windows-x64`), downloaded and extracted by the user.
-//! There is no published release asset for it yet, so there is no URL to pin.
+//! Desktop packages built on the Roves CEF players (engine v0.9.0+, the release assets
+//! `roves_shell_<platform>[_steam|_mcp].zip` that `shell.rs` downloads). Each asset is a
+//! complete, playable package with a sample game; Packmaster keeps the engine files untouched
+//! and replaces the game:
 //!
-//! The package keeps the base's `play.exe`/`play.dll`/CEF runtime untouched and replaces
-//! `game\` with the user's build output. The local MCP bridge of that player turns on only
-//! when the package contains the marker `mcp\enabled` (engine `support/cef-netrender-probe/
-//! mcp/README.md`), so:
+//! | | package root | executable | `game/` and window `icon.png` |
+//! | --- | --- | --- | --- |
+//! | Windows | folder | `play.exe` | next to `play.exe` |
+//! | macOS | `roves-cef-macos-gate.app` | `Contents/MacOS/roves-cef-macos-gate` | `Contents/Resources/` |
+//! | Linux | folder | `roves-cef-linux-gate` | next to the executable |
 //!
-//! - **MCP off (default)**: the output never contains `mcp\` (marker, `server.mjs`, its npm
-//!   dependencies) nor the MCP provenance, even when the base is an MCP-enabled package.
-//! - **MCP on**: only accepted when the base itself is a complete MCP-enabled package (every
-//!   file listed below, plus the MCP section the engine CI writes into `PROVENANCE.txt`).
-//!   Packmaster never adds MCP files of its own; a base without them is an error, not a
-//!   package that silently runs without the bridge.
+//! (engine `support/cef-netrender-probe/README.md` "Packaged player", `support/cef-macos-gate/
+//! README.md` "Packaged game", `support/cef-linux-gate/README.md` "Packaged game"). The zip may
+//! hold the package root directly or inside a single top folder.
 //!
-//! **Project icon** (engine `support/cef-netrender-probe/README.md`, "Project icon"; the same
-//! rules as the engine's and roves-action's `project_icon.py`, keep the three in step): the
-//! game's icon comes first, the official Roves icon is the fallback. The window icon is an
-//! `icon.png` next to `play.exe` (the Release info icon, else `<build>/icon.png`, else the
-//! largest frame of `<build>/icon.ico`/`favicon.ico`; none: the player shows the Roves logo);
-//! `play.exe`'s icon resource gets an ICO generated from that PNG, else the game's ICO, else
-//! the base's `roves.ico` (bases without it keep their own `play.exe` icon). The base's own
-//! `icon.png` belongs to its sample game and is never copied.
+//! **Assembly is zip to zip**: every engine entry is copied raw (same bytes, compression, Unix
+//! mode and file type) into the output zip, so executables, the setuid `chrome-sandbox` mode
+//! and any symlink survive whichever host Packmaster runs on; only the replaced files are
+//! written anew. Installers extract that output zip again (`bundle.rs`).
 //!
-//! Every base is checked against its own `SHA256SUMS.txt` first (every file listed, every
-//! listed file present with that hash, nothing unlisted), so a modified or partially extracted
-//! artifact is rejected. That proves the files are the ones the CI packaged, not that the CI
-//! run that produced them was green: picking an artifact from a successful run stays the
-//! user's job (Packmaster has no GitHub credentials to check it).
+//! **Windows**: the base is checked against its own `SHA256SUMS.txt` (every file listed, every
+//! listed file present with that hash, nothing unlisted) and the output gets a regenerated one.
+//! The local MCP bridge turns on only when the package contains `mcp/enabled` (engine
+//! `support/cef-netrender-probe/mcp/README.md`): with MCP off (default) the output never
+//! contains `mcp/` nor the MCP provenance; with MCP on, the base (the `_mcp` asset) must be a
+//! complete MCP-enabled package. Packmaster never adds MCP files of its own. MCP does not
+//! exist for macOS/Linux. macOS/Linux packages ship no checksums; their required files are
+//! checked instead.
+//!
+//! **Project icon** (engine READMEs "Project icon"/"Application icon"; the same rules as the
+//! engine's and roves-action's `project_icon.py`, keep them in step): the game's icon comes
+//! first, the official Roves icon is the fallback. Window icon (all platforms): an `icon.png`
+//! where the player reads it (the Release info icon, else `<build>/icon.png`, else the largest
+//! frame of `<build>/icon.ico`/`favicon.ico`; none: the player shows the Roves logo). Windows
+//! `play.exe` icon resource: an ICO generated from that PNG, else the game's ICO, else the
+//! base's `roves.ico`. macOS bundle icon: an `.icns` generated from that PNG replaces
+//! `Contents/Resources/roves-cef-macos-gate.icns` (the `CFBundleIconFile`), else the base's
+//! Roves icon stays. Linux has no bundle icon (no `.desktop` entry in the package). The base's
+//! own `icon.png` belongs to its sample game and is never copied.
+//!
+//! **Steam** (`_steam` assets): the Steamworks redistributable must be in the base;
+//! `steam_appid.txt` is written next to the executable (where every player reads it).
 
-use std::io::Write;
+use std::collections::BTreeMap;
+use std::io::{BufWriter, Read, Write};
 use std::path::{Component, Path, PathBuf};
 
 use sha2::{Digest, Sha256};
+use zip::write::SimpleFileOptions;
 
 const CHECKSUMS: &str = "SHA256SUMS.txt";
-/// Window icon next to `play.exe` (read by the player at startup).
+const PROVENANCE: &str = "PROVENANCE.txt";
+/// Window icon file name, in the platform's resources folder (read by the player at startup).
 const PROJECT_ICON_FILE: &str = "icon.png";
-/// The official Roves icon the engine CI ships in the base, the `play.exe` fallback.
+/// The official Roves icon the Windows base ships, the `play.exe` fallback.
 const ROVES_FALLBACK_ICO: &str = "roves.ico";
+const STEAM_APP_ID_FILE: &str = "steam_appid.txt";
 const MAX_ICON_BYTES: u64 = 8 * 1024 * 1024;
 const MIN_ICON_PX: u32 = 16;
 const MAX_ICON_PX: u32 = 2048;
 const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 /// Frames of a generated `play.exe` icon (those not larger than the source).
 const ICO_SIZES: [u32; 7] = [16, 24, 32, 48, 64, 128, 256];
-const PROVENANCE: &str = "PROVENANCE.txt";
 const GAME_DIR: &str = "game";
 const MCP_DIR: &str = "mcp";
 /// Written by the engine CI's "assemble the MCP-enabled package" step, at the end of
 /// `PROVENANCE.txt`.
 const MCP_PROVENANCE_HEADER: &str = "MCP-enabled development package";
-
-const BASE_REQUIRED: &[&str] = &[
-    "play.exe",
-    "play.dll",
-    "play.exe.manifest",
-    "libcef.dll",
-    PROVENANCE,
-    CHECKSUMS,
-];
 const MCP_REQUIRED: &[&str] = &[
     "mcp/enabled",
     "mcp/server.mjs",
     "mcp/README.md",
     "mcp/node_modules/@modelcontextprotocol/server/package.json",
 ];
+const WINDOWS_EXE: &str = "play.exe";
+const MACOS_INFO_PLIST: &str = "Contents/Info.plist";
+const MACOS_CEF_FRAMEWORK: &str = "Contents/Frameworks/Chromium Embedded Framework.framework";
+/// Executables of the Linux package that are not the player (CEF's own helpers).
+const LINUX_NOT_THE_PLAYER: &[&str] = &["chrome-sandbox", "chrome_crashpad_handler"];
+/// Mode of the files Packmaster writes (game files, icons, `steam_appid.txt`).
+const FILE_MODE: u32 = 0o644;
+const DIR_MODE: u32 = 0o755;
+const EXE_MODE: u32 = 0o755;
 
-#[derive(Debug)]
-pub struct BasePackage {
-    pub root: PathBuf,
-    /// Complete, checksum-verified MCP-enabled package.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Platform {
+    Windows,
+    Macos,
+    Linux,
+}
+
+impl Platform {
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "windows" => Some(Self::Windows),
+            "macos" => Some(Self::Macos),
+            "linux" => Some(Self::Linux),
+            _ => None,
+        }
+    }
+
+    /// `windows` | `macos` | `linux`, as in the engine's release asset names.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Windows => "windows",
+            Self::Macos => "macos",
+            Self::Linux => "linux",
+        }
+    }
+
+    /// File that identifies the package root inside the zip (as roves-action's
+    /// `cef/assemble.sh` locates it: the `.app` on macOS, the folder of `libcef.so` on Linux).
+    fn root_marker(self) -> &'static str {
+        match self {
+            Self::Windows => WINDOWS_EXE,
+            Self::Macos => MACOS_INFO_PLIST,
+            Self::Linux => "libcef.so",
+        }
+    }
+
+    /// Folder of the executable: `steam_appid.txt` and the Steamworks redistributable.
+    fn exe_dir(self) -> &'static str {
+        match self {
+            Self::Macos => "Contents/MacOS",
+            _ => "",
+        }
+    }
+
+    /// Folder holding `game/` and the window `icon.png`.
+    fn resources_dir(self) -> &'static str {
+        match self {
+            Self::Macos => "Contents/Resources",
+            _ => "",
+        }
+    }
+
+    fn required(self) -> &'static [&'static str] {
+        match self {
+            Self::Windows => &[WINDOWS_EXE, "play.dll", "play.exe.manifest", "libcef.dll", PROVENANCE, CHECKSUMS],
+            // Plus the CFBundleExecutable, the CFBundleIconFile and the CEF framework.
+            Self::Macos => &[MACOS_INFO_PLIST, "Contents/Resources/game/index.html"],
+            Self::Linux => &["libcef.so", "chrome-sandbox", "icudtl.dat", "resources.pak", "game/index.html"],
+        }
+    }
+
+    fn steam_library(self) -> &'static str {
+        match self {
+            Self::Windows => "steam_api64.dll",
+            Self::Macos => "Contents/MacOS/libsteam_api.dylib",
+            Self::Linux => "libsteam_api.so",
+        }
+    }
+}
+
+fn join(dir: &str, name: &str) -> String {
+    if dir.is_empty() {
+        name.to_string()
+    } else {
+        format!("{dir}/{name}")
+    }
+}
+
+/// The archive prefix (`""` or `"<top folder>/"`) of the only package root in `names`.
+fn locate_root<'a>(names: impl Iterator<Item = &'a str>, platform: Platform) -> Result<String, String> {
+    let marker = platform.root_marker();
+    let mut roots = std::collections::BTreeSet::new();
+    for name in names {
+        let prefix = if name == marker {
+            ""
+        } else if let Some(prefix) = name.strip_suffix(marker).filter(|p| p.ends_with('/')) {
+            prefix
+        } else {
+            continue;
+        };
+        if prefix.matches('/').count() <= 1 {
+            roots.insert(prefix.to_string());
+        }
+    }
+    let mut roots = roots.into_iter();
+    match (roots.next(), roots.next()) {
+        (Some(root), None) => Ok(root),
+        (None, _) => Err(format!(
+            "not a Roves {} player package (no {marker} at its root or in a single top folder)",
+            platform.id()
+        )),
+        (Some(_), Some(_)) => Err(format!("contains more than one Roves {} player package", platform.id())),
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Entry {
+    index: usize,
+    is_dir: bool,
+    unix_mode: Option<u32>,
+}
+
+/// An engine player package (release asset zip), checked and ready to assemble from.
+pub struct Base {
+    archive: zip::ZipArchive<std::fs::File>,
+    pub platform: Platform,
+    /// Package-relative path (forward slashes, no trailing slash) -> archive entry, for every
+    /// entry under the package root.
+    entries: BTreeMap<String, Entry>,
+    /// Verified `SHA256SUMS.txt` (path -> lowercase hex), when the package ships one.
+    checksums: Option<BTreeMap<String, String>>,
+    /// Complete MCP-enabled Windows package.
     pub mcp_capable: bool,
+    /// The player executable, relative to the package root: `play.exe`, the macOS
+    /// `CFBundleExecutable` under `Contents/MacOS/`, or the Linux package's only executable
+    /// that is not a CEF helper.
+    pub executable: String,
+    /// macOS: the bundle icon named by `CFBundleIconFile`, under `Contents/Resources/`.
+    bundle_icns: Option<String>,
 }
 
-/// The folder holding `play.exe`: `dir` itself, or its only subfolder that has one (a
-/// workflow artifact extracts as `<artifact>/<package folder>/play.exe`).
-pub fn locate_base(dir: &Path) -> Result<PathBuf, String> {
-    if dir.join("play.exe").is_file() {
-        return Ok(dir.to_path_buf());
-    }
-    let mut found = Vec::new();
-    for entry in std::fs::read_dir(dir).map_err(|e| format!("reading {}: {e}", dir.display()))? {
-        let path = entry.map_err(|e| e.to_string())?.path();
-        if path.is_dir() && path.join("play.exe").is_file() {
-            found.push(path);
+impl Base {
+    /// Opens and checks `zip_path`: the platform's required files (plus the Steamworks
+    /// redistributable when `steam`), `SHA256SUMS.txt` when present (always on Windows), and
+    /// the MCP capability.
+    pub fn open(zip_path: &Path, platform: Platform, steam: bool) -> Result<Self, String> {
+        let file = std::fs::File::open(zip_path).map_err(|e| format!("{}: {e}", zip_path.display()))?;
+        let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("{}: {e}", zip_path.display()))?;
+        let mut names = Vec::with_capacity(archive.len());
+        for index in 0..archive.len() {
+            let entry = archive.by_index_raw(index).map_err(|e| e.to_string())?;
+            let name = entry.name().map_err(|e| e.to_string())?.replace('\\', "/");
+            let is_dir = entry.is_dir() || name.ends_with('/');
+            names.push((name, is_dir, entry.unix_mode()));
         }
-    }
-    match found.len() {
-        1 => Ok(found.remove(0)),
-        0 => Err(format!(
-            "{} is not a Roves CEF player package (no play.exe in it or in one of its subfolders)",
-            dir.display()
-        )),
-        _ => Err(format!(
-            "{} contains more than one CEF player package; pick one",
-            dir.display()
-        )),
-    }
-}
-
-/// Required files, `SHA256SUMS.txt` verification, MCP capability.
-pub fn inspect_base(root: &Path) -> Result<BasePackage, String> {
-    for required in BASE_REQUIRED {
-        if !root.join(required).is_file() {
-            return Err(format!("the CEF base package lacks {required}"));
+        let prefix = locate_root(names.iter().map(|(name, _, _)| name.as_str()), platform)
+            .map_err(|e| format!("{}: {e}", zip_path.display()))?;
+        let mut entries = BTreeMap::new();
+        for (index, (name, is_dir, unix_mode)) in names.iter().enumerate() {
+            let Some(rel) = name.strip_prefix(&prefix) else { continue };
+            let rel = rel.trim_end_matches('/');
+            if rel.is_empty() {
+                continue;
+            }
+            if Path::new(rel).components().any(|c| !matches!(c, Component::Normal(_))) {
+                return Err(format!("the {} player package has an unsafe path: {name:?}", platform.id()));
+            }
+            entries.insert(
+                rel.to_string(),
+                Entry {
+                    index,
+                    is_dir: *is_dir,
+                    unix_mode: *unix_mode,
+                },
+            );
         }
-    }
-    verify_checksums(root)?;
-    let provenance = std::fs::read_to_string(root.join(PROVENANCE)).map_err(|e| e.to_string())?;
-    let mcp_capable = MCP_REQUIRED.iter().all(|file| root.join(file).is_file())
-        && provenance
-            .lines()
-            .any(|line| line.starts_with(MCP_PROVENANCE_HEADER));
-    Ok(BasePackage {
-        root: root.to_path_buf(),
-        mcp_capable,
-    })
-}
-
-fn relative_slash(root: &Path, path: &Path) -> Result<String, String> {
-    let rel = path.strip_prefix(root).map_err(|e| e.to_string())?;
-    Ok(rel.to_string_lossy().replace('\\', "/"))
-}
-
-fn sha256_hex(path: &Path) -> Result<String, String> {
-    let mut file = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(hasher
-        .finalize()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect())
-}
-
-fn verify_checksums(root: &Path) -> Result<(), String> {
-    let text = std::fs::read_to_string(root.join(CHECKSUMS)).map_err(|e| e.to_string())?;
-    let mut listed = std::collections::BTreeMap::new();
-    for line in text
-        .trim_start_matches('\u{feff}')
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-    {
-        let (hash, path) = line
-            .split_once("  ")
-            .ok_or_else(|| format!("malformed {CHECKSUMS} line: {line:?}"))?;
-        let path = path.trim_end();
-        if Path::new(path)
-            .components()
-            .any(|c| !matches!(c, Component::Normal(_)))
-        {
-            return Err(format!("{CHECKSUMS} lists an unsafe path: {path:?}"));
-        }
-        listed.insert(path.to_string(), hash.to_ascii_lowercase());
-    }
-    let mut actual = Vec::new();
-    for entry in walkdir::WalkDir::new(root) {
-        let entry = entry.map_err(|e| e.to_string())?;
-        if entry.file_type().is_file() {
-            let rel = relative_slash(root, entry.path())?;
-            if rel != CHECKSUMS {
-                actual.push(rel);
+        let mut base = Self {
+            archive,
+            platform,
+            entries,
+            checksums: None,
+            mcp_capable: false,
+            executable: WINDOWS_EXE.to_string(),
+            bundle_icns: None,
+        };
+        let lacks = |rel: &str| format!("the {} player package lacks {rel}", platform.id());
+        for required in platform.required() {
+            if !base.is_file(required) {
+                return Err(lacks(required));
             }
         }
-    }
-    if let Some(extra) = actual.iter().find(|rel| !listed.contains_key(*rel)) {
-        return Err(format!(
-            "the CEF base package contains {extra}, which its {CHECKSUMS} does not list"
-        ));
-    }
-    for (rel, hash) in &listed {
-        let path = root.join(rel);
-        if !path.is_file() {
-            return Err(format!(
-                "the CEF base package lacks {rel}, listed in its {CHECKSUMS}"
-            ));
+        match platform {
+            Platform::Windows => {},
+            Platform::Macos => {
+                let (executable, icns) = macos_bundle_names(&base.read(MACOS_INFO_PLIST)?)?;
+                for required in [&executable, &icns] {
+                    if !base.is_file(required) {
+                        return Err(lacks(required));
+                    }
+                }
+                let framework = format!("{MACOS_CEF_FRAMEWORK}/");
+                if !base.entries.keys().any(|rel| rel.starts_with(&framework)) {
+                    return Err(lacks(MACOS_CEF_FRAMEWORK));
+                }
+                base.executable = executable;
+                base.bundle_icns = Some(icns);
+            },
+            Platform::Linux => base.executable = base.linux_executable()?,
         }
-        if &sha256_hex(&path)? != hash {
-            return Err(format!(
-                "{rel} does not match the CEF base package's {CHECKSUMS}"
-            ));
+        let steam_library = platform.steam_library();
+        match (steam, base.is_file(steam_library)) {
+            (true, false) => return Err(lacks(steam_library)),
+            (false, true) => {
+                return Err(format!(
+                    "the standard {} player package unexpectedly contains {steam_library}",
+                    platform.id()
+                ));
+            },
+            _ => {},
         }
-    }
-    Ok(())
-}
-
-/// Whether a base-relative path (forward slashes) is left out of the output.
-fn excluded(rel: &str, enable_mcp: bool) -> bool {
-    let first = rel.split('/').next().unwrap_or("");
-    first == GAME_DIR
-        || rel == CHECKSUMS
-        || rel == PROVENANCE
-        // The base's sample game's window icon; the output gets the resolved one.
-        || rel == PROJECT_ICON_FILE
-        // Provenance of the base's own sample game, which the output no longer contains.
-        || rel.starts_with("provenance/visual-novel-template-")
-        || (!enable_mcp && (first == MCP_DIR || rel.starts_with("provenance/mcp-")))
-}
-
-/// Copies `base` to `dest` (which must not exist) with `game\` replaced by `content_dir`,
-/// applies the MCP choice and the resolved project icon (`patch_exe(play.exe, ico)` patches
-/// the executable's icon resource; rcedit in `bundle.rs`), rewrites `PROVENANCE.txt` and
-/// regenerates `SHA256SUMS.txt`.
-pub fn assemble(
-    base: &BasePackage,
-    content_dir: &Path,
-    dest: &Path,
-    enable_mcp: bool,
-    icon: &ProjectIcon,
-    patch_exe: &dyn Fn(&Path, &Path) -> Result<(), String>,
-) -> Result<(), String> {
-    if enable_mcp && !base.mcp_capable {
-        return Err(
-            "the local MCP bridge is enabled, but the selected CEF base package is not a complete MCP-enabled package \
-             (download the visual-novel-template-roves-cef-mcp-windows-x64 artifact of a successful engine run, or turn MCP off)"
-                .to_string(),
-        );
-    }
-    if !content_dir.join("index.html").is_file() {
-        return Err(format!(
-            "{} has no index.html at its root",
-            content_dir.display()
-        ));
-    }
-    if dest.exists() {
-        return Err(format!("{} already exists", dest.display()));
-    }
-
-    let root = &base.root;
-    let walker = walkdir::WalkDir::new(root)
-        .into_iter()
-        .filter_entry(|entry| {
-            relative_slash(root, entry.path())
-                .map_or(true, |rel| rel.is_empty() || !excluded(&rel, enable_mcp))
-        });
-    for entry in walker {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let target = dest.join(entry.path().strip_prefix(root).map_err(|e| e.to_string())?);
-        if entry.file_type().is_dir() {
-            std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
-        } else {
-            std::fs::copy(entry.path(), &target)
-                .map_err(|e| format!("{}: {e}", entry.path().display()))?;
+        if base.is_file(CHECKSUMS) {
+            base.checksums = Some(base.verify_checksums()?);
         }
-    }
-    for entry in walkdir::WalkDir::new(content_dir) {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let target = dest.join(GAME_DIR).join(
-            entry
-                .path()
-                .strip_prefix(content_dir)
-                .map_err(|e| e.to_string())?,
-        );
-        if entry.file_type().is_dir() {
-            std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
-        } else {
-            std::fs::copy(entry.path(), &target)
-                .map_err(|e| format!("{}: {e}", entry.path().display()))?;
-        }
+        base.mcp_capable = platform == Platform::Windows
+            && MCP_REQUIRED.iter().all(|file| base.is_file(file))
+            && String::from_utf8_lossy(&base.read(PROVENANCE)?)
+                .lines()
+                .any(|line| line.starts_with(MCP_PROVENANCE_HEADER));
+        Ok(base)
     }
 
-    if let Some(png) = &icon.window_png {
-        std::fs::copy(png, dest.join(PROJECT_ICON_FILE))
-            .map_err(|e| format!("{}: {e}", png.display()))?;
-    }
-    if let Some(ico) = &icon.exe_ico {
-        patch_exe(&dest.join("play.exe"), ico)?;
-    }
-
-    let provenance = std::fs::read_to_string(root.join(PROVENANCE)).map_err(|e| e.to_string())?;
-    std::fs::write(
-        dest.join(PROVENANCE),
-        rewrite_provenance(&provenance, enable_mcp, icon),
-    )
-    .map_err(|e| e.to_string())?;
-    write_checksums(dest)?;
-
-    let marker = dest.join(MCP_DIR).join("enabled");
-    if enable_mcp != marker.is_file() || (!enable_mcp && dest.join(MCP_DIR).exists()) {
-        return Err(
-            "internal error: the MCP state of the assembled package does not match the setting"
-                .to_string(),
-        );
-    }
-    Ok(())
-}
-
-fn rewrite_provenance(base: &str, enable_mcp: bool, icon: &ProjectIcon) -> String {
-    let mut lines: Vec<&str> = base.trim_start_matches('\u{feff}').lines().collect();
-    if !enable_mcp {
-        if let Some(at) = lines
+    /// The only root-level file with an execute bit that is neither a CEF helper nor a
+    /// shared library (the release zip keeps Unix modes, made with Info-ZIP).
+    fn linux_executable(&self) -> Result<String, String> {
+        let candidates: Vec<&String> = self
+            .entries
             .iter()
-            .position(|line| line.starts_with(MCP_PROVENANCE_HEADER))
-        {
-            lines.truncate(at);
+            .filter(|(rel, entry)| {
+                !entry.is_dir
+                    && !rel.contains('/')
+                    && entry.unix_mode.is_some_and(|mode| mode & 0o111 != 0)
+                    && !LINUX_NOT_THE_PLAYER.contains(&rel.as_str())
+                    && !rel.contains(".so")
+            })
+            .map(|(rel, _)| rel)
+            .collect();
+        match candidates.as_slice() {
+            [only] => Ok(only.to_string()),
+            [] => Err("the linux player package has no executable (were its Unix modes lost?)".to_string()),
+            more => Err(format!("the linux player package has more than one candidate executable: {more:?}")),
         }
     }
-    while lines.last().is_some_and(|line| line.trim().is_empty()) {
-        lines.pop();
-    }
-    let mut out = lines.join("\r\n");
-    out.push_str(
-        "\r\n\r\nGame replaced by Roves Packmaster\r\n\
-         \x20 game\\ contains the developer's own build output, not the sample game described in\r\n\
-         \x20 the \"Game\" section above; the sample game's provenance files were removed. The\r\n",
-    );
-    out.push_str(if icon.exe_ico.is_some() {
-        "  engine files (play.exe, play.dll, CEF runtime) are the base package's; only play.exe's\r\n\
-         \x20 icon resource was replaced (electron/rcedit v2.0.0).\r\n"
-    } else {
-        "  engine files (play.exe, play.dll, CEF runtime) are the base package's, unmodified.\r\n"
-    });
-    if !icon.summary.is_empty() {
-        out.push_str(&format!("  icons: {}\r\n", icon.summary));
-    }
-    out.push_str(if enable_mcp {
-        "  Local MCP bridge: ON (mcp\\enabled kept). Development and playtests only: any program\r\n\
-         \x20 running as your Windows user can read and control the running game. Never ship to players.\r\n"
-    } else {
-        "  Local MCP bridge: OFF (no mcp\\ folder, no activation marker).\r\n"
-    });
-    out
-}
 
-fn write_checksums(dest: &Path) -> Result<(), String> {
-    let mut lines = Vec::new();
-    for entry in walkdir::WalkDir::new(dest).sort_by_file_name() {
-        let entry = entry.map_err(|e| e.to_string())?;
-        if entry.file_type().is_file() {
-            let rel = relative_slash(dest, entry.path())?;
-            if rel != CHECKSUMS {
-                lines.push((rel.clone(), format!("{}  {rel}", sha256_hex(entry.path())?)));
+    fn is_file(&self, rel: &str) -> bool {
+        self.entries.get(rel).is_some_and(|entry| !entry.is_dir)
+    }
+
+    fn read(&mut self, rel: &str) -> Result<Vec<u8>, String> {
+        let entry = *self
+            .entries
+            .get(rel)
+            .ok_or_else(|| format!("the player package lacks {rel}"))?;
+        let mut file = self.archive.by_index(entry.index).map_err(|e| format!("{rel}: {e}"))?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).map_err(|e| format!("{rel}: {e}"))?;
+        Ok(bytes)
+    }
+
+    fn extract(&mut self, rel: &str, dest: &Path) -> Result<(), String> {
+        let bytes = self.read(rel)?;
+        std::fs::write(dest, bytes).map_err(|e| format!("{}: {e}", dest.display()))
+    }
+
+    /// The Windows base's `roves.ico`, extracted into `work_dir` (`None` elsewhere or for
+    /// bases without it).
+    pub fn fallback_ico(&mut self, work_dir: &Path) -> Result<Option<PathBuf>, String> {
+        if self.platform != Platform::Windows || !self.is_file(ROVES_FALLBACK_ICO) {
+            return Ok(None);
+        }
+        std::fs::create_dir_all(work_dir).map_err(|e| e.to_string())?;
+        let dest = work_dir.join(ROVES_FALLBACK_ICO);
+        self.extract(ROVES_FALLBACK_ICO, &dest)?;
+        Ok(Some(dest))
+    }
+
+    fn verify_checksums(&mut self) -> Result<BTreeMap<String, String>, String> {
+        let text = String::from_utf8(self.read(CHECKSUMS)?).map_err(|e| format!("{CHECKSUMS}: {e}"))?;
+        let mut listed = BTreeMap::new();
+        for line in text.trim_start_matches('\u{feff}').lines().filter(|l| !l.trim().is_empty()) {
+            let (hash, path) = line
+                .split_once("  ")
+                .ok_or_else(|| format!("malformed {CHECKSUMS} line: {line:?}"))?;
+            listed.insert(path.trim_end().to_string(), hash.to_ascii_lowercase());
+        }
+        let files: Vec<(String, Entry)> = self
+            .entries
+            .iter()
+            .filter(|(rel, entry)| !entry.is_dir && rel.as_str() != CHECKSUMS)
+            .map(|(rel, entry)| (rel.clone(), *entry))
+            .collect();
+        if let Some((extra, _)) = files.iter().find(|(rel, _)| !listed.contains_key(rel)) {
+            return Err(format!("the player package contains {extra}, which its {CHECKSUMS} does not list"));
+        }
+        if let Some(missing) = listed.keys().find(|rel| !self.is_file(rel)) {
+            return Err(format!("the player package lacks {missing}, listed in its {CHECKSUMS}"));
+        }
+        for (rel, entry) in files {
+            let mut file = self.archive.by_index(entry.index).map_err(|e| format!("{rel}: {e}"))?;
+            let mut hasher = Sha256::new();
+            std::io::copy(&mut file, &mut hasher).map_err(|e| format!("{rel}: {e}"))?;
+            if hex(&hasher.finalize()) != listed[&rel] {
+                return Err(format!("{rel} does not match the player package's {CHECKSUMS}"));
             }
         }
+        Ok(listed)
     }
-    lines.sort();
-    let mut file = std::fs::File::create(dest.join(CHECKSUMS)).map_err(|e| e.to_string())?;
-    for (_, line) in lines {
-        write!(file, "{line}\r\n").map_err(|e| e.to_string())?;
-    }
-    Ok(())
+}
+
+/// Replaces the main icon group of the Windows executable `exe` (in place) with the frames of
+/// `ico`, like rcedit's `--set-icon` but in-process with the `editpe` crate, so it works on
+/// every host. The previous main group and the icons only it used are removed (the sample
+/// game's icon must not survive); every other resource (version info, manifest, other icon
+/// groups) and the rest of the image are kept.
+pub fn set_exe_icon(exe: &Path, ico: &Path) -> Result<(), String> {
+    let fail = |e: &dyn std::fmt::Display| format!("setting the icon of {}: {e}", exe.display());
+    let ico = std::fs::read(ico).map_err(|e| format!("{}: {e}", ico.display()))?;
+    let mut image = editpe::Image::parse_file(exe).map_err(|e| fail(&e))?;
+    let mut resources = image.resource_directory().cloned().unwrap_or_default();
+    resources.remove_main_icon().map_err(|e| fail(&e))?;
+    resources.set_main_icon(ico).map_err(|e| fail(&e))?;
+    image.set_resource_directory(resources).map_err(|e| fail(&e))?;
+    image.write_file(exe).map_err(|e| fail(&e))
+}
+
+/// `(Contents/MacOS/<CFBundleExecutable>, Contents/Resources/<CFBundleIconFile>.icns)`, read
+/// from `Info.plist` like roves-action's `cef/assemble.sh` does with PlistBuddy.
+fn macos_bundle_names(info_plist: &[u8]) -> Result<(String, String), String> {
+    let plist = plist::Value::from_reader(std::io::Cursor::new(info_plist)).map_err(|e| format!("{MACOS_INFO_PLIST}: {e}"))?;
+    let key = |name: &str| {
+        plist
+            .as_dictionary()
+            .and_then(|dict| dict.get(name))
+            .and_then(plist::Value::as_string)
+            .filter(|value| !value.is_empty() && !value.contains('/'))
+            .map(str::to_string)
+            .ok_or_else(|| format!("{MACOS_INFO_PLIST} has no usable {name}"))
+    };
+    let executable = key("CFBundleExecutable")?;
+    let icon = key("CFBundleIconFile")?;
+    Ok((
+        format!("Contents/MacOS/{executable}"),
+        format!("Contents/Resources/{}.icns", icon.trim_end_matches(".icns")),
+    ))
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Resolved project icon (see the module documentation).
 #[derive(Debug, Default)]
 pub struct ProjectIcon {
-    /// Copied as `icon.png` next to `play.exe`; `None`: the player shows the Roves logo.
+    /// Written as the window `icon.png`; `None`: the player shows the Roves logo.
     pub window_png: Option<PathBuf>,
-    /// Patched into `play.exe`; `None`: `play.exe` keeps the base's icon.
+    /// Windows: patched into `play.exe`; `None`: `play.exe` keeps the base's icon.
     pub exe_ico: Option<PathBuf>,
-    /// `window <project|roves> (...); play.exe <project|roves|unchanged> (...)`.
+    /// macOS: replaces the bundle `.icns`; `None`: the base's Roves icon stays.
+    pub app_icns: Option<PathBuf>,
+    /// `window <project|roves> (...)`, plus the platform's executable/bundle icon.
     pub summary: String,
-    /// Invalid icon files found in the build output and skipped.
+    /// Invalid icon files found in the build output and skipped, or icons not applied.
     pub warnings: Vec<String>,
 }
 
@@ -365,10 +452,7 @@ fn read_icon_file(path: &Path) -> Result<Vec<u8>, String> {
         return Err("not a file".to_string());
     }
     if metadata.len() > MAX_ICON_BYTES {
-        return Err(format!(
-            "{} bytes exceeds the {MAX_ICON_BYTES}-byte limit",
-            metadata.len()
-        ));
+        return Err(format!("{} bytes exceeds the {MAX_ICON_BYTES}-byte limit", metadata.len()));
     }
     std::fs::read(path).map_err(|e| e.to_string())
 }
@@ -378,9 +462,7 @@ fn check_edge(width: u32, height: u32) -> Result<(), String> {
         return Err(format!("{width}x{height} is not square"));
     }
     if !(MIN_ICON_PX..=MAX_ICON_PX).contains(&width) {
-        return Err(format!(
-            "{width}x{height} is outside {MIN_ICON_PX}..={MAX_ICON_PX} px"
-        ));
+        return Err(format!("{width}x{height} is outside {MIN_ICON_PX}..={MAX_ICON_PX} px"));
     }
     Ok(())
 }
@@ -395,14 +477,9 @@ fn check_png(path: &Path) -> Result<u32, String> {
     let be = |at: usize| u32::from_be_bytes([data[at], data[at + 1], data[at + 2], data[at + 3]]);
     let (width, height) = (be(16), be(20));
     check_edge(width, height)?;
-    let image = image::load_from_memory_with_format(&data, image::ImageFormat::Png)
-        .map_err(|e| format!("decode: {e}"))?;
+    let image = image::load_from_memory_with_format(&data, image::ImageFormat::Png).map_err(|e| format!("decode: {e}"))?;
     if (image.width(), image.height()) != (width, height) {
-        return Err(format!(
-            "decoded as {}x{}",
-            image.width(),
-            image.height()
-        ));
+        return Err(format!("decoded as {}x{}", image.width(), image.height()));
     }
     Ok(width)
 }
@@ -432,8 +509,7 @@ fn ico_frames(data: &[u8]) -> Result<Vec<image::DynamicImage>, String> {
             single.extend_from_slice(&data[entry..entry + 12]);
             single.extend_from_slice(&22u32.to_le_bytes());
             single.extend_from_slice(&data[offset..end]);
-            image::load_from_memory_with_format(&single, image::ImageFormat::Ico)
-                .map_err(|e| format!("decode frame {i}: {e}"))
+            image::load_from_memory_with_format(&single, image::ImageFormat::Ico).map_err(|e| format!("decode frame {i}: {e}"))
         })
         .collect()
 }
@@ -451,9 +527,7 @@ fn check_ico(path: &Path) -> Result<u32, String> {
     let largest = largest_frame(ico_frames(&data)?).ok_or("no frame")?;
     let (width, height) = (largest.width(), largest.height());
     if width != height || width < MIN_ICON_PX {
-        return Err(format!(
-            "largest frame {width}x{height} is not a square of at least {MIN_ICON_PX} px"
-        ));
+        return Err(format!("largest frame {width}x{height} is not a square of at least {MIN_ICON_PX} px"));
     }
     Ok(width)
 }
@@ -478,13 +552,14 @@ fn pick_icon(
     Ok(None)
 }
 
-/// Resolves the project icon for a package assembled from `base_root`, writing generated
-/// files into `work_dir` (created if needed). `explicit_png` is Packmaster's Release info
-/// icon.
+/// Resolves the project icon for `platform`, writing generated files into `work_dir`
+/// (created if needed). `explicit_png` is Packmaster's Release info icon; `fallback_ico` the
+/// Windows base's `roves.ico` (`Base::fallback_ico`).
 pub fn resolve_project_icon(
+    platform: Platform,
     explicit_png: Option<&Path>,
     content_dir: &Path,
-    base_root: &Path,
+    fallback_ico: Option<&Path>,
     work_dir: &Path,
 ) -> Result<ProjectIcon, String> {
     std::fs::create_dir_all(work_dir).map_err(|e| e.to_string())?;
@@ -505,7 +580,7 @@ pub fn resolve_project_icon(
     )?;
 
     let (window_png, window) = if let Some((path, label, edge)) = &png {
-        (Some(path.clone()), format!("project ({label} {edge}x{edge})"))
+        (Some((path.clone(), label.clone(), *edge)), format!("project ({label} {edge}x{edge})"))
     } else if let Some((path, label, edge)) = &ico {
         let data = read_icon_file(path)?;
         let frame = largest_frame(ico_frames(&data)?).ok_or("no frame")?;
@@ -514,39 +589,416 @@ pub fn resolve_project_icon(
             .to_rgba8()
             .save_with_format(&out, image::ImageFormat::Png)
             .map_err(|e| format!("writing {}: {e}", out.display()))?;
-        check_png(&out)?;
-        (Some(out), format!("project (largest frame of {label} {edge}x{edge})"))
+        let label = format!("largest frame of {label}");
+        (Some((out, label.clone(), check_png(&work_dir.join(PROJECT_ICON_FILE))?)), format!("project ({label} {edge}x{edge})"))
     } else {
         (None, "roves (no project icon: embedded Roves logo)".to_string())
     };
 
-    let fallback = base_root.join(ROVES_FALLBACK_ICO);
-    let (exe_ico, exe) = if let Some((path, label, edge)) = &png {
-        let out = work_dir.join("play.ico");
-        let sizes: Vec<u32> = ICO_SIZES.into_iter().filter(|&size| size <= *edge).collect();
-        crate::icon::generate_ico_with_sizes(path, &out, &sizes)?;
-        check_ico(&out)?;
-        (Some(out), format!("project (ICO generated from {label})"))
-    } else if let Some((path, label, _)) = &ico {
-        (Some(path.clone()), format!("project ({label})"))
-    } else if fallback.is_file() {
-        check_ico(&fallback).map_err(|e| format!("the base's {ROVES_FALLBACK_ICO}: {e}"))?;
-        (Some(fallback), "roves (Roves fallback icon)".to_string())
-    } else {
-        (None, "unchanged (no project icon and no Roves fallback icon in the base)".to_string())
+    let mut icon = ProjectIcon {
+        window_png: window_png.as_ref().map(|(path, _, _)| path.clone()),
+        ..ProjectIcon::default()
     };
+    let second = match platform {
+        Platform::Windows => {
+            let (exe_ico, exe) = if let Some((path, label, edge)) = &png {
+                let out = work_dir.join("play.ico");
+                let sizes: Vec<u32> = ICO_SIZES.into_iter().filter(|&size| size <= *edge).collect();
+                crate::icon::generate_ico_with_sizes(path, &out, &sizes)?;
+                check_ico(&out)?;
+                (Some(out), format!("project (ICO generated from {label})"))
+            } else if let Some((path, label, _)) = &ico {
+                (Some(path.clone()), format!("project ({label})"))
+            } else if let Some(fallback) = fallback_ico {
+                check_ico(fallback).map_err(|e| format!("the base's {ROVES_FALLBACK_ICO}: {e}"))?;
+                (Some(fallback.to_path_buf()), "roves (Roves fallback icon)".to_string())
+            } else {
+                (None, "unchanged (no project icon and no Roves fallback icon in the base)".to_string())
+            };
+            icon.exe_ico = exe_ico;
+            format!("; play.exe {exe}")
+        },
+        Platform::Macos => {
+            if let Some((path, label, _)) = &window_png {
+                let out = work_dir.join("app.icns");
+                crate::icon::generate_icns(path, &out)?;
+                icon.app_icns = Some(out);
+                format!("; app icon project (ICNS generated from {label})")
+            } else {
+                "; app icon roves (the base's Roves icon)".to_string()
+            }
+        },
+        Platform::Linux => String::new(),
+    };
+    icon.summary = format!("window {window}{second}");
+    icon.warnings = warnings;
+    Ok(icon)
+}
 
-    Ok(ProjectIcon {
-        window_png,
-        exe_ico,
-        summary: format!("window {window}; play.exe {exe}"),
-        warnings,
-    })
+pub struct AssembleOptions<'a> {
+    /// The developer's build output (must contain `index.html`).
+    pub content_dir: &'a Path,
+    /// Top-level folder of the output zip: `<name>` (Windows/Linux) or `<name>.app` (macOS).
+    pub top_folder: &'a str,
+    /// Keep the Windows base's local MCP bridge.
+    pub enable_mcp: bool,
+    /// Written to `steam_appid.txt` next to the executable.
+    pub steam_app_id: Option<&'a str>,
+    pub icon: &'a ProjectIcon,
+    /// Scratch directory (the patched `play.exe`).
+    pub work_dir: &'a Path,
+}
+
+enum Source {
+    File(PathBuf),
+    Bytes(Vec<u8>),
+}
+
+/// Writes `out_zip`: the base's entries (raw copies) with the game replaced by
+/// `opts.content_dir`, the MCP choice, the resolved project icon (`patch_exe(play.exe, ico)`
+/// patches the Windows executable's icon resource, `set_exe_icon` in production), `steam_appid.txt`,
+/// a rewritten `PROVENANCE.txt` and a regenerated `SHA256SUMS.txt` when the base has them.
+pub fn assemble(
+    base: &mut Base,
+    opts: &AssembleOptions,
+    out_zip: &Path,
+    patch_exe: &dyn Fn(&Path, &Path) -> Result<(), String>,
+) -> Result<(), String> {
+    let platform = base.platform;
+    if opts.enable_mcp && platform != Platform::Windows {
+        return Err(format!("the local MCP bridge only exists in the Windows player, not for {}", platform.id()));
+    }
+    if opts.enable_mcp && !base.mcp_capable {
+        return Err(
+            "the local MCP bridge is enabled, but the Windows player package is not a complete MCP-enabled package"
+                .to_string(),
+        );
+    }
+    if !opts.content_dir.join("index.html").is_file() {
+        return Err(format!("{} has no index.html at its root", opts.content_dir.display()));
+    }
+    if out_zip.exists() {
+        std::fs::remove_file(out_zip).map_err(|e| format!("{}: {e}", out_zip.display()))?;
+    }
+    let result = write_package(base, opts, out_zip, patch_exe);
+    if result.is_err() {
+        std::fs::remove_file(out_zip).ok();
+    }
+    result
+}
+
+fn write_package(
+    base: &mut Base,
+    opts: &AssembleOptions,
+    out_zip: &Path,
+    patch_exe: &dyn Fn(&Path, &Path) -> Result<(), String>,
+) -> Result<(), String> {
+    let platform = base.platform;
+    let resources = platform.resources_dir();
+    let game_dir = join(resources, GAME_DIR);
+    let window_icon = join(resources, PROJECT_ICON_FILE);
+    let steam_app_id_file = join(platform.exe_dir(), STEAM_APP_ID_FILE);
+
+    // Files Packmaster writes, (package-relative path, source).
+    let mut added: Vec<(String, Source)> = Vec::new();
+    let mut added_dirs = vec![game_dir.clone()];
+    for entry in walkdir::WalkDir::new(opts.content_dir).min_depth(1).sort_by_file_name() {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let rel = entry.path().strip_prefix(opts.content_dir).map_err(|e| e.to_string())?;
+        let rel = format!("{game_dir}/{}", rel.to_string_lossy().replace('\\', "/"));
+        if entry.file_type().is_dir() {
+            added_dirs.push(rel);
+        } else {
+            added.push((rel, Source::File(entry.path().to_path_buf())));
+        }
+    }
+    if let Some(png) = &opts.icon.window_png {
+        added.push((window_icon.clone(), Source::File(png.clone())));
+    }
+    if let (Some(icns), Some(bundle_icns)) = (&opts.icon.app_icns, &base.bundle_icns) {
+        added.push((bundle_icns.clone(), Source::File(icns.clone())));
+    }
+    if let Some(ico) = &opts.icon.exe_ico {
+        std::fs::create_dir_all(opts.work_dir).map_err(|e| e.to_string())?;
+        let exe = opts.work_dir.join(WINDOWS_EXE);
+        base.extract(WINDOWS_EXE, &exe)?;
+        patch_exe(&exe, ico)?;
+        added.push((WINDOWS_EXE.to_string(), Source::File(exe)));
+    }
+    if let Some(app_id) = opts.steam_app_id {
+        added.push((steam_app_id_file.clone(), Source::Bytes(app_id.as_bytes().to_vec())));
+    }
+    if base.is_file(PROVENANCE) {
+        let provenance = String::from_utf8_lossy(&base.read(PROVENANCE)?).into_owned();
+        added.push((
+            PROVENANCE.to_string(),
+            Source::Bytes(rewrite_provenance(&provenance, platform, &base.executable, opts.enable_mcp, opts.icon).into_bytes()),
+        ));
+    }
+
+    let replaced: std::collections::BTreeSet<&str> = added.iter().map(|(rel, _)| rel.as_str()).collect();
+    let excluded = |rel: &str| {
+        let first = rel.split('/').next().unwrap_or("");
+        rel == game_dir
+            || rel.starts_with(&format!("{game_dir}/"))
+            || rel == window_icon
+            || rel == steam_app_id_file
+            || rel == CHECKSUMS
+            || replaced.contains(rel)
+            // Provenance of the base's own sample game, which the output no longer contains.
+            || rel.starts_with("provenance/visual-novel-template-")
+            || (!opts.enable_mcp && (first == MCP_DIR || rel.starts_with("provenance/mcp-")))
+    };
+    let kept: Vec<(String, Entry)> = base
+        .entries
+        .iter()
+        .filter(|(rel, _)| !excluded(rel))
+        .map(|(rel, entry)| (rel.clone(), *entry))
+        .collect();
+
+    let top = opts.top_folder;
+    let file = std::fs::File::create(out_zip).map_err(|e| format!("{}: {e}", out_zip.display()))?;
+    let mut writer = zip::ZipWriter::new(BufWriter::new(file));
+    let mut hashes = BTreeMap::new();
+    for (rel, entry) in &kept {
+        let raw = base.archive.by_index_raw(entry.index).map_err(|e| format!("{rel}: {e}"))?;
+        let name = if entry.is_dir { format!("{top}/{rel}/") } else { format!("{top}/{rel}") };
+        writer.raw_copy_file_rename(raw, name).map_err(|e| format!("{rel}: {e}"))?;
+        if let (false, Some(sums)) = (entry.is_dir, &base.checksums) {
+            hashes.insert(rel.clone(), sums[rel].clone());
+        }
+    }
+    // Unix entries on every host, like the engine's own zips (a DOS entry would hide the modes).
+    let dir_options = SimpleFileOptions::default()
+        .system(zip::System::Unix)
+        .unix_permissions(DIR_MODE);
+    for dir in &added_dirs {
+        writer
+            .add_directory(format!("{top}/{dir}/"), dir_options)
+            .map_err(|e| format!("{dir}: {e}"))?;
+    }
+    let file_options = SimpleFileOptions::default()
+        .system(zip::System::Unix)
+        .compression_method(zip::CompressionMethod::Deflated)
+        .large_file(true)
+        .unix_permissions(FILE_MODE);
+    for (rel, source) in &added {
+        let options = if *rel == base.executable { file_options.unix_permissions(EXE_MODE) } else { file_options };
+        writer
+            .start_file(format!("{top}/{rel}"), options)
+            .map_err(|e| format!("{rel}: {e}"))?;
+        let mut hasher = Sha256::new();
+        match source {
+            Source::Bytes(bytes) => {
+                hasher.update(bytes);
+                writer.write_all(bytes).map_err(|e| format!("{rel}: {e}"))?;
+            },
+            Source::File(path) => {
+                let mut reader = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+                let mut buffer = vec![0u8; 1 << 16];
+                loop {
+                    let read = reader.read(&mut buffer).map_err(|e| format!("{}: {e}", path.display()))?;
+                    if read == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..read]);
+                    writer.write_all(&buffer[..read]).map_err(|e| format!("{rel}: {e}"))?;
+                }
+            },
+        }
+        hashes.insert(rel.clone(), hex(&hasher.finalize()));
+    }
+    if base.checksums.is_some() {
+        writer
+            .start_file(format!("{top}/{CHECKSUMS}"), file_options)
+            .map_err(|e| e.to_string())?;
+        for (rel, hash) in &hashes {
+            write!(writer, "{hash}  {rel}\r\n").map_err(|e| e.to_string())?;
+        }
+    }
+
+    let has_marker = hashes.contains_key("mcp/enabled")
+        || kept.iter().any(|(rel, _)| rel == "mcp/enabled");
+    let has_mcp_dir = kept.iter().any(|(rel, _)| rel.split('/').next() == Some(MCP_DIR));
+    if opts.enable_mcp != has_marker || (!opts.enable_mcp && has_mcp_dir) {
+        return Err("internal error: the MCP state of the assembled package does not match the setting".to_string());
+    }
+    writer
+        .finish()
+        .map_err(|e| format!("writing {}: {e}", out_zip.display()))?
+        .flush()
+        .map_err(|e| format!("writing {}: {e}", out_zip.display()))
+}
+
+fn rewrite_provenance(base: &str, platform: Platform, exe: &str, enable_mcp: bool, icon: &ProjectIcon) -> String {
+    let mut lines: Vec<&str> = base.trim_start_matches('\u{feff}').lines().collect();
+    if !enable_mcp {
+        if let Some(at) = lines.iter().position(|line| line.starts_with(MCP_PROVENANCE_HEADER)) {
+            lines.truncate(at);
+        }
+    }
+    while lines.last().is_some_and(|line| line.trim().is_empty()) {
+        lines.pop();
+    }
+    let mut out = lines.join("\r\n");
+    out.push_str(
+        "\r\n\r\nGame replaced by Roves Packmaster\r\n\
+         \x20 the game folder contains the developer's own build output, not the sample game\r\n\
+         \x20 described above; the sample game's provenance files were removed.\r\n",
+    );
+    out.push_str(&if icon.exe_ico.is_some() {
+        format!("  engine files are the base package's; only {exe}'s icon resource was replaced\r\n  (editpe).\r\n")
+    } else {
+        "  engine files are the base package's, unmodified.\r\n".to_string()
+    });
+    if !icon.summary.is_empty() {
+        out.push_str(&format!("  icons: {}\r\n", icon.summary));
+    }
+    if platform == Platform::Windows {
+        out.push_str(if enable_mcp {
+            "  Local MCP bridge: ON (mcp\\enabled kept). Development and playtests only: any program\r\n\
+             \x20 running as your Windows user can read and control the running game. Never ship to players.\r\n"
+        } else {
+            "  Local MCP bridge: OFF (no mcp\\ folder, no activation marker).\r\n"
+        });
+    }
+    out
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const EXEC: u32 = 0o755;
+    const LINUX_EXE: &str = "roves-cef-linux-gate";
+    const MACOS_EXE: &str = "Contents/MacOS/roves-cef-macos-gate";
+    const MACOS_ICNS: &str = "Contents/Resources/roves-cef-macos-gate.icns";
+    /// The keys cef's bundler writes that the packaging reads.
+    const MACOS_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>roves-cef-macos-gate</string>
+<key>CFBundleIconFile</key><string>roves-cef-macos-gate</string>
+</dict></plist>"#;
+
+    /// `(package-relative path, bytes, unix mode)`.
+    type Files = BTreeMap<String, (Vec<u8>, u32)>;
+
+    fn put(files: &mut Files, rel: &str, bytes: &[u8], mode: u32) {
+        files.insert(rel.to_string(), (bytes.to_vec(), mode));
+    }
+
+    fn with_checksums(files: &mut Files) {
+        let mut sums = String::new();
+        for (rel, (bytes, _)) in files.iter() {
+            sums.push_str(&format!("{}  {rel}\r\n", hex(&Sha256::digest(bytes))));
+        }
+        put(files, CHECKSUMS, sums.as_bytes(), FILE_MODE);
+    }
+
+    /// Writes `files` (and directory entries for their parents) under `top` (`""`: zip root).
+    fn write_zip(path: &Path, top: &str, files: &Files) -> PathBuf {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
+        let prefix = if top.is_empty() { String::new() } else { format!("{top}/") };
+        let mut dirs = std::collections::BTreeSet::new();
+        for rel in files.keys() {
+            let mut parent = Path::new(rel).parent();
+            while let Some(dir) = parent.filter(|d| !d.as_os_str().is_empty()) {
+                dirs.insert(dir.to_string_lossy().replace('\\', "/"));
+                parent = dir.parent();
+            }
+        }
+        if !prefix.is_empty() {
+            writer.add_directory(prefix.clone(), SimpleFileOptions::default()).unwrap();
+        }
+        for dir in dirs {
+            writer.add_directory(format!("{prefix}{dir}/"), SimpleFileOptions::default()).unwrap();
+        }
+        for (rel, (bytes, mode)) in files {
+            let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+            // unix_permissions() keeps only 0o777; the external attributes carry setuid too.
+            let options = options
+                .system(zip::System::Unix)
+                .external_attributes((0o100000 | mode) << 16);
+            writer.start_file(format!("{prefix}{rel}"), options).unwrap();
+            writer.write_all(bytes).unwrap();
+        }
+        writer.finish().unwrap();
+        path.to_path_buf()
+    }
+
+    /// The output zip: `(name -> (bytes, unix mode))`, directories with a trailing slash.
+    fn read_zip(path: &Path) -> BTreeMap<String, (Vec<u8>, Option<u32>)> {
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+        (0..archive.len())
+            .map(|i| {
+                let mut file = archive.by_index(i).unwrap();
+                let mut bytes = Vec::new();
+                file.read_to_end(&mut bytes).unwrap();
+                // unix_mode() clears setuid/setgid/sticky; the raw attributes keep them.
+                let mode = (file.external_attributes() >> 16 != 0).then(|| file.external_attributes() >> 16);
+                (file.name().unwrap().to_string(), (bytes, mode))
+            })
+            .collect()
+    }
+
+    fn windows_files(mcp: bool) -> Files {
+        let mut files = Files::new();
+        for file in ["play.exe", "play.dll", "play.exe.manifest", "libcef.dll", "locales/en-US.pak"] {
+            put(&mut files, file, file.as_bytes(), FILE_MODE);
+        }
+        put(&mut files, "game/index.html", b"<p>sample</p>", FILE_MODE);
+        put(&mut files, "game/assets/sample.js", b"sample", FILE_MODE);
+        put(&mut files, "provenance/Cargo.lock", b"lock", FILE_MODE);
+        put(&mut files, "provenance/visual-novel-template-npm-ls.txt", b"template", FILE_MODE);
+        let mut provenance = String::from("Engine\r\n  commit abc\r\n\r\nGame (folder game\\)\r\n  template\r\n");
+        if mcp {
+            for file in MCP_REQUIRED {
+                put(&mut files, file, b"mcp", FILE_MODE);
+            }
+            put(&mut files, "provenance/mcp-npm-ls.txt", b"mcp deps", FILE_MODE);
+            // Hidden files are part of the package too (listed in SHA256SUMS.txt).
+            put(&mut files, "mcp/node_modules/.package-lock.json", b"{}", FILE_MODE);
+            provenance.push_str(
+                "\r\nMCP-enabled development package (enable-mcp=true; never ship to players)\r\n  mcp\\enabled\r\n",
+            );
+        }
+        put(&mut files, PROVENANCE, provenance.as_bytes(), FILE_MODE);
+        files
+    }
+
+    fn windows_base(dir: &Path, mcp: bool) -> PathBuf {
+        let mut files = windows_files(mcp);
+        with_checksums(&mut files);
+        write_zip(&dir.join("windows.zip"), "roves", &files)
+    }
+
+    fn linux_base(dir: &Path, steam: bool) -> PathBuf {
+        let mut files = Files::new();
+        put(&mut files, LINUX_EXE, b"elf", EXEC);
+        put(&mut files, "libcef.so", b"cef", EXEC);
+        put(&mut files, "chrome-sandbox", b"sandbox", 0o4755);
+        put(&mut files, "icudtl.dat", b"icu", FILE_MODE);
+        put(&mut files, "resources.pak", b"pak", FILE_MODE);
+        put(&mut files, "game/index.html", b"<p>sample</p>", FILE_MODE);
+        if steam {
+            put(&mut files, "libsteam_api.so", b"steam", EXEC);
+        }
+        write_zip(&dir.join("linux.zip"), "roves-cef-linux", &files)
+    }
+
+    fn macos_base(dir: &Path) -> PathBuf {
+        let mut files = Files::new();
+        put(&mut files, MACOS_INFO_PLIST, MACOS_PLIST.as_bytes(), FILE_MODE);
+        put(&mut files, MACOS_EXE, b"macho", EXEC);
+        put(&mut files, MACOS_ICNS, b"roves icns", FILE_MODE);
+        put(&mut files, &format!("{MACOS_CEF_FRAMEWORK}/Chromium Embedded Framework"), b"cef", EXEC);
+        put(&mut files, "Contents/Frameworks/roves-cef-macos-gate Helper.app/Contents/Info.plist", b"<plist/>", FILE_MODE);
+        put(&mut files, "Contents/Resources/game/index.html", b"<p>sample</p>", FILE_MODE);
+        put(&mut files, "Contents/Resources/icon.png", b"sample icon", FILE_MODE);
+        write_zip(&dir.join("macos.zip"), "roves-cef-macos-gate.app", &files)
+    }
 
     fn write(root: &Path, rel: &str, bytes: &[u8]) {
         let path = root.join(rel);
@@ -554,51 +1006,10 @@ mod tests {
         std::fs::write(path, bytes).unwrap();
     }
 
-    /// A miniature CI package (same layout and checksum format as the engine workflow).
-    fn fake_base(root: &Path, mcp: bool) {
-        for file in [
-            "play.exe",
-            "play.dll",
-            "play.exe.manifest",
-            "libcef.dll",
-            "locales/en-US.pak",
-        ] {
-            write(root, file, file.as_bytes());
-        }
-        write(root, "game/index.html", b"<p>sample</p>");
-        write(root, "game/assets/sample.js", b"sample");
-        write(root, "provenance/Cargo.lock", b"lock");
-        write(
-            root,
-            "provenance/visual-novel-template-npm-ls.txt",
-            b"template",
-        );
-        let mut provenance =
-            String::from("Engine\r\n  commit abc\r\n\r\nGame (folder game\\)\r\n  template\r\n");
-        if mcp {
-            for file in MCP_REQUIRED {
-                write(root, file, b"mcp");
-            }
-            write(root, "provenance/mcp-npm-ls.txt", b"mcp deps");
-            provenance.push_str("\r\nMCP-enabled development package (enable-mcp=true; never ship to players)\r\n  mcp\\enabled\r\n");
-        }
-        write(root, PROVENANCE, provenance.as_bytes());
-        write_checksums(root).unwrap();
-    }
-
-    fn files(root: &Path) -> Vec<String> {
-        let mut out: Vec<String> = walkdir::WalkDir::new(root)
-            .into_iter()
-            .map(Result::unwrap)
-            .filter(|e| e.file_type().is_file())
-            .map(|e| relative_slash(root, e.path()).unwrap())
-            .collect();
-        out.sort();
-        out
-    }
-
-    fn no_patch(_: &Path, _: &Path) -> Result<(), String> {
-        panic!("play.exe must not be patched without a resolved icon")
+    fn dist(root: &Path) -> PathBuf {
+        write(root, "index.html", b"<p>mine</p>");
+        write(root, "assets/app.js", b"mine");
+        root.to_path_buf()
     }
 
     fn png(path: &Path, edge: u32, rgba: [u8; 4]) -> PathBuf {
@@ -617,117 +1028,257 @@ mod tests {
         path.to_path_buf()
     }
 
-    fn first_pixel(path: &Path) -> [u8; 4] {
-        image::open(path).unwrap().to_rgba8().get_pixel(0, 0).0
+    fn no_patch(_: &Path, _: &Path) -> Result<(), String> {
+        panic!("play.exe must not be patched without a resolved icon")
     }
 
-    /// A base as the engine CI now ships it: the sample game's `icon.png` and `roves.ico`.
-    fn icon_base(root: &Path, with_fallback: bool) -> BasePackage {
-        fake_base(root, false);
-        png(&root.join(PROJECT_ICON_FILE), 64, [0, 0, 255, 255]);
-        if with_fallback {
-            ico(&root.join(ROVES_FALLBACK_ICO), 256, [20, 20, 24, 255]);
+    fn options<'a>(content: &'a Path, work: &'a Path, icon: &'a ProjectIcon) -> AssembleOptions<'a> {
+        AssembleOptions {
+            content_dir: content,
+            top_folder: "my game",
+            enable_mcp: false,
+            steam_app_id: None,
+            icon,
+            work_dir: work,
         }
-        write_checksums(root).unwrap();
-        inspect_base(root).unwrap()
     }
 
-    /// Assembles with a recording `patch_exe`; returns the ICO it was called with.
-    fn assemble_with_icon(base: &BasePackage, content: &Path, out: &Path, icon: &ProjectIcon) -> Option<PathBuf> {
+    fn names(zip: &BTreeMap<String, (Vec<u8>, Option<u32>)>) -> Vec<&str> {
+        zip.keys().map(String::as_str).filter(|n| !n.ends_with('/')).collect()
+    }
+
+    #[test]
+    fn the_package_root_is_found_at_the_root_or_in_one_top_folder() {
+        use Platform::*;
+        assert_eq!(locate_root(["play.exe", "game/index.html"].into_iter(), Windows).unwrap(), "");
+        assert_eq!(locate_root(["pkg/", "pkg/play.exe"].into_iter(), Windows).unwrap(), "pkg/");
+        assert!(locate_root(["a/b/play.exe"].into_iter(), Windows).is_err());
+        assert!(locate_root(["a/play.exe", "b/play.exe"].into_iter(), Windows)
+            .unwrap_err()
+            .contains("more than one"));
+        // The CEF helper apps' Info.plist files are deeper and never mistaken for the root.
+        let mac = ["X.app/Contents/Info.plist", "X.app/Contents/Frameworks/H.app/Contents/Info.plist"];
+        assert_eq!(locate_root(mac.into_iter(), Macos).unwrap(), "X.app/");
+        assert!(locate_root(["play.exe"].into_iter(), Linux).is_err());
+    }
+
+    #[test]
+    fn windows_game_is_replaced_and_checksums_regenerated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
+        let mut base = Base::open(&windows_base(tmp.path(), true), Platform::Windows, false).unwrap();
+        assert!(base.mcp_capable);
+        let icon = ProjectIcon::default();
+        assemble(&mut base, &options(&content, &work, &icon), &out, &no_patch).unwrap();
+        let zip = read_zip(&out);
+        let listed = names(&zip);
+        assert!(listed.contains(&"my game/game/assets/app.js"));
+        assert!(!listed.iter().any(|f| f.contains("sample.js") || f.contains("visual-novel-template")));
+        assert!(!listed.iter().any(|f| f.starts_with("my game/mcp/") || f.contains("provenance/mcp-")), "{listed:?}");
+        assert_eq!(zip["my game/game/index.html"].0, b"<p>mine</p>");
+        let provenance = String::from_utf8(zip["my game/PROVENANCE.txt"].0.clone()).unwrap();
+        assert!(!provenance.contains(MCP_PROVENANCE_HEADER) && provenance.contains("Local MCP bridge: OFF"));
+        // The output is itself a valid, checksum-verified Windows package without MCP.
+        let again = Base::open(&out, Platform::Windows, false).unwrap();
+        assert!(!again.mcp_capable);
+    }
+
+    #[test]
+    fn windows_mcp_output_keeps_the_verified_mcp_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
+        let mut base = Base::open(&windows_base(tmp.path(), true), Platform::Windows, false).unwrap();
+        let icon = ProjectIcon::default();
+        let opts = AssembleOptions { enable_mcp: true, ..options(&content, &work, &icon) };
+        assemble(&mut base, &opts, &out, &no_patch).unwrap();
+        assert!(Base::open(&out, Platform::Windows, false).unwrap().mcp_capable);
+    }
+
+    #[test]
+    fn mcp_needs_an_mcp_package_and_windows() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
+        let icon = ProjectIcon::default();
+        let opts = AssembleOptions { enable_mcp: true, ..options(&content, &work, &icon) };
+        let mut plain = Base::open(&windows_base(tmp.path(), false), Platform::Windows, false).unwrap();
+        assert!(!plain.mcp_capable);
+        assert!(assemble(&mut plain, &opts, &out, &no_patch).is_err());
+        assert!(!out.exists());
+        let mut linux = Base::open(&linux_base(tmp.path(), false), Platform::Linux, false).unwrap();
+        assert!(assemble(&mut linux, &opts, &out, &no_patch).unwrap_err().contains("only exists in the Windows player"));
+    }
+
+    #[test]
+    fn a_marker_added_by_hand_or_a_modified_file_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut files = windows_files(false);
+        with_checksums(&mut files);
+        put(&mut files, "mcp/enabled", b"", FILE_MODE);
+        let zip = write_zip(&tmp.path().join("marker.zip"), "", &files);
+        assert!(Base::open(&zip, Platform::Windows, false).err().unwrap().contains("mcp/enabled"));
+        let mut files = windows_files(false);
+        with_checksums(&mut files);
+        put(&mut files, "play.dll", b"patched", FILE_MODE);
+        let zip = write_zip(&tmp.path().join("modified.zip"), "", &files);
+        assert!(Base::open(&zip, Platform::Windows, false).err().unwrap().contains("play.dll"));
+        let mut files = windows_files(false);
+        with_checksums(&mut files);
+        files.remove("libcef.dll");
+        let zip = write_zip(&tmp.path().join("missing.zip"), "", &files);
+        assert!(Base::open(&zip, Platform::Windows, false).is_err());
+    }
+
+    #[test]
+    fn steam_packages_need_the_redistributable_and_get_the_app_id_next_to_the_executable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
+        assert!(Base::open(&linux_base(tmp.path(), false), Platform::Linux, true)
+            .err()
+            .unwrap()
+            .contains("libsteam_api.so"));
+        let mut base = Base::open(&linux_base(tmp.path(), true), Platform::Linux, true).unwrap();
+        let icon = ProjectIcon::default();
+        let opts = AssembleOptions { steam_app_id: Some("480"), ..options(&content, &work, &icon) };
+        assemble(&mut base, &opts, &out, &no_patch).unwrap();
+        assert_eq!(read_zip(&out)["my game/steam_appid.txt"].0, b"480");
+
+        let mut files = windows_files(false);
+        put(&mut files, "steam_api64.dll", b"steam", FILE_MODE);
+        with_checksums(&mut files);
+        let zip = write_zip(&tmp.path().join("win-steam.zip"), "", &files);
+        let mut base = Base::open(&zip, Platform::Windows, true).unwrap();
+        let out = tmp.path().join("win.zip");
+        assemble(&mut base, &opts, &out, &no_patch).unwrap();
+        assert_eq!(read_zip(&out)["my game/steam_appid.txt"].0, b"480");
+        Base::open(&out, Platform::Windows, true).unwrap();
+    }
+
+    #[test]
+    fn linux_keeps_unix_modes_and_places_the_window_icon_next_to_the_executable() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
+        png(&content.join("icon.png"), 128, [9, 9, 9, 255]);
+        let base_zip = linux_base(tmp.path(), false);
+        assert_eq!(read_zip(&base_zip)["roves-cef-linux/chrome-sandbox"].1.unwrap() & 0o7777, 0o4755, "fixture");
+        let mut base = Base::open(&base_zip, Platform::Linux, false).unwrap();
+        let icon = resolve_project_icon(Platform::Linux, None, &content, None, &work).unwrap();
+        assert_eq!(icon.summary, "window project (game icon.png 128x128)");
+        assemble(&mut base, &options(&content, &work, &icon), &out, &no_patch).unwrap();
+        let zip = read_zip(&out);
+        let mode = |name: &str| zip[name].1.unwrap() & 0o7777;
+        assert_eq!(mode(&format!("my game/{LINUX_EXE}")), 0o755);
+        assert_eq!(mode("my game/chrome-sandbox"), 0o4755, "the setuid bit must survive");
+        assert_eq!(mode("my game/game/assets/app.js"), 0o644);
+        assert_eq!(zip["my game/icon.png"].0, std::fs::read(content.join("icon.png")).unwrap());
+        assert!(!names(&zip).iter().any(|f| f.contains("sample")));
+    }
+
+    #[test]
+    fn macos_replaces_the_game_window_icon_and_bundle_icon_inside_the_app() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
+        png(&content.join("icon.png"), 256, [200, 30, 30, 255]);
+        let mut base = Base::open(&macos_base(tmp.path()), Platform::Macos, false).unwrap();
+        let icon = resolve_project_icon(Platform::Macos, None, &content, None, &work).unwrap();
+        assert!(icon.summary.ends_with("app icon project (ICNS generated from game icon.png)"), "{}", icon.summary);
+        let opts = AssembleOptions { top_folder: "my game.app", ..options(&content, &work, &icon) };
+        assemble(&mut base, &opts, &out, &no_patch).unwrap();
+        let zip = read_zip(&out);
+        assert_eq!(zip["my game.app/Contents/Resources/game/index.html"].0, b"<p>mine</p>");
+        assert_eq!(zip["my game.app/Contents/Resources/icon.png"].0, std::fs::read(content.join("icon.png")).unwrap());
+        assert_eq!(zip[&format!("my game.app/{MACOS_EXE}")].1.unwrap() & 0o777, 0o755);
+        let icns = icns::IconFamily::read(std::io::Cursor::new(&zip[&format!("my game.app/{MACOS_ICNS}")].0)).unwrap();
+        assert!(icns.has_icon_with_type(icns::IconType::RGBA32_256x256));
+        assert!(zip.contains_key("my game.app/Contents/Frameworks/roves-cef-macos-gate Helper.app/Contents/Info.plist"));
+
+        // No project icon: the sample icon is dropped, the Roves .icns stays.
+        let plain = dist(&tmp.path().join("plain"));
+        let icon = resolve_project_icon(Platform::Macos, None, &plain, None, &work).unwrap();
+        assert!(icon.summary.contains("app icon roves"));
+        let out = tmp.path().join("plain.zip");
+        let opts = AssembleOptions { top_folder: "my game.app", ..options(&plain, &work, &icon) };
+        assemble(&mut base, &opts, &out, &no_patch).unwrap();
+        let zip = read_zip(&out);
+        assert!(!zip.contains_key("my game.app/Contents/Resources/icon.png"));
+        assert_eq!(zip[&format!("my game.app/{MACOS_ICNS}")].0, b"roves icns");
+    }
+
+    /// Assembles a Windows package with a recording `patch_exe`; returns the ICO it got.
+    fn assemble_windows_with_icon(tmp: &Path, content: &Path, icon: &ProjectIcon) -> (Option<PathBuf>, PathBuf) {
+        let mut base = Base::open(&windows_base(tmp, false), Platform::Windows, false).unwrap();
+        let (work, out) = (tmp.join("work"), tmp.join("out.zip"));
         let patched = std::cell::RefCell::new(None);
-        assemble(base, content, out, false, icon, &|exe, ico| {
-            assert_eq!(exe, out.join("play.exe"));
+        assemble(&mut base, &options(content, &work, icon), &out, &|exe, ico| {
+            assert_eq!(exe, work.join("play.exe"));
             *patched.borrow_mut() = Some(ico.to_path_buf());
             Ok(())
         })
         .unwrap();
-        verify_checksums(out).unwrap();
-        patched.into_inner()
+        Base::open(&out, Platform::Windows, false).unwrap();
+        (patched.into_inner(), out)
     }
 
     #[test]
-    fn the_game_icon_png_is_used_for_window_and_play_exe() {
+    fn windows_icon_precedence_game_png_then_game_ico_then_roves() {
         let tmp = tempfile::tempdir().unwrap();
-        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
-        let base = icon_base(&tmp.path().join("pkg"), true);
-        dist(&content);
-        png(&content.join("icon.png"), 512, [200, 30, 30, 255]);
-        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        let work = tmp.path().join("icons");
+        let fallback = ico(&tmp.path().join("roves.ico"), 256, [20, 20, 24, 255]);
+
+        let with_png = dist(&tmp.path().join("png"));
+        png(&with_png.join("icon.png"), 512, [200, 30, 30, 255]);
+        let icon = resolve_project_icon(Platform::Windows, None, &with_png, Some(&fallback), &work).unwrap();
         assert!(icon.summary.starts_with("window project (game icon.png 512x512); play.exe project"), "{}", icon.summary);
-        let patched = assemble_with_icon(&base, &content, &out, &icon).unwrap();
-        assert_eq!(check_ico(&patched), Ok(256));
-        assert_eq!(first_pixel(&out.join(PROJECT_ICON_FILE)), [200, 30, 30, 255]);
-        let provenance = std::fs::read_to_string(out.join(PROVENANCE)).unwrap();
+        let (patched, out) = assemble_windows_with_icon(&tmp.path().join("a"), &with_png, &icon);
+        assert_eq!(check_ico(&patched.unwrap()), Ok(256));
+        assert_eq!(read_zip(&out)["my game/icon.png"].0, std::fs::read(with_png.join("icon.png")).unwrap());
+        let provenance = String::from_utf8(read_zip(&out)["my game/PROVENANCE.txt"].0.clone()).unwrap();
         assert!(provenance.contains("icon resource was replaced"));
-    }
 
-    #[test]
-    fn no_game_icon_falls_back_to_roves_and_drops_the_sample_icon() {
-        let tmp = tempfile::tempdir().unwrap();
-        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
-        let base = icon_base(&tmp.path().join("pkg"), true);
-        dist(&content);
-        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
-        assert!(icon.window_png.is_none());
-        let patched = assemble_with_icon(&base, &content, &out, &icon).unwrap();
-        assert_eq!(patched, base.root.join(ROVES_FALLBACK_ICO));
-        assert!(!out.join(PROJECT_ICON_FILE).exists(), "the sample game's icon must not leak");
-        assert!(out.join(ROVES_FALLBACK_ICO).is_file());
-    }
-
-    #[test]
-    fn an_old_base_without_the_fallback_leaves_play_exe_unchanged() {
-        let tmp = tempfile::tempdir().unwrap();
-        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
-        let base = icon_base(&tmp.path().join("pkg"), false);
-        dist(&content);
-        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
-        assert!(icon.exe_ico.is_none() && icon.summary.contains("play.exe unchanged"));
-        assemble(&base, &content, &out, false, &icon, &no_patch).unwrap();
-        let provenance = std::fs::read_to_string(out.join(PROVENANCE)).unwrap();
-        assert!(provenance.contains("unmodified"));
-    }
-
-    #[test]
-    fn a_favicon_only_game_gets_its_icon_everywhere() {
-        let tmp = tempfile::tempdir().unwrap();
-        let (content, out, work) = (tmp.path().join("dist"), tmp.path().join("out"), tmp.path().join("work"));
-        let base = icon_base(&tmp.path().join("pkg"), true);
-        dist(&content);
-        let favicon = ico(&content.join("favicon.ico"), 48, [30, 30, 200, 255]);
-        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
-        let patched = assemble_with_icon(&base, &content, &out, &icon).unwrap();
-        assert_eq!(patched, favicon);
-        let window = image::open(out.join(PROJECT_ICON_FILE)).unwrap();
+        let with_favicon = dist(&tmp.path().join("favicon"));
+        let favicon = ico(&with_favicon.join("favicon.ico"), 48, [30, 30, 200, 255]);
+        let icon = resolve_project_icon(Platform::Windows, None, &with_favicon, Some(&fallback), &work).unwrap();
+        let (patched, out) = assemble_windows_with_icon(&tmp.path().join("b"), &with_favicon, &icon);
+        assert_eq!(patched.unwrap(), favicon);
+        let window = image::load_from_memory(&read_zip(&out)["my game/icon.png"].0).unwrap();
         assert_eq!((window.width(), window.height()), (48, 48));
-        assert_eq!(first_pixel(&out.join(PROJECT_ICON_FILE)), [30, 30, 200, 255]);
+
+        let none = dist(&tmp.path().join("none"));
+        let icon = resolve_project_icon(Platform::Windows, None, &none, Some(&fallback), &work).unwrap();
+        assert!(icon.window_png.is_none() && icon.summary.contains("play.exe roves"));
+        let (patched, out) = assemble_windows_with_icon(&tmp.path().join("c"), &none, &icon);
+        assert_eq!(patched.unwrap(), fallback);
+        assert!(!read_zip(&out).contains_key("my game/icon.png"));
+
+        let icon = resolve_project_icon(Platform::Windows, None, &none, None, &work).unwrap();
+        assert!(icon.exe_ico.is_none() && icon.summary.contains("play.exe unchanged"));
     }
 
     #[test]
-    fn the_release_info_icon_wins_and_must_be_valid() {
+    fn the_release_info_icon_wins_on_every_platform_and_must_be_valid() {
         let tmp = tempfile::tempdir().unwrap();
-        let (content, work) = (tmp.path().join("dist"), tmp.path().join("work"));
-        let base = icon_base(&tmp.path().join("pkg"), true);
-        dist(&content);
+        let (content, work) = (dist(&tmp.path().join("dist")), tmp.path().join("work"));
         png(&content.join("icon.png"), 256, [1, 1, 1, 255]);
         let own = png(&tmp.path().join("own.png"), 128, [10, 200, 10, 255]);
-        let icon = resolve_project_icon(Some(&own), &content, &base.root, &work).unwrap();
-        assert_eq!(icon.window_png.as_deref(), Some(own.as_path()));
+        for platform in [Platform::Windows, Platform::Macos, Platform::Linux] {
+            let icon = resolve_project_icon(platform, Some(&own), &content, None, &work).unwrap();
+            assert_eq!(icon.window_png.as_deref(), Some(own.as_path()));
+            assert_eq!(icon.exe_ico.is_some(), platform == Platform::Windows);
+            assert_eq!(icon.app_icns.is_some(), platform == Platform::Macos);
+        }
         let bad = tmp.path().join("bad.png");
         std::fs::write(&bad, b"\x89PNG\r\n\x1a\n not really").unwrap();
-        let error = resolve_project_icon(Some(&bad), &content, &base.root, &work).unwrap_err();
+        let error = resolve_project_icon(Platform::Linux, Some(&bad), &content, None, &work).unwrap_err();
         assert!(error.starts_with("Release info icon"), "{error}");
     }
 
     #[test]
     fn malformed_or_out_of_bounds_game_icons_warn_and_fall_back() {
         let tmp = tempfile::tempdir().unwrap();
-        let (content, work) = (tmp.path().join("dist"), tmp.path().join("work"));
-        let base = icon_base(&tmp.path().join("pkg"), true);
-        dist(&content);
+        let (content, work) = (dist(&tmp.path().join("dist")), tmp.path().join("work"));
+        let fallback = ico(&tmp.path().join("roves.ico"), 256, [20, 20, 24, 255]);
         write(&content, "icon.png", b"<html>not an image</html>");
         write(&content, "favicon.ico", &[0, 0, 1, 0, 1, 0].iter().copied().chain([0xff; 30]).collect::<Vec<u8>>());
-        let icon = resolve_project_icon(None, &content, &base.root, &work).unwrap();
+        let icon = resolve_project_icon(Platform::Windows, None, &content, Some(&fallback), &work).unwrap();
         assert!(icon.summary.contains("window roves") && icon.summary.contains("play.exe roves"), "{}", icon.summary);
         assert_eq!(icon.warnings.len(), 2, "{:?}", icon.warnings);
         for (name, edge, height) in [("non-square", 256, 128), ("tiny", 8, 8), ("huge", 4096, 4096)] {
@@ -741,115 +1292,205 @@ mod tests {
         assert!(check_png(&good).is_err(), "truncated");
     }
 
-    fn dist(root: &Path) {
-        write(root, "index.html", b"<p>mine</p>");
-        write(root, "assets/app.js", b"mine");
-    }
-
     #[test]
-    fn disabled_output_from_an_mcp_base_has_no_marker_nor_mcp_assets() {
+    fn the_linux_executable_is_detected_and_steam_libraries_must_match_the_variant() {
         let tmp = tempfile::tempdir().unwrap();
-        let (base_dir, content, out) = (
-            tmp.path().join("art/pkg"),
-            tmp.path().join("dist"),
-            tmp.path().join("out"),
-        );
-        fake_base(&base_dir, true);
-        dist(&content);
-        let base = inspect_base(&locate_base(&tmp.path().join("art")).unwrap()).unwrap();
-        assert!(base.mcp_capable);
-        assemble(&base, &content, &out, false, &ProjectIcon::default(), &no_patch).unwrap();
-        let listed = files(&out);
-        assert!(
-            listed
-                .iter()
-                .all(|f| !f.starts_with("mcp/") && !f.starts_with("provenance/mcp-")),
-            "{listed:?}"
-        );
-        assert!(
-            listed
-                .iter()
-                .all(|f| !f.starts_with("provenance/visual-novel-template-"))
-        );
-        assert!(listed.contains(&"game/assets/app.js".to_string()));
-        assert!(!listed.contains(&"game/assets/sample.js".to_string()));
-        assert_eq!(
-            std::fs::read(out.join("game/index.html")).unwrap(),
-            b"<p>mine</p>"
-        );
-        let provenance = std::fs::read_to_string(out.join(PROVENANCE)).unwrap();
-        assert!(!provenance.contains(MCP_PROVENANCE_HEADER));
-        assert!(provenance.contains("Local MCP bridge: OFF"));
-        // The regenerated checksums describe the output exactly.
-        verify_checksums(&out).unwrap();
-        assert!(!inspect_base(&out).unwrap().mcp_capable);
-    }
-
-    #[test]
-    fn enabled_output_keeps_the_verified_mcp_files() {
-        let tmp = tempfile::tempdir().unwrap();
-        let (base_dir, content, out) = (
-            tmp.path().join("pkg"),
-            tmp.path().join("dist"),
-            tmp.path().join("out"),
-        );
-        fake_base(&base_dir, true);
-        dist(&content);
-        let base = inspect_base(&base_dir).unwrap();
-        assemble(&base, &content, &out, true, &ProjectIcon::default(), &no_patch).unwrap();
-        for file in MCP_REQUIRED {
-            assert!(out.join(file).is_file(), "{file}");
+        let base = Base::open(&linux_base(tmp.path(), false), Platform::Linux, false).unwrap();
+        assert_eq!(base.executable, LINUX_EXE);
+        // A standard asset that ships the Steam library is the wrong asset.
+        let steam_zip = linux_base(&tmp.path().join("steam"), true);
+        assert!(Base::open(&steam_zip, Platform::Linux, false)
+            .err()
+            .unwrap()
+            .contains("unexpectedly contains libsteam_api.so"));
+        assert!(Base::open(&steam_zip, Platform::Linux, true).is_ok());
+        // Unix modes lost (an archive re-zipped on Windows): no executable to find.
+        let mut files = Files::new();
+        for file in [LINUX_EXE, "libcef.so", "chrome-sandbox", "icudtl.dat", "resources.pak", "game/index.html"] {
+            put(&mut files, file, b"x", FILE_MODE);
         }
-        assert!(inspect_base(&out).unwrap().mcp_capable);
+        let zip = write_zip(&tmp.path().join("modes.zip"), "", &files);
+        assert!(Base::open(&zip, Platform::Linux, false).err().unwrap().contains("Unix modes"));
     }
 
     #[test]
-    fn enabling_mcp_on_a_plain_base_is_refused() {
-        let tmp = tempfile::tempdir().unwrap();
-        let (base_dir, content, out) = (
-            tmp.path().join("pkg"),
-            tmp.path().join("dist"),
-            tmp.path().join("out"),
+    fn macos_names_come_from_info_plist() {
+        assert_eq!(
+            macos_bundle_names(MACOS_PLIST.as_bytes()).unwrap(),
+            (MACOS_EXE.to_string(), MACOS_ICNS.to_string())
         );
-        fake_base(&base_dir, false);
-        dist(&content);
-        let base = inspect_base(&base_dir).unwrap();
-        assert!(!base.mcp_capable);
-        assert!(assemble(&base, &content, &out, true, &ProjectIcon::default(), &no_patch).is_err());
-        assert!(!out.exists());
-        assemble(&base, &content, &out, false, &ProjectIcon::default(), &no_patch).unwrap();
-        assert!(!out.join(MCP_DIR).exists());
+        let with_extension = MACOS_PLIST.replace("<string>roves-cef-macos-gate</string>
+</dict>", "<string>x.icns</string>
+</dict>");
+        assert_eq!(macos_bundle_names(with_extension.as_bytes()).unwrap().1, "Contents/Resources/x.icns");
+        assert!(macos_bundle_names(b"<plist version=\"1.0\"><dict/></plist>").is_err());
     }
 
+    /// A real PE with its own icon group, version info and manifest (a Windows system
+    /// executable copied to a temp dir): the main icon group is replaced by the generated ICO,
+    /// the other resources are kept, and the patched copy still runs.
+    #[cfg(windows)]
     #[test]
-    fn a_marker_added_by_hand_does_not_make_a_base_mcp_capable() {
+    fn set_exe_icon_replaces_the_main_icon_group_of_a_real_executable() {
+        let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| "C:\\Windows".into());
+        let source = system.join("System32").join("cmd.exe");
         let tmp = tempfile::tempdir().unwrap();
-        let base_dir = tmp.path().join("pkg");
-        fake_base(&base_dir, false);
-        write(&base_dir, "mcp/enabled", b"");
-        assert!(inspect_base(&base_dir).unwrap_err().contains("mcp/enabled"));
+        let exe = tmp.path().join("play.exe");
+        std::fs::copy(&source, &exe).unwrap();
+        let before = editpe::Image::parse_file(&exe).unwrap();
+        let before = before.resource_directory().unwrap().clone();
+        let old_icon = before.get_main_icon().unwrap().map(<[u8]>::to_vec);
+        let version = before.get_version_info().unwrap();
+        let manifest = before.get_manifest().unwrap();
+        assert!(old_icon.is_some() && version.is_some(), "the test executable needs an icon and version info");
+
+        let icon = ico(&tmp.path().join("game.ico"), 256, [200, 30, 30, 255]);
+        set_exe_icon(&exe, &icon).unwrap();
+
+        let after = editpe::Image::parse_file(&exe).unwrap();
+        let after = after.resource_directory().unwrap();
+        let new_icon = after.get_main_icon().unwrap().unwrap().to_vec();
+        assert_ne!(Some(new_icon.clone()), old_icon);
+        // The main icon is now the first frame of the generated ICO (its image data).
+        let ico_bytes = std::fs::read(&icon).unwrap();
+        let first_offset = u32::from_le_bytes(ico_bytes[18..22].try_into().unwrap()) as usize;
+        let first_size = u32::from_le_bytes(ico_bytes[14..18].try_into().unwrap()) as usize;
+        assert_eq!(new_icon, ico_bytes[first_offset..first_offset + first_size]);
+        // Exactly one group: the old main group is gone, not left behind for Explorer.
+        let groups = after.root().get(editpe::ResourceEntryName::ID(14)).unwrap().as_table().unwrap();
+        assert_eq!(groups.entries().len(), 1, "{:?}", groups.entries());
+        assert_eq!(after.get_version_info().unwrap(), version);
+        assert_eq!(after.get_manifest().unwrap(), manifest);
+        let status = std::process::Command::new(&exe).args(["/d", "/c", "exit 7"]).status().unwrap();
+        assert_eq!(status.code(), Some(7), "the patched copy must still run");
     }
 
+    /// Manual check against a real engine Windows package (an extracted
+    /// `visual-novel-template-roves-cef-windows-x64` folder or release zip contents):
+    /// `ROVES_REAL_WINDOWS_PACKAGE=<folder> cargo test --lib real_windows_package -- --ignored --nocapture`.
+    /// The folder is never modified: everything runs on copies in a temp dir.
+    #[cfg(windows)]
     #[test]
-    fn a_modified_base_is_refused() {
+    #[ignore = "needs ROVES_REAL_WINDOWS_PACKAGE (a real engine package, ~450 MB)"]
+    fn real_windows_package() {
+        let package = PathBuf::from(std::env::var_os("ROVES_REAL_WINDOWS_PACKAGE").expect("ROVES_REAL_WINDOWS_PACKAGE"));
         let tmp = tempfile::tempdir().unwrap();
-        let base_dir = tmp.path().join("pkg");
-        fake_base(&base_dir, true);
-        write(&base_dir, "play.dll", b"patched");
-        assert!(inspect_base(&base_dir).unwrap_err().contains("play.dll"));
-        let other = tmp.path().join("other");
-        fake_base(&other, false);
-        std::fs::remove_file(other.join("libcef.dll")).unwrap();
-        assert!(inspect_base(&other).is_err());
+        let resources = |exe: &Path| editpe::Image::parse_file(exe).unwrap().resource_directory().unwrap().clone();
+        let group_count = |dir: &editpe::ResourceDirectory| {
+            dir.root().get(editpe::ResourceEntryName::ID(14)).unwrap().as_table().unwrap().entries().len()
+        };
+        let original = resources(&package.join("play.exe"));
+        let (version, manifest) = (original.get_version_info().unwrap(), original.get_manifest().unwrap());
+        let sample_icon = original.get_main_icon().unwrap().map(<[u8]>::to_vec);
+        eprintln!("original: groups={} version={} manifest={}", group_count(&original), version.is_some(), manifest.is_some());
+
+        // 1. set_exe_icon on a copy of play.exe, with roves.ico and with a generated ICO.
+        let generated = ico(&tmp.path().join("generated.ico"), 256, [200, 30, 30, 255]);
+        for ico_path in [package.join("roves.ico"), generated] {
+            let exe = tmp.path().join("play-copy.exe");
+            std::fs::copy(package.join("play.exe"), &exe).unwrap();
+            set_exe_icon(&exe, &ico_path).unwrap();
+            let after = resources(&exe);
+            let ico_bytes = std::fs::read(&ico_path).unwrap();
+            let size = u32::from_le_bytes(ico_bytes[14..18].try_into().unwrap()) as usize;
+            let offset = u32::from_le_bytes(ico_bytes[18..22].try_into().unwrap()) as usize;
+            let main = after.get_main_icon().unwrap().unwrap().to_vec();
+            assert_eq!(main, ico_bytes[offset..offset + size], "{}", ico_path.display());
+            assert_ne!(Some(main), sample_icon);
+            assert_eq!(group_count(&after), 1);
+            assert_eq!(after.get_version_info().unwrap(), version);
+            assert_eq!(after.get_manifest().unwrap(), manifest);
+            eprintln!("set_exe_icon with {}: ok", ico_path.display());
+        }
+
+        // Runs `play.exe` of an assembled folder and returns its log.
+        let run = |dir: &Path, name: &str| {
+            let log = tmp.path().join(format!("{name}.log"));
+            let status = std::process::Command::new(dir.join("play.exe"))
+                .arg("--roves-isolated-profile")
+                .arg("--roves-auto-close-ms=8000")
+                .arg("--roves-no-error-dialog")
+                .arg(format!("--roves-log={}", log.display()))
+                .status()
+                .unwrap();
+            let text = std::fs::read_to_string(&log).unwrap_or_default();
+            assert_eq!(status.code(), Some(0), "{name}: {status}\n{text}");
+            assert!(text.contains("startup released"), "{name}: no `startup released`\n{text}");
+            eprintln!("{name}: exit 0, startup released");
+            text
+        };
+
+        // 2. The whole package copied, its play.exe patched, run.
+        let copy = tmp.path().join("copy");
+        for entry in walkdir::WalkDir::new(&package) {
+            let entry = entry.unwrap();
+            let target = copy.join(entry.path().strip_prefix(&package).unwrap());
+            if entry.file_type().is_dir() {
+                std::fs::create_dir_all(&target).unwrap();
+            } else {
+                std::fs::copy(entry.path(), &target).unwrap();
+            }
+        }
+        set_exe_icon(&copy.join("play.exe"), &package.join("roves.ico")).unwrap();
+        run(&copy, "patched-copy");
+
+        // 3. Full assembly: zip the package as a release asset would be, assemble a tiny game
+        //    with its own icon, verify the output's checksums, extract and run it.
+        let asset = tmp.path().join("roves_shell_windows.zip");
+        {
+            let mut writer = zip::ZipWriter::new(std::fs::File::create(&asset).unwrap());
+            let stored = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored).large_file(true);
+            for entry in walkdir::WalkDir::new(&package).min_depth(1) {
+                let entry = entry.unwrap();
+                let rel = entry.path().strip_prefix(&package).unwrap().to_string_lossy().replace('\\', "/");
+                let name = format!("visual-novel-template-roves-cef/{rel}");
+                if entry.file_type().is_dir() {
+                    writer.add_directory(format!("{name}/"), stored).unwrap();
+                } else {
+                    writer.start_file(name, stored).unwrap();
+                    std::io::copy(&mut std::fs::File::open(entry.path()).unwrap(), &mut writer).unwrap();
+                }
+            }
+            writer.finish().unwrap();
+        }
+        let mut base = Base::open(&asset, Platform::Windows, false).unwrap();
+        let game = tmp.path().join("game");
+        write(&game, "index.html", b"<!doctype html><title>tiny</title><body style=\"background:#c33\"><h1>tiny game</h1></body>");
+        png(&game.join("icon.png"), 256, [200, 30, 30, 255]);
+        let work = tmp.path().join("work");
+        let fallback = base.fallback_ico(&work.join("icon")).unwrap();
+        let icon = resolve_project_icon(Platform::Windows, None, &game, fallback.as_deref(), &work.join("icon")).unwrap();
+        eprintln!("icon: {}", icon.summary);
+        let out = tmp.path().join("tiny_windows.zip");
+        let opts = AssembleOptions { top_folder: "tiny", ..options(&game, &work, &icon) };
+        assemble(&mut base, &opts, &out, &set_exe_icon).unwrap();
+        let assembled = Base::open(&out, Platform::Windows, false).unwrap();
+        assert!(!assembled.mcp_capable);
+        eprintln!("assembled package: SHA256SUMS.txt verified ({} entries)", assembled.entries.len());
+        let extracted = tmp.path().join("extracted");
+        zip::ZipArchive::new(std::fs::File::open(&out).unwrap()).unwrap().extract(&extracted).unwrap();
+        let root = extracted.join("tiny");
+        assert_eq!(std::fs::read(root.join("game/index.html")).unwrap(), std::fs::read(game.join("index.html")).unwrap());
+        let mut game_files: Vec<String> = walkdir::WalkDir::new(root.join("game"))
+            .into_iter()
+            .map(Result::unwrap)
+            .filter(|e| e.file_type().is_file())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        game_files.sort();
+        assert_eq!(game_files, ["icon.png", "index.html"], "sample game files left over");
+        assert_eq!(std::fs::read(root.join("icon.png")).unwrap(), std::fs::read(game.join("icon.png")).unwrap());
+        run(&root, "assembled");
     }
 
     #[test]
     fn content_without_index_html_is_refused() {
         let tmp = tempfile::tempdir().unwrap();
-        let (base_dir, content) = (tmp.path().join("pkg"), tmp.path().join("dist"));
-        fake_base(&base_dir, false);
+        let content = tmp.path().join("dist");
         write(&content, "main.js", b"x");
-        let base = inspect_base(&base_dir).unwrap();
-        assert!(assemble(&base, &content, &tmp.path().join("out"), false, &ProjectIcon::default(), &no_patch).is_err());
+        let mut base = Base::open(&windows_base(tmp.path(), false), Platform::Windows, false).unwrap();
+        let icon = ProjectIcon::default();
+        let work = tmp.path().join("work");
+        assert!(assemble(&mut base, &options(&content, &work, &icon), &tmp.path().join("out.zip"), &no_patch).is_err());
     }
 }

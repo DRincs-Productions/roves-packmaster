@@ -40,7 +40,7 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "No published shell build found for: {{platforms}} — try again later."
+			"shellUnavailable": "No published player package found for: {{platforms}} — try again later."
 		},
 		"installers": {
 			"title": "Installable packages",
@@ -64,28 +64,13 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "Packmaster can download a Steam-enabled shell instead of the plain one, so your game can talk to Steamworks.",
+			"description": "Packmaster uses the Steam build of the Roves player (with the Steamworks library) instead of the standard one, so your game can talk to Steamworks.",
 			"enableLabel": "Enable Steam",
 			"appIdLabel": "Steam App ID",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "Written into a steam_appid.txt next to the game's executable — for testing outside the real Steam client. Steam sets this itself once your game is actually published there.",
 			"appIdError": "Enter a valid Steam App ID (numbers only), or turn Steam off.",
 			"apiHint": "Your game's own code talks to it through @drincs/roves-api/steam — achievements, stats, DLC, overlay, and store, via Steamworks."
-		},
-		"compression": {
-			"title": "Content compression",
-			"description": "Packs your game's content into a handful of compressed archives instead of shipping it as loose, individually browsable files. Extracted automatically the first time your game runs.",
-			"enable": "Compress game content",
-			"levelLabel": "Compression level",
-			"levelDescription": "Lower favors faster startup extraction; higher favors a smaller download.",
-			"maxPackSizeLabel": "Maximum archive size",
-			"maxPackSizeDescription": "Splits archives so none exceeds this size.",
-			"excludeLabel": "Never compress these files",
-			"excludeDescription": "Glob patterns, one per line — useful for a save-data or user-config folder that needs to stay as plain, writable files.",
-			"excludePlaceholder": "e.g. saves/**",
-			"bootIncludeLabel": "Always extract these files upfront",
-			"bootIncludeDescription": "Glob patterns, one per line, for extra files needed as soon as your game starts (beyond your HTML file and whatever it directly references).",
-			"bootIncludePlaceholder": "e.g. splash.png"
 		},
 		"icon": {
 			"browse": "Choose file…",
@@ -154,28 +139,22 @@
 				"cancel": "Cancel"
 			}
 		},
-		"cefWindows": {
-			"title": "CEF Windows player (experimental)",
-			"description": "Also builds an experimental Windows package on the CEF player instead of the Servo-based shell. Its base is the player package uploaded by a successful Roves engine CI run: download that artifact, extract it, and pick its folder here. Packmaster checks it against its own SHA256SUMS.txt and replaces its game folder with your build. Compression and Steam don't apply to this package. The game icon (or the icon.png, icon.ico or favicon.ico in your build) is used for its window and play.exe, with the Roves icon as the fallback.",
-			"enableLabel": "Build the CEF Windows package",
-			"baseLabel": "Base player package",
-			"baseDescription": "The extracted visual-novel-template-roves-cef-windows-x64 artifact (or the -mcp- one, to use the local MCP bridge).",
-			"baseNone": "No folder selected",
-			"browse": "Browse…",
-			"browseTitle": "Select the extracted CEF player package",
-			"baseError": "Select the extracted CEF player package folder, or turn the CEF Windows package off.",
-			"mcpLabel": "Enable the local MCP bridge (development only)",
-			"mcpDescription": "Lets an AI agent or IDE connected through MCP (Model Context Protocol) read the running game's state and console, run JavaScript in the page, and click, press keys and type in it — useful for automated playtests. Needs an MCP-enabled base package and Node.js 20+; see mcp\\README.md in the package. When off, the package contains no MCP files at all.",
-			"mcpWarning": "Never ship this package to players: while the game runs, any program running as your Windows user can read and control it through the bridge."
+		"mcp": {
+			"title": "AI interaction (MCP, Windows only)",
+			"description": "Builds the Windows package from the engine's MCP-enabled development player instead of the standard one. Only the Windows player has this bridge: macOS and Linux packages never change. Its zip is named …_windows_mcp.zip, so it is never mistaken for the one to ship.",
+			"enableLabel": "Enable the local MCP bridge (development only)",
+			"details": "Lets an AI agent or IDE connected through MCP (Model Context Protocol) read the running game's state and console, run JavaScript in the page, and click, press keys and type in it — useful for automated playtests. Needs Node.js 20+; see mcp\\README.md in the package. When off, the package contains no MCP files at all.",
+			"warning": "Never ship this package to players: while the game runs, any program running as your Windows user can read and control it through the bridge.",
+			"windowsOnly": "Select Windows (portable or installer) to use it.",
+			"steamConflict": "Not available with Steam: the MCP-enabled player has no Steam support. Turn Steam off to use it."
 		}
 	},
 	"generating": {
 		"title": "Generating your release…",
 		"phase": {
 			"checking": "Checking {{platform}} availability…",
-			"downloading": "Downloading the {{platform}} shell…",
+			"downloading": "Downloading the {{platform}} player…",
 			"assembling": "Assembling the {{platform}} package…",
-			"packing": "Packing your content for {{platform}}…",
 			"zipping": "Packaging the {{platform}} build…",
 			"done": "{{platform}} done",
 			"packaging": "Packaging the {{platform}} installer…",
@@ -200,19 +179,18 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS",
-		"cef-windows": "Windows (CEF, experimental)"
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "About Roves Packmaster",
 		"description": "Roves is a web-based game engine that ships your game as a real desktop app instead of a browser tab. Packmaster is the tool that packages it for you.",
 		"packmasterVersion": "Packmaster version",
-		"shellVersion": "Shell version",
+		"shellVersion": "Player version",
 		"shellStatus": "Status",
 		"updateAvailable": "Update available",
 		"upToDate": "Up to date",
 		"downloadLatest": "Download latest version",
-		"cacheSize": "Downloaded shells",
+		"cacheSize": "Downloaded players",
 		"clearCache": "Clear cache"
 	}
 }

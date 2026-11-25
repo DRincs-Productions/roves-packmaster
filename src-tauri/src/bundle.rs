@@ -1,20 +1,18 @@
-//! Orchestrates a real release: download the prebuilt shell (`shell.rs`), place the user's
-//! content into it (`packer.rs`), write `launch.json`, and zip the result — once per
-//! selected platform. This is the real implementation behind the "Generate release" button;
-//! see this project's own README/CLAUDE.md for why it never shells out to `mach` or requires
-//! a Rust/Python toolchain on the machine running Packmaster itself.
+//! Orchestrates a real release: for each selected desktop platform, download the engine's
+//! prebuilt CEF player package (`shell.rs`), replace its sample game with the user's build
+//! output (`cef_player.rs`), and keep the result as the portable zip and/or wrap it into an
+//! installer; then the mobile outputs. This is the real implementation behind the "Generate
+//! release" button; see this project's own README/CLAUDE.md for why it never shells out to
+//! `mach` or requires a Rust/Python toolchain on the machine running Packmaster itself.
 
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 use crate::android;
-use crate::cef_player;
-use crate::icon;
+use crate::cef_player::{self, Platform};
 use crate::installer;
-use crate::packer;
 use crate::settings::PackmasterSettings;
 use crate::shell;
 use crate::signing;
@@ -37,24 +35,33 @@ fn emit_progress(app: &AppHandle, platform: &str, phase: &str, fraction: f64) {
     );
 }
 
+/// The release asset `platform` uses with these options; the MCP option only ever applies to
+/// Windows (the frontend never offers it elsewhere, so it is simply not forwarded).
+fn platform_asset(platform: Platform, steam: bool, mcp: bool) -> Result<String, String> {
+    shell::asset_name(platform, steam, mcp && platform == Platform::Windows)
+}
+
 /// Real feasibility check ("is this actually distributable") for each requested platform —
-/// confirms the targeted shell release genuinely has a published asset there, rather than
-/// assuming it based on the host OS the way the old mock's platform-hiding logic did (real
-/// portable bundling works for any of the 3 platforms from any host, since it's just file
-/// assembly against a downloaded prebuilt binary, not a local compile).
+/// confirms the targeted engine release genuinely has the matching player package published
+/// (real portable bundling works for any of the 3 platforms from any host, since it's just
+/// file assembly against a downloaded prebuilt package, not a local compile). A combination
+/// the engine doesn't publish (Steam + MCP) counts as unavailable.
 #[tauri::command]
-pub async fn check_shell_availability(platforms: Vec<String>, steam: bool) -> Vec<(String, bool)> {
+pub async fn check_shell_availability(platforms: Vec<String>, steam: bool, mcp: bool) -> Vec<(String, bool)> {
     let mut results = Vec::with_capacity(platforms.len());
-    for platform in platforms {
-        let available = shell::is_shell_available(&platform, steam).await;
-        results.push((platform, available));
+    for id in platforms {
+        let available = match Platform::from_id(&id).map(|p| platform_asset(p, steam, mcp)) {
+            Some(Ok(asset)) => shell::is_asset_available(&asset).await,
+            _ => false,
+        };
+        results.push((id, available));
     }
     results
 }
 
 /// `name`/`version` come from the frontend's own "Release info" fields (configure.tsx) —
 /// derived from package.json but user-editable, so they're the actual source of truth for
-/// both the bundled window title and the generated filenames, not re-derived here.
+/// the generated filenames, not re-derived here.
 #[tauri::command]
 pub async fn generate_release(
     app: AppHandle,
@@ -70,16 +77,12 @@ pub async fn generate_release(
 
     // The union of "build a portable zip" and "build an installer" per platform — a
     // platform can be requested for either, both, or neither; either one means the same
-    // shell download + content-packing work has to happen for it.
+    // download + assembly work has to happen for it.
     let platforms: Vec<&'static str> = ["windows", "linux", "macos"]
         .into_iter()
         .filter(|&p| settings.portable.get(p) || settings.installers.get(p).enabled)
         .collect();
-    if platforms.is_empty()
-        && !settings.mobile.android.enabled
-        && !settings.mobile.ios.enabled
-        && !settings.cef_windows.enabled
-    {
+    if platforms.is_empty() && !settings.mobile.android.enabled && !settings.mobile.ios.enabled {
         return Err("no platform selected".to_string());
     }
 
@@ -88,6 +91,7 @@ pub async fn generate_release(
     if steam && (steam_app_id.is_empty() || !steam_app_id.chars().all(|c| c.is_ascii_digit())) {
         return Err("Steam is enabled but the App ID isn't a valid positive number".to_string());
     }
+    let mcp = settings.plugins.mcp.enabled;
 
     let exe_dir = std::env::current_exe()
         .map_err(|e| e.to_string())?
@@ -99,144 +103,64 @@ pub async fn generate_release(
 
     let window_title = (!name.trim().is_empty()).then(|| name.trim().to_string());
     // `package_name` (just the sanitized game name) is what installers use — WiX's
-    // INSTALLDIR, the .deb's package name, the .dmg's volume name, etc. — while the
-    // portable zip's own filename folds the version in too, since it isn't a package
-    // identifier anywhere the way the installer name is.
+    // INSTALLDIR, the .deb's package name, the .dmg's volume name, etc. — and the top folder
+    // (`<name>/`, or `<name>.app/` on macOS) of the portable zip, while the zip's own
+    // filename folds the version in too.
     let package_name = sanitize_name(window_title.as_deref().unwrap_or("game"));
     let raw_version = version.trim().to_string();
     let zip_stem = file_stem(window_title.as_deref().unwrap_or("game"), &raw_version);
 
-    for &platform in &platforms {
-        emit_progress(&app, platform, "checking", 0.0);
-        if !shell::is_shell_available(platform, steam).await {
-            let variant = if steam { " Steam-enabled" } else { "" };
+    for &id in &platforms {
+        let platform = Platform::from_id(id).ok_or_else(|| format!("unknown platform {id}"))?;
+        let mcp_here = mcp && platform == Platform::Windows;
+        emit_progress(&app, id, "checking", 0.0);
+        let asset = platform_asset(platform, steam, mcp)?;
+        if !shell::is_asset_available(&asset).await {
             return Err(format!(
-                "no published{variant} shell release found for {platform} (targeting {})",
+                "{asset} is not published in the targeted Roves release ({})",
                 shell::resolve_shell_version().await
             ));
         }
-        let installer_settings = settings.installers.get(platform);
+        let installer_settings = settings.installers.get(id);
         if installer_settings.enabled {
-            let (available, reason) = installer::check_installer_availability(platform);
+            let (available, reason) = installer::check_installer_availability(id);
             if !available {
                 return Err(format!(
-                    "can't build an installer for {platform}: {}",
+                    "can't build an installer for {id}: {}",
                     reason.unwrap_or_else(|| "not available on this machine".to_string())
                 ));
             }
         }
 
-        let shell_root = shell::ensure_shell(&app, platform, steam, |fraction| {
-            emit_progress(&app, platform, "downloading", fraction);
+        let base_zip = shell::ensure_asset(&app, &asset, |fraction| {
+            emit_progress(&app, id, "downloading", fraction);
         })
         .await?;
 
-        emit_progress(&app, platform, "assembling", 0.0);
-        let staging_dir = std::env::temp_dir().join(format!("roves-packmaster-{platform}-{}", process_id()));
-        if staging_dir.exists() {
-            std::fs::remove_dir_all(&staging_dir).map_err(|e| e.to_string())?;
+        emit_progress(&app, id, "assembling", 0.4);
+        let work_dir = std::env::temp_dir().join(format!("roves-packmaster-{id}-{}", process_id()));
+        if work_dir.exists() {
+            std::fs::remove_dir_all(&work_dir).map_err(|e| e.to_string())?;
         }
-        copy_dir_recursive(&shell_root, &staging_dir)?;
-
-        let (binary_dir, content_root) = match platform {
-            "macos" => (
-                staging_dir.join("play.app").join("Contents").join("MacOS"),
-                staging_dir.join("play.app").join("Contents").join("Resources"),
-            ),
-            _ => (staging_dir.clone(), staging_dir.clone()),
-        };
-
-        emit_progress(&app, platform, "packing", 0.4);
-        let content_dest = content_root.join(packer::CONTENT_SUBDIR);
-        packer::place_content(&content_dir, &content_dest, &settings.compression, window_title.clone())?;
-        packer::write_launch_json(&binary_dir, settings.compression.enabled, window_title.as_deref())?;
-        if steam {
-            write_steam_appid(&binary_dir, &steam_app_id)?;
-        }
-        apply_icon(&app, &binary_dir, &content_root, &content_dir, platform, &settings.icon).await?;
-
-        if settings.portable.get(platform) {
-            emit_progress(&app, platform, "zipping", 0.7);
-            let zip_path = release_dir.join(format!("{zip_stem}_{platform}.zip"));
-            if platform == "macos" {
-                // macOS's own `.app` bundle is already the single, self-contained,
-                // double-click-to-run thing a player needs -- Finder never shows what's
-                // inside it. Wrapping it in another folder (as the shared `else` branch
-                // below does for Windows/Linux, where staging_dir holds many loose
-                // files that really do need one) only adds a pointless extra folder to
-                // open first. Zip play.app's own contents directly under a
-                // `<package_name>.app/` prefix instead -- same renamed-to-the-game's-
-                // name treatment the other platforms already get, at the zip root.
-                let app_dir = staging_dir.join("play.app");
-                zip_dir_as(&app_dir, &format!("{package_name}.app"), &zip_path)?;
-            } else {
-                zip_dir_as(&staging_dir, &package_name, &zip_path)?;
-            }
-        }
-
-        if installer_settings.enabled {
-            for format in &installer_settings.formats {
-                emit_progress(&app, platform, "packaging", 0.85);
-                let result = match format.as_str() {
-                    "msi" => installer::build_msi(&staging_dir, &release_dir, &package_name, &raw_version),
-                    "dmg" => installer::build_dmg(&staging_dir, &release_dir, &package_name, &raw_version),
-                    "deb" => installer::build_deb(&staging_dir, &release_dir, &package_name, &raw_version),
-                    other => Err(format!("unknown installer format {other:?}")),
-                };
-                result.map_err(|e| format!("building .{format} for {platform}: {e}"))?;
-            }
-        }
-
-        std::fs::remove_dir_all(&staging_dir).ok();
-        emit_progress(&app, platform, "done", 1.0);
-    }
-
-    // Experimental CEF Windows player (`cef_player.rs`): a separate output next to the
-    // Servo-based zips, built from a CI player artifact the user extracted. Compression and
-    // Steam do not apply to it (game\ is a plain copy); the icon follows the engine's project
-    // icon contract (`cef_player::resolve_project_icon`).
-    if settings.cef_windows.enabled {
-        let platform = "cef-windows";
-        emit_progress(&app, platform, "checking", 0.0);
-        let base_dir = settings
-            .cef_windows
-            .base_dir
-            .as_deref()
-            .filter(|dir| !dir.trim().is_empty())
-            .ok_or_else(|| "the CEF Windows player is enabled, but no base package folder is selected".to_string())?;
-        let base = cef_player::inspect_base(&cef_player::locate_base(Path::new(base_dir))?)?;
-        let enable_mcp = settings.cef_windows.enable_mcp;
-        emit_progress(&app, platform, "assembling", 0.3);
-        let staging_dir = std::env::temp_dir().join(format!("roves-packmaster-{platform}-{}", process_id()));
-        if staging_dir.exists() {
-            std::fs::remove_dir_all(&staging_dir).map_err(|e| e.to_string())?;
-        }
-        let icon_work = std::env::temp_dir().join(format!("roves-packmaster-cef-icon-{}", process_id()));
-        if icon_work.exists() {
-            std::fs::remove_dir_all(&icon_work).map_err(|e| e.to_string())?;
-        }
-        let icon = cef_player::resolve_project_icon(
-            settings.icon.path.as_deref().map(Path::new),
+        let result = build_desktop(
+            &app,
+            platform,
+            &base_zip,
             &content_dir,
-            &base.root,
-            &icon_work,
-        )?;
-        for warning in &icon.warnings {
-            eprintln!("project icon: {warning}");
-        }
-        let rcedit = if icon.exe_ico.is_some() { Some(ensure_rcedit(&app).await?) } else { None };
-        let assembled = cef_player::assemble(&base, &content_dir, &staging_dir, enable_mcp, &icon, &|exe, ico| {
-            run_rcedit(rcedit.as_deref().ok_or("rcedit is not available")?, exe, ico)
-        });
-        std::fs::remove_dir_all(&icon_work).ok();
-        assembled?;
-        emit_progress(&app, platform, "zipping", 0.7);
-        let suffix = if enable_mcp { "windows_cef_mcp" } else { "windows_cef" };
-        let zip_path = release_dir.join(format!("{zip_stem}_{suffix}.zip"));
-        let zipped = zip_dir_as(&staging_dir, &package_name, &zip_path);
-        std::fs::remove_dir_all(&staging_dir).ok();
-        zipped?;
-        emit_progress(&app, platform, "done", 1.0);
+            &settings,
+            &DesktopTarget {
+                work_dir: &work_dir,
+                release_dir: &release_dir,
+                package_name: &package_name,
+                zip_stem: &zip_stem,
+                version: &raw_version,
+                steam_app_id: steam.then_some(steam_app_id.as_str()),
+                mcp: mcp_here,
+            },
+        );
+        std::fs::remove_dir_all(&work_dir).ok();
+        result?;
+        emit_progress(&app, id, "done", 1.0);
     }
 
     if settings.mobile.android.enabled {
@@ -246,7 +170,7 @@ pub async fn generate_release(
             return Err(reason.unwrap_or_else(|| "Android isn't available on this machine".to_string()));
         }
 
-        // Same one-icon resolution as desktop's own `apply_icon` -- see `resolve_icon_path`.
+        // The explicit or auto-detected icon.png -- see `resolve_icon_path`.
         let icon_path = resolve_icon_path(&settings.icon, &content_dir);
         let signing_config = if settings.mobile.advanced.release_signing_enabled {
             match signing::load_signing_config(&app)? {
@@ -330,135 +254,125 @@ fn process_id() -> u32 {
     std::process::id()
 }
 
-/// Writes `steam_appid.txt` next to the packaged game's executable — Valve's own convention
-/// for `steamworks::Client::init()` (see the engine repo's `protocols/steam.rs`) to find the
-/// App ID when testing outside the real Steam client. Steam itself sets this automatically
-/// once the game is actually published and launched through it; this file only matters for
-/// local/direct-launch testing, but is harmless to ship either way.
-fn write_steam_appid(binary_dir: &Path, app_id: &str) -> Result<(), String> {
-    std::fs::write(binary_dir.join("steam_appid.txt"), app_id).map_err(|e| e.to_string())
+/// Where and how one desktop platform's outputs are written.
+struct DesktopTarget<'a> {
+    /// Scratch directory, removed afterwards by the caller.
+    work_dir: &'a Path,
+    release_dir: &'a Path,
+    package_name: &'a str,
+    zip_stem: &'a str,
+    version: &'a str,
+    /// `Some` for Steam packages: written to `steam_appid.txt` next to the executable.
+    steam_app_id: Option<&'a str>,
+    /// Keep the Windows player's local MCP bridge (the `_mcp` asset).
+    mcp: bool,
 }
 
-/// The single icon to actually use: an explicit `settings.icon.path` always wins, else
-/// auto-detect `icon.png` sitting directly in `content_dir` -- many bundlers already emit one
-/// there for their own PWA manifest (confirmed: `pixi-vn-react-template`'s own `dist/` has
-/// exactly this), same default `post_build_commands.py`'s own `mach bundle` uses. Shared
-/// between desktop's `apply_icon` below and the Android backend's own icon handling
-/// (`generate_release`'s android block), so "one setting" really is one resolution, not two
-/// copies that could drift.
+/// `<stem>_<platform>.zip`; the MCP development package is `<stem>_windows_mcp.zip`, so it is
+/// never mistaken for the one to ship.
+fn portable_zip_name(zip_stem: &str, platform: Platform, mcp: bool) -> String {
+    let suffix = if mcp { "_mcp" } else { "" };
+    format!("{zip_stem}_{}{suffix}.zip", platform.id())
+}
+
+/// Top folder of the portable zip: `<name>/` for Windows/Linux (many loose files), and the
+/// renamed `<name>.app/` bundle itself on macOS (already the single double-click-to-run
+/// thing a player needs; Finder never shows what's inside it).
+fn top_folder(platform: Platform, package_name: &str) -> String {
+    match platform {
+        Platform::Macos => format!("{package_name}.app"),
+        _ => package_name.to_string(),
+    }
+}
+
+fn build_desktop(
+    app: &AppHandle,
+    platform: Platform,
+    base_zip: &Path,
+    content_dir: &Path,
+    settings: &PackmasterSettings,
+    target: &DesktopTarget<'_>,
+) -> Result<(), String> {
+    let id = platform.id();
+    let mut base = cef_player::Base::open(base_zip, platform, target.steam_app_id.is_some())?;
+    let icon_dir = target.work_dir.join("icon");
+    let fallback_ico = base.fallback_ico(&icon_dir)?;
+    let icon = cef_player::resolve_project_icon(
+        platform,
+        settings.icon.path.as_deref().map(Path::new),
+        content_dir,
+        fallback_ico.as_deref(),
+        &icon_dir,
+    )?;
+    for warning in &icon.warnings {
+        eprintln!("project icon ({id}): {warning}");
+    }
+
+    let top = top_folder(platform, target.package_name);
+    let portable = settings.portable.get(id);
+    let out_zip = if portable {
+        target.release_dir.join(portable_zip_name(target.zip_stem, platform, target.mcp))
+    } else {
+        target.work_dir.join("package.zip")
+    };
+    emit_progress(app, id, "zipping", 0.6);
+    cef_player::assemble(
+        &mut base,
+        &cef_player::AssembleOptions {
+            content_dir,
+            top_folder: &top,
+            enable_mcp: target.mcp,
+            steam_app_id: target.steam_app_id,
+            icon: &icon,
+            work_dir: target.work_dir,
+        },
+        &out_zip,
+        &cef_player::set_exe_icon,
+    )?;
+
+    let installer_settings = settings.installers.get(id);
+    if installer_settings.enabled {
+        // Installers run only on their own host OS (`check_installer_availability`), where
+        // extracting the assembled zip restores its Unix modes and symlinks.
+        let stage_root = target.work_dir.join("stage");
+        extract_zip(&out_zip, &stage_root)?;
+        let stage_dir = match platform {
+            // hdiutil gets the folder holding `<name>.app` (plus its Applications link).
+            Platform::Macos => stage_root,
+            _ => stage_root.join(&top),
+        };
+        for format in &installer_settings.formats {
+            emit_progress(app, id, "packaging", 0.85);
+            let (release_dir, name, version) = (target.release_dir, target.package_name, target.version);
+            let result = match format.as_str() {
+                "msi" => installer::build_msi(&stage_dir, release_dir, name, version),
+                "dmg" => installer::build_dmg(&stage_dir, release_dir, name, version),
+                "deb" => installer::build_deb(&stage_dir, release_dir, name, version, &base.executable),
+                other => Err(format!("unknown installer format {other:?}")),
+            };
+            result.map_err(|e| format!("building .{format} for {id}: {e}"))?;
+        }
+    }
+    Ok(())
+}
+
+fn extract_zip(zip_path: &Path, dest_dir: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+    archive
+        .extract(dest_dir)
+        .map_err(|e| format!("extracting {}: {e}", zip_path.display()))
+}
+
+/// The Android icon: an explicit `settings.icon.path` always wins, else auto-detect
+/// `icon.png` sitting directly in `content_dir` -- many bundlers already emit one there for
+/// their own PWA manifest (confirmed: `pixi-vn-react-template`'s own `dist/` has exactly
+/// this). The desktop players follow `cef_player::resolve_project_icon` instead.
 fn resolve_icon_path(icon: &crate::settings::IconSettings, content_dir: &Path) -> Option<String> {
     icon.path.clone().or_else(|| {
         let candidate = content_dir.join("icon.png");
         candidate.is_file().then(|| candidate.to_string_lossy().into_owned())
     })
-}
-
-/// Applies the user's single game icon (see `resolve_icon_path`), to every location it's
-/// actually possible to apply it on `platform`:
-///
-/// - **Windows/Linux**: copied as `icon.png` next to the binary — read back at every launch
-///   by `ports/servoshell/desktop/headed_window.rs`'s `runtime_window_icon_bytes` (the window/
-///   taskbar icon), no compile step needed, works identically on a prebuilt or freshly
-///   compiled binary. Mirrors the engine's own `mach bundle --icon-png`.
-/// - **Windows only, additionally**: derives a multi-size `.ico` from the same source PNG
-///   (`icon.rs`'s `generate_ico`) and patches it into the packaged `play.exe`'s own icon
-///   resource via `rcedit` — this is what Explorer/the taskbar-before-launch/Alt-Tab actually
-///   show for the `.exe` file itself, a separate thing from the runtime window icon above.
-///   Mirrors the engine's own `mach bundle --icon-ico`, except the `.ico` is generated here
-///   instead of being a second file the user has to supply themselves.
-/// - **macOS**: there's no runtime window-icon API at all — the Dock/app icon is baked into
-///   the `.app` bundle's own `Info.plist` (`CFBundleIconFile`, pointing at `servo.icns`
-///   inside `Contents/Resources/`) at packaging time. Solved the same way as Windows' `.ico`:
-///   derive a real `.icns` from the same source PNG (`icon.rs`'s `generate_icns`) and
-///   overwrite that exact file — no `Info.plist` edit needed, since it already points at that
-///   filename. (This used to be an unsupported gap — see the engine's own CUSTOMIZATIONS.md,
-///   "Runtime + post-build game icon" entry, "macOS is a known, deliberate gap" — solvable
-///   once something could actually generate an `.icns`, which `icon.rs` now does.)
-async fn apply_icon(
-    app: &AppHandle,
-    binary_dir: &Path,
-    resources_dir: &Path,
-    content_dir: &Path,
-    platform: &str,
-    icon_settings: &crate::settings::IconSettings,
-) -> Result<(), String> {
-    let Some(icon_path) = resolve_icon_path(icon_settings, content_dir) else {
-        return Ok(());
-    };
-    let icon_path = Path::new(&icon_path);
-
-    match platform {
-        "macos" => {
-            icon::generate_icns(icon_path, &resources_dir.join("servo.icns"))?;
-        },
-        "windows" => {
-            std::fs::copy(icon_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
-            let generated_ico =
-                std::env::temp_dir().join(format!("roves-packmaster-icon-{}.ico", process_id()));
-            icon::generate_ico(icon_path, &generated_ico)?;
-            let exe_path = binary_dir.join("play.exe");
-            let rcedit = ensure_rcedit(app).await?;
-            run_rcedit(&rcedit, &exe_path, &generated_ico)?;
-            std::fs::remove_file(&generated_ico).ok();
-        },
-        _ => {
-            std::fs::copy(icon_path, binary_dir.join("icon.png")).map_err(|e| e.to_string())?;
-        },
-    }
-    Ok(())
-}
-
-const RCEDIT_URL: &str = "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe";
-/// SHA-256 of that release asset, the same pin as the engine's and roves-action's CEF
-/// workflows; a cached or downloaded file that does not match is never run.
-const RCEDIT_SHA256: &str = "3e7801db1a5edbec91b49a24a094aad776cb4515488ea5a4ca2289c400eade2a";
-
-/// Downloads (once; cached under this app's cache dir) `rcedit-x64.exe` and uses it to patch
-/// `exe_path`'s own icon resource in place — see the engine repo's own
-/// `python/servo/post_build_commands.py`, `_ensure_rcedit`/`_patch_windows_exe_icon`, which
-/// this mirrors exactly (same tool, same pinned release, same reasoning: rcedit is what
-/// Electron itself uses to give a prebuilt shell a different icon per app, no recompile
-/// needed).
-async fn ensure_rcedit(app: &AppHandle) -> Result<PathBuf, String> {
-    use sha2::Digest;
-    let cache_dir = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("tools");
-    let rcedit_path = cache_dir.join("rcedit-x64.exe");
-    if rcedit_path.exists() && sha256_file(&rcedit_path)? != RCEDIT_SHA256 {
-        std::fs::remove_file(&rcedit_path).map_err(|e| e.to_string())?;
-    }
-    if !rcedit_path.exists() {
-        std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
-        let response = reqwest::get(RCEDIT_URL).await.map_err(|e| format!("downloading rcedit: {e}"))?;
-        if !response.status().is_success() {
-            return Err(format!("downloading rcedit: HTTP {}", response.status()));
-        }
-        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-        let digest: String = sha2::Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
-        if digest != RCEDIT_SHA256 {
-            return Err(format!("downloaded rcedit has SHA-256 {digest}, expected {RCEDIT_SHA256}"));
-        }
-        std::fs::write(&rcedit_path, &bytes).map_err(|e| e.to_string())?;
-    }
-    Ok(rcedit_path)
-}
-
-fn sha256_file(path: &Path) -> Result<String, String> {
-    use sha2::Digest;
-    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(sha2::Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect())
-}
-
-fn run_rcedit(rcedit_path: &Path, exe_path: &Path, ico_path: &Path) -> Result<(), String> {
-    let status = std::process::Command::new(rcedit_path)
-        .arg(exe_path)
-        .arg("--set-icon")
-        .arg(ico_path)
-        .status()
-        .map_err(|e| format!("running rcedit: {e}"))?;
-    if !status.success() {
-        return Err(format!("rcedit exited with {status}"));
-    }
-    Ok(())
 }
 
 fn sanitize_name(name: &str) -> String {
@@ -506,69 +420,25 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Zips `src`'s contents under a single top-level `<folder_name>/` entry (not `src`'s own
-/// contents at the archive root) — same reasoning as release.yml's own zip step: extracting
-/// otherwise dumps every file straight into whatever folder you extract into.
-fn zip_dir_as(src: &Path, folder_name: &str, zip_path: &Path) -> Result<(), String> {
-    let file = std::fs::File::create(zip_path).map_err(|e| e.to_string())?;
-    let mut writer = zip::ZipWriter::new(file);
-    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
-    for entry in walkdir::WalkDir::new(src) {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let rel = entry.path().strip_prefix(src).map_err(|e| e.to_string())?;
-        if rel.as_os_str().is_empty() {
-            continue;
-        }
-        let archive_path = format!("{folder_name}/{}", rel.to_string_lossy().replace('\\', "/"));
-        if entry.file_type().is_dir() {
-            writer
-                .add_directory(format!("{archive_path}/"), options)
-                .map_err(|e| e.to_string())?;
-        } else {
-            writer.start_file(archive_path, options).map_err(|e| e.to_string())?;
-            let bytes = std::fs::read(entry.path()).map_err(|e| e.to_string())?;
-            writer.write_all(&bytes).map_err(|e| e.to_string())?;
-        }
-    }
-    writer.finish().map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Regression test for a real complaint: the macOS portable zip used to wrap play.app in
-    // an extra <game-name>/ folder (the right call for Windows/Linux, where staging_dir holds
-    // many loose files -- but play.app is already the single, self-contained,
-    // double-click-to-run thing a player needs on macOS, and Finder never shows what's inside
-    // it). Confirms the zip now puts <game-name>.app directly at the archive root instead.
     #[test]
-    fn macos_zip_has_no_extra_wrapper_folder_around_the_app_bundle() {
-        let staging_dir = tempfile::tempdir().unwrap();
-        let app_dir = staging_dir.path().join("play.app");
-        let macos_dir = app_dir.join("Contents").join("MacOS");
-        std::fs::create_dir_all(&macos_dir).unwrap();
-        std::fs::write(macos_dir.join("play"), b"fake binary").unwrap();
+    fn portable_outputs_are_named_per_platform_and_mcp_variant() {
+        assert_eq!(portable_zip_name("mygame_1.0.0", Platform::Windows, false), "mygame_1.0.0_windows.zip");
+        assert_eq!(portable_zip_name("mygame_1.0.0", Platform::Windows, true), "mygame_1.0.0_windows_mcp.zip");
+        assert_eq!(portable_zip_name("mygame", Platform::Linux, false), "mygame_linux.zip");
+        // The macOS zip holds the renamed .app directly at its root, no extra wrapper folder.
+        assert_eq!(top_folder(Platform::Macos, "my_game"), "my_game.app");
+        assert_eq!(top_folder(Platform::Windows, "my_game"), "my_game");
+    }
 
-        let zip_path = staging_dir.path().join("out.zip");
-        zip_dir_as(&app_dir, "My Game.app", &zip_path).unwrap();
-
-        let file = std::fs::File::open(&zip_path).unwrap();
-        let mut archive = zip::ZipArchive::new(file).unwrap();
-        let mut names: Vec<String> = (0..archive.len())
-            .map(|i| archive.by_index(i).unwrap().name().to_string())
-            .collect();
-        names.sort();
-
-        assert_eq!(
-            names,
-            vec![
-                "My Game.app/Contents/".to_string(),
-                "My Game.app/Contents/MacOS/".to_string(),
-                "My Game.app/Contents/MacOS/play".to_string(),
-            ]
-        );
+    #[test]
+    fn mcp_is_only_forwarded_for_windows() {
+        assert_eq!(platform_asset(Platform::Linux, false, true).unwrap(), "roves_shell_linux.zip");
+        assert_eq!(platform_asset(Platform::Macos, true, true).unwrap(), "roves_shell_macos_steam.zip");
+        assert_eq!(platform_asset(Platform::Windows, false, true).unwrap(), "roves_shell_windows_mcp.zip");
+        assert!(platform_asset(Platform::Windows, true, true).is_err());
     }
 }

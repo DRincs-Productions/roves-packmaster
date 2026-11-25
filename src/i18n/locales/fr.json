@@ -40,7 +40,7 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "Aucune version du shell publiée pour : {{platforms}} — réessayez plus tard."
+			"shellUnavailable": "Aucun paquet de lecteur publié trouvé pour : {{platforms}} — réessayez plus tard."
 		},
 		"installers": {
 			"title": "Paquets installables",
@@ -58,28 +58,13 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "Packmaster peut télécharger un shell compatible Steam au lieu de la version standard, pour que votre jeu puisse communiquer avec Steamworks.",
+			"description": "Packmaster utilise la version Steam du lecteur Roves (avec la bibliothèque Steamworks) au lieu de la version standard, pour que votre jeu puisse communiquer avec Steamworks.",
 			"enableLabel": "Activer Steam",
 			"appIdLabel": "ID d'application Steam",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "Écrit dans un fichier steam_appid.txt à côté de l'exécutable du jeu — pour tester en dehors du client Steam réel. Steam le définira lui-même une fois votre jeu réellement publié là-bas.",
 			"appIdError": "Saisissez un ID d'application Steam valide (chiffres uniquement), ou désactivez Steam.",
 			"apiHint": "Le code de votre jeu communique avec lui via @drincs/roves-api/steam — succès, statistiques, DLC, overlay et boutique, via Steamworks."
-		},
-		"compression": {
-			"title": "Compression du contenu",
-			"description": "Regroupe le contenu de votre jeu dans quelques archives compressées au lieu de le distribuer en fichiers libres consultables individuellement. Extrait automatiquement au premier lancement de votre jeu.",
-			"enable": "Compresser le contenu du jeu",
-			"levelLabel": "Niveau de compression",
-			"levelDescription": "Une valeur plus basse favorise une extraction plus rapide au démarrage ; une valeur plus élevée favorise un téléchargement plus léger.",
-			"maxPackSizeLabel": "Taille maximale de l'archive",
-			"maxPackSizeDescription": "Divise les archives pour qu'aucune ne dépasse cette taille.",
-			"excludeLabel": "Ne jamais compresser ces fichiers",
-			"excludeDescription": "Motifs glob, un par ligne — utile pour un dossier de sauvegardes ou de configuration utilisateur qui doit rester en fichiers simples et modifiables.",
-			"excludePlaceholder": "ex. saves/**",
-			"bootIncludeLabel": "Toujours extraire ces fichiers à l'avance",
-			"bootIncludeDescription": "Motifs glob, un par ligne, pour les fichiers supplémentaires nécessaires dès le lancement du jeu (en plus de votre fichier HTML et de ce qu'il référence directement).",
-			"bootIncludePlaceholder": "ex. splash.png"
 		},
 		"icon": {
 			"browse": "Choisir un fichier…",
@@ -154,28 +139,22 @@
 				"cancel": "Annuler"
 			}
 		},
-		"cefWindows": {
-			"title": "Lecteur CEF pour Windows (expérimental)",
-			"description": "Génère aussi un paquet Windows expérimental basé sur le lecteur CEF au lieu du shell basé sur Servo. Sa base est le paquet du lecteur publié par une exécution réussie de la CI du moteur Roves : téléchargez cet artifact, extrayez-le et sélectionnez ici son dossier. Packmaster le vérifie avec son propre SHA256SUMS.txt et remplace son dossier game par votre build. La compression et Steam ne s'appliquent pas à ce paquet. L'icône du jeu (ou l'icon.png, icon.ico ou favicon.ico de votre build) sert pour sa fenêtre et pour play.exe, avec l'icône Roves par défaut.",
-			"enableLabel": "Générer le paquet CEF pour Windows",
-			"baseLabel": "Paquet de base du lecteur",
-			"baseDescription": "L'artifact visual-novel-template-roves-cef-windows-x64 extrait (ou celui en -mcp-, pour utiliser le pont MCP local).",
-			"baseNone": "Aucun dossier sélectionné",
-			"browse": "Parcourir…",
-			"browseTitle": "Sélectionnez le paquet du lecteur CEF extrait",
-			"baseError": "Sélectionnez le dossier du paquet du lecteur CEF extrait, ou désactivez le paquet CEF pour Windows.",
-			"mcpLabel": "Activer le pont MCP local (développement uniquement)",
-			"mcpDescription": "Permet à un agent IA ou à un IDE connecté via MCP (Model Context Protocol) de lire l'état et la console du jeu en cours, d'exécuter du JavaScript dans la page, d'y cliquer, d'appuyer sur des touches et de saisir du texte : utile pour les tests de jeu automatisés. Nécessite un paquet de base avec MCP et Node.js 20+ ; voir mcp\\README.md dans le paquet. Désactivé, le paquet ne contient aucun fichier MCP.",
-			"mcpWarning": "Ne distribuez jamais ce paquet aux joueurs : pendant que le jeu tourne, tout programme exécuté sous votre utilisateur Windows peut le lire et le contrôler via le pont."
+		"mcp": {
+			"title": "Interaction IA (MCP, Windows uniquement)",
+			"description": "Construit le paquet Windows à partir du lecteur de développement avec MCP du moteur au lieu du lecteur standard. Seul le lecteur Windows possède ce pont : les paquets macOS et Linux ne changent jamais. Son zip s'appelle …_windows_mcp.zip, pour ne jamais le confondre avec celui à distribuer.",
+			"enableLabel": "Activer le pont MCP local (développement uniquement)",
+			"details": "Permet à un agent IA ou à un IDE connecté via MCP (Model Context Protocol) de lire l'état et la console du jeu en cours, d'exécuter du JavaScript dans la page, d'y cliquer, d'appuyer sur des touches et de saisir du texte : utile pour les tests de jeu automatisés. Nécessite Node.js 20+ ; voir mcp\\README.md dans le paquet. Désactivé, le paquet ne contient aucun fichier MCP.",
+			"warning": "Ne distribuez jamais ce paquet aux joueurs : pendant que le jeu tourne, tout programme exécuté sous votre utilisateur Windows peut le lire et le contrôler via le pont.",
+			"windowsOnly": "Sélectionnez Windows (portable ou installateur) pour l'utiliser.",
+			"steamConflict": "Indisponible avec Steam : le lecteur avec MCP ne prend pas en charge Steam. Désactivez Steam pour l'utiliser."
 		}
 	},
 	"generating": {
 		"title": "Génération de votre version…",
 		"phase": {
 			"checking": "Vérification de la disponibilité pour {{platform}}…",
-			"downloading": "Téléchargement du shell {{platform}}…",
+			"downloading": "Téléchargement du lecteur {{platform}}…",
 			"assembling": "Assemblage du paquet {{platform}}…",
-			"packing": "Empaquetage de votre contenu pour {{platform}}…",
 			"zipping": "Empaquetage de la version {{platform}}…",
 			"done": "{{platform}} terminé",
 			"packaging": "Création de l'installateur {{platform}}…",
@@ -200,19 +179,18 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS",
-		"cef-windows": "Windows (CEF, expérimental)"
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "À propos de Roves Packmaster",
 		"description": "Roves est un moteur de jeu basé sur le web qui distribue votre jeu comme une véritable application de bureau plutôt qu'un onglet de navigateur. Packmaster est l'outil qui l'empaquette pour vous.",
 		"packmasterVersion": "Version de Packmaster",
-		"shellVersion": "Version du shell",
+		"shellVersion": "Version du lecteur",
 		"shellStatus": "État",
 		"updateAvailable": "Mise à jour disponible",
 		"upToDate": "À jour",
 		"downloadLatest": "Télécharger la dernière version",
-		"cacheSize": "Shells téléchargés",
+		"cacheSize": "Lecteurs téléchargés",
 		"clearCache": "Vider le cache"
 	}
 }

@@ -40,7 +40,7 @@
 			"windows": "Windows",
 			"linux": "Linux",
 			"macos": "macOS",
-			"shellUnavailable": "다음 플랫폼용으로 게시된 셸 빌드를 찾을 수 없습니다: {{platforms}}. 나중에 다시 시도하세요."
+			"shellUnavailable": "게시된 플레이어 패키지를 찾을 수 없습니다: {{platforms}} — 나중에 다시 시도하세요."
 		},
 		"installers": {
 			"title": "설치 패키지",
@@ -58,28 +58,13 @@
 		},
 		"steam": {
 			"title": "Steam",
-			"description": "Packmaster는 일반 셸 대신 Steam 지원 셸을 다운로드할 수 있어, 게임이 Steamworks와 통신할 수 있습니다.",
+			"description": "Packmaster는 표준 버전 대신 Steam 버전의 Roves 플레이어(Steamworks 라이브러리 포함)를 사용하므로, 게임이 Steamworks와 통신할 수 있습니다.",
 			"enableLabel": "Steam 사용",
 			"appIdLabel": "Steam 앱 ID",
 			"appIdPlaceholder": "480",
 			"appIdDescription": "게임 실행 파일 옆에 steam_appid.txt 파일로 기록됩니다 — 실제 Steam 클라이언트 없이 테스트할 때 사용됩니다. 게임이 실제로 게시되면 Steam이 직접 이 값을 설정합니다.",
 			"appIdError": "유효한 Steam 앱 ID(숫자만)를 입력하거나 Steam을 비활성화하세요.",
 			"apiHint": "게임 자체 코드가 @drincs/roves-api/steam을 통해 통신합니다 — Steamworks를 통한 업적, 통계, DLC, 오버레이, 스토어 기능입니다."
-		},
-		"compression": {
-			"title": "콘텐츠 압축",
-			"description": "개별적으로 탐색 가능한 개별 파일 대신 게임 콘텐츠를 몇 개의 압축된 아카이브로 묶습니다. 게임이 처음 실행될 때 자동으로 압축이 해제됩니다.",
-			"enable": "게임 콘텐츠 압축",
-			"levelLabel": "압축 수준",
-			"levelDescription": "낮을수록 시작 시 압축 해제가 빠르고, 높을수록 다운로드 용량이 작아집니다.",
-			"maxPackSizeLabel": "최대 아카이브 크기",
-			"maxPackSizeDescription": "이 크기를 초과하지 않도록 아카이브를 분할합니다.",
-			"excludeLabel": "다음 파일은 절대 압축하지 않음",
-			"excludeDescription": "한 줄에 하나씩 입력하는 glob 패턴입니다. 쓰기 가능한 일반 파일로 유지해야 하는 세이브 데이터나 사용자 설정 폴더에 유용합니다.",
-			"excludePlaceholder": "예: saves/**",
-			"bootIncludeLabel": "다음 파일은 항상 미리 압축 해제",
-			"bootIncludeDescription": "한 줄에 하나씩 입력하는 glob 패턴입니다. HTML 파일과 그것이 직접 참조하는 항목 외에 게임 시작 즉시 필요한 추가 파일용입니다.",
-			"bootIncludePlaceholder": "예: splash.png"
 		},
 		"icon": {
 			"browse": "파일 선택…",
@@ -154,28 +139,22 @@
 				"cancel": "취소"
 			}
 		},
-		"cefWindows": {
-			"title": "CEF Windows 플레이어 (실험적)",
-			"description": "Servo 기반 셸 대신 CEF 플레이어를 사용하는 실험적인 Windows 패키지도 생성합니다. 기반은 Roves 엔진 CI가 성공적으로 실행된 뒤 업로드한 플레이어 패키지입니다. 해당 artifact를 다운로드해 압축을 풀고 여기에서 폴더를 선택하세요. Packmaster는 패키지에 포함된 SHA256SUMS.txt로 검증한 뒤 game 폴더를 여러분의 빌드로 교체합니다. 압축과 Steam은 이 패키지에 적용되지 않습니다. 게임 아이콘(또는 빌드의 icon.png, icon.ico, favicon.ico)이 창과 play.exe에 사용되며, 없으면 Roves 아이콘이 사용됩니다.",
-			"enableLabel": "CEF Windows 패키지 생성",
-			"baseLabel": "기본 플레이어 패키지",
-			"baseDescription": "압축을 푼 visual-novel-template-roves-cef-windows-x64 artifact(로컬 MCP 브리지를 사용하려면 -mcp- 버전).",
-			"baseNone": "선택된 폴더 없음",
-			"browse": "찾아보기…",
-			"browseTitle": "압축을 푼 CEF 플레이어 패키지 선택",
-			"baseError": "압축을 푼 CEF 플레이어 패키지 폴더를 선택하거나 CEF Windows 패키지를 끄세요.",
-			"mcpLabel": "로컬 MCP 브리지 사용 (개발 전용)",
-			"mcpDescription": "MCP(Model Context Protocol)로 연결된 AI 에이전트나 IDE가 실행 중인 게임의 상태와 콘솔을 읽고, 페이지에서 JavaScript를 실행하고, 클릭·키 입력·텍스트 입력을 할 수 있게 합니다. 자동 플레이테스트에 유용합니다. MCP가 활성화된 기본 패키지와 Node.js 20 이상이 필요합니다. 패키지의 mcp\\README.md를 참고하세요. 끄면 패키지에 MCP 파일이 전혀 포함되지 않습니다.",
-			"mcpWarning": "이 패키지를 플레이어에게 배포하지 마세요. 게임이 실행되는 동안 여러분의 Windows 사용자로 실행되는 모든 프로그램이 브리지를 통해 게임을 읽고 제어할 수 있습니다."
+		"mcp": {
+			"title": "AI 연동 (MCP, Windows 전용)",
+			"description": "Windows 패키지를 표준 플레이어 대신 엔진의 MCP 지원 개발용 플레이어로 만듭니다. 이 브리지는 Windows 플레이어에만 있으며 macOS와 Linux 패키지는 바뀌지 않습니다. zip 이름은 …_windows_mcp.zip이므로 배포용 패키지와 혼동되지 않습니다.",
+			"enableLabel": "로컬 MCP 브리지 사용 (개발 전용)",
+			"details": "MCP(Model Context Protocol)로 연결된 AI 에이전트나 IDE가 실행 중인 게임의 상태와 콘솔을 읽고, 페이지에서 JavaScript를 실행하고, 클릭·키 입력·텍스트 입력을 할 수 있게 합니다. 자동 플레이테스트에 유용합니다. Node.js 20 이상이 필요합니다. 패키지의 mcp\\README.md를 참고하세요. 끄면 패키지에 MCP 파일이 전혀 포함되지 않습니다.",
+			"warning": "이 패키지를 플레이어에게 배포하지 마세요. 게임이 실행되는 동안 여러분의 Windows 사용자로 실행되는 모든 프로그램이 브리지를 통해 게임을 읽고 제어할 수 있습니다.",
+			"windowsOnly": "사용하려면 Windows(포터블 또는 설치 프로그램)를 선택하세요.",
+			"steamConflict": "Steam과 함께 사용할 수 없습니다. MCP 지원 플레이어는 Steam을 지원하지 않습니다. 사용하려면 Steam을 끄세요."
 		}
 	},
 	"generating": {
 		"title": "릴리스를 생성하는 중…",
 		"phase": {
 			"checking": "{{platform}} 사용 가능 여부 확인 중…",
-			"downloading": "{{platform}} 셸 다운로드 중…",
+			"downloading": "{{platform}} 플레이어 다운로드 중…",
 			"assembling": "{{platform}} 패키지 조립 중…",
-			"packing": "{{platform}}용 콘텐츠 패킹 중…",
 			"zipping": "{{platform}} 빌드 패키징 중…",
 			"done": "{{platform}} 완료",
 			"packaging": "{{platform}} 설치 프로그램을 만드는 중…",
@@ -200,19 +179,18 @@
 		"macos": "macOS",
 		"linux": "Linux",
 		"android": "Android",
-		"ios": "iOS",
-		"cef-windows": "Windows (CEF, 실험적)"
+		"ios": "iOS"
 	},
 	"info": {
 		"trigger": "Roves Packmaster 정보",
 		"description": "Roves는 게임을 브라우저 탭이 아닌 실제 데스크톱 앱으로 배포하는 웹 기반 게임 엔진입니다. Packmaster는 이를 패키징해 주는 도구입니다.",
 		"packmasterVersion": "Packmaster 버전",
-		"shellVersion": "셸 버전",
+		"shellVersion": "플레이어 버전",
 		"shellStatus": "상태",
 		"updateAvailable": "업데이트 사용 가능",
 		"upToDate": "최신 상태",
 		"downloadLatest": "최신 버전 다운로드",
-		"cacheSize": "다운로드된 셸",
+		"cacheSize": "다운로드한 플레이어",
 		"clearCache": "캐시 지우기"
 	}
 }
