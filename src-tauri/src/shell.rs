@@ -67,23 +67,17 @@ async fn fetch_latest_release_tag() -> Option<String> {
 }
 
 /// The engine release asset for a platform and variant: `roves_shell_<platform>.zip`, the
-/// Steam build `..._steam.zip`, or the Windows-only local-MCP development build
-/// `roves_shell_windows_mcp.zip`. The engine publishes no Steam + MCP package and no MCP
-/// package for macOS/Linux, so those combinations are errors, never a silent fallback.
+/// Steam build `..._steam.zip`, or the local-MCP development build `..._mcp.zip` (published
+/// for every desktop platform). The engine publishes no Steam + MCP package, so that
+/// combination is an error, never a silent fallback.
 pub fn asset_name(platform: Platform, steam: bool, mcp: bool) -> Result<String, String> {
     let suffix = match (steam, mcp) {
         (false, false) => "",
         (true, false) => "_steam",
-        (false, true) if platform == Platform::Windows => "_mcp",
-        (false, true) => {
-            return Err(format!(
-                "the local MCP bridge only exists in the Windows player, not for {}",
-                platform.id()
-            ));
-        },
+        (false, true) => "_mcp",
         (true, true) => {
             return Err(
-                "the local MCP bridge and Steam can't be combined: the MCP-enabled Windows player has no Steam support"
+                "the local MCP bridge and Steam can't be combined: the MCP-enabled players have no Steam support"
                     .to_string(),
             );
         },
@@ -253,10 +247,8 @@ mod tests {
         for (platform, id) in [(Macos, "macos"), (Linux, "linux")] {
             assert_eq!(asset_name(platform, false, false).unwrap(), format!("roves_shell_{id}.zip"));
             assert_eq!(asset_name(platform, true, false).unwrap(), format!("roves_shell_{id}_steam.zip"));
-            assert!(asset_name(platform, false, true)
-                .unwrap_err()
-                .contains("only exists in the Windows player"));
-            assert!(asset_name(platform, true, true).is_err());
+            assert_eq!(asset_name(platform, false, true).unwrap(), format!("roves_shell_{id}_mcp.zip"));
+            assert!(asset_name(platform, true, true).unwrap_err().contains("Steam"));
         }
     }
 

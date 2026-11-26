@@ -41,8 +41,8 @@ same as the portable/installable paths above.
 | Platform | Engine asset | Your game goes to | Window icon | Executable/bundle icon |
 | --- | --- | --- | --- | --- |
 | Windows | `roves_shell_windows[_steam\|_mcp].zip` | `game\` next to `play.exe` | `icon.png` next to `play.exe` | `play.exe` icon resource |
-| macOS (arm64) | `roves_shell_macos[_steam].zip` | `<name>.app/Contents/Resources/game/` | `Contents/Resources/icon.png` | the `CFBundleIconFile` `.icns` |
-| Linux (x64) | `roves_shell_linux[_steam].zip` | `game/` next to the executable | `icon.png` next to the executable | — (no `.desktop` entry) |
+| macOS (arm64) | `roves_shell_macos[_steam\|_mcp].zip` | `<name>.app/Contents/Resources/game/` | `Contents/Resources/icon.png` | the `CFBundleIconFile` `.icns` |
+| Linux (x64) | `roves_shell_linux[_steam\|_mcp].zip` | `game/` next to the executable | `icon.png` next to the executable | — (no `.desktop` entry) |
 
 - The engine files are copied unchanged, entry by entry, so executable modes, the setuid
   `chrome-sandbox` mode and any symlink survive whichever OS Packmaster runs on. Extracting
@@ -59,13 +59,15 @@ same as the portable/installable paths above.
   resource are all produced in-process, so Packmaster on any OS gives the same result. The
   sample game's icon is never carried over (the base `play.exe` carries it, so its main icon
   group is always replaced).
-- **AI interaction (MCP, Windows only, Advanced)**: off by default. When on, the Windows output
-  is built from `roves_shell_windows_mcp.zip` and named `<name>_windows_mcp.zip`; an AI agent
-  or IDE connected over MCP can then read the running game's state and console, run
-  JavaScript in the page, click, press keys and type (needs Node.js 20+, see `mcp\README.md`
-  in the package). Never ship that package to players: any program running as your Windows
-  user can control the game through it. It can't be combined with Steam (no such engine
-  package) and never affects macOS/Linux. When off, the package contains no `mcp\` folder.
+- **AI interaction (MCP, Advanced)**: off by default. When on, every desktop output is built
+  from the engine's MCP-enabled development package (`roves_shell_<platform>_mcp.zip`) and
+  named `<name>_<platform>_mcp.zip`; an AI agent or IDE connected over MCP can then read the
+  running game's state and console, run JavaScript in the page, click, press keys and type
+  (needs Node.js 20+, see `mcp/README.md` in the package). The `mcp/` folder sits next to
+  `game/`: next to `play.exe` on Windows, in `<name>.app/Contents/Resources/` on macOS, next
+  to the executable on Linux. Never ship these packages to players: any program running as
+  your user account can control the game through them. It can't be combined with Steam (no
+  such engine package). When off, the package contains no `mcp/` folder.
 
 ## What it does
 
@@ -88,7 +90,7 @@ same as the portable/installable paths above.
      host-OS-and-tool availability check (see "Status" above).
    - **Advanced** — Steam (a toggle plus your Steam App ID — downloads the Steam player
      package and writes a `steam_appid.txt` next to the packaged executable; see "Status"
-     above) and AI interaction (the Windows player's local MCP bridge, see "Desktop
+     above) and AI interaction (the players' local MCP bridge, see "Desktop
      packages").
    - **Mobile (Android, experimental)** — builds a real, installable `.apk` alongside your
      desktop release, downloading a JRE and the Android SDK on first use (no NDK needed, no

@@ -140,13 +140,13 @@
 			}
 		},
 		"mcp": {
-			"title": "AI interaction (MCP, Windows only)",
-			"description": "Builds the Windows package from the engine's MCP-enabled development player instead of the standard one. Only the Windows player has this bridge: macOS and Linux packages never change. Its zip is named …_windows_mcp.zip, so it is never mistaken for the one to ship.",
+			"title": "AI interaction (MCP)",
+			"description": "Builds the desktop packages (Windows, macOS and Linux) from the engine's MCP-enabled development players instead of the standard ones. Their zips are named …_<platform>_mcp.zip, so they are never mistaken for the ones to ship.",
 			"enableLabel": "Enable the local MCP bridge (development only)",
-			"details": "Lets an AI agent or IDE connected through MCP (Model Context Protocol) read the running game's state and console, run JavaScript in the page, and click, press keys and type in it — useful for automated playtests. Needs Node.js 20+; see mcp\\README.md in the package. When off, the package contains no MCP files at all.",
-			"warning": "Never ship this package to players: while the game runs, any program running as your Windows user can read and control it through the bridge.",
-			"windowsOnly": "Select Windows (portable or installer) to use it.",
-			"steamConflict": "Not available with Steam: the MCP-enabled player has no Steam support. Turn Steam off to use it."
+			"details": "Lets an AI agent or IDE connected through MCP (Model Context Protocol) read the running game's state and console, run JavaScript in the page, and click, press keys and type in it — useful for automated playtests. Needs Node.js 20+; see mcp/README.md in the package (on macOS inside the app, in Contents/Resources/mcp). When off, the package contains no MCP files at all.",
+			"warning": "Never ship these packages to players: while the game runs, any program running as your user account can read and control it through the bridge.",
+			"desktopOnly": "Select Windows, macOS or Linux (portable or installer) to use it.",
+			"steamConflict": "Not available with Steam: the MCP-enabled players have no Steam support. Turn Steam off to use it."
 		}
 	},
 	"generating": {

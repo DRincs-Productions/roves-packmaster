@@ -140,13 +140,13 @@
 			}
 		},
 		"mcp": {
-			"title": "KI-Interaktion (MCP, nur Windows)",
-			"description": "Erstellt das Windows-Paket aus dem MCP-fähigen Entwicklungs-Player der Engine statt aus dem Standard-Player. Nur der Windows-Player hat diese Brücke: macOS- und Linux-Pakete ändern sich nie. Sein Zip heißt …_windows_mcp.zip und wird so nie mit dem zu veröffentlichenden verwechselt.",
+			"title": "KI-Interaktion (MCP)",
+			"description": "Erstellt die Desktop-Pakete (Windows, macOS und Linux) aus den MCP-fähigen Entwicklungs-Playern der Engine statt aus den Standard-Playern. Ihre Zips heißen …_<plattform>_mcp.zip und werden so nie mit den zu veröffentlichenden verwechselt.",
 			"enableLabel": "Lokale MCP-Brücke aktivieren (nur Entwicklung)",
-			"details": "Erlaubt einem KI-Agenten oder einer IDE, die über MCP (Model Context Protocol) verbunden ist, Zustand und Konsole des laufenden Spiels zu lesen, JavaScript in der Seite auszuführen sowie zu klicken, Tasten zu drücken und Text einzugeben – nützlich für automatisierte Playtests. Erfordert Node.js 20+; siehe mcp\\README.md im Paket. Deaktiviert enthält das Paket keine MCP-Dateien.",
-			"warning": "Gib dieses Paket niemals an Spieler weiter: Während das Spiel läuft, kann jedes Programm, das unter deinem Windows-Benutzer läuft, es über die Brücke lesen und steuern.",
-			"windowsOnly": "Wähle Windows (portabel oder Installer), um es zu verwenden.",
-			"steamConflict": "Nicht mit Steam verfügbar: Der MCP-fähige Player unterstützt Steam nicht. Deaktiviere Steam, um es zu verwenden."
+			"details": "Erlaubt einem KI-Agenten oder einer IDE, die über MCP (Model Context Protocol) verbunden ist, Zustand und Konsole des laufenden Spiels zu lesen, JavaScript in der Seite auszuführen sowie zu klicken, Tasten zu drücken und Text einzugeben – nützlich für automatisierte Playtests. Erfordert Node.js 20+; siehe mcp/README.md im Paket (unter macOS in der App, in Contents/Resources/mcp). Deaktiviert enthält das Paket keine MCP-Dateien.",
+			"warning": "Gib diese Pakete niemals an Spieler weiter: Während das Spiel läuft, kann jedes Programm, das unter deinem Benutzerkonto läuft, es über die Brücke lesen und steuern.",
+			"desktopOnly": "Wähle Windows, macOS oder Linux (portabel oder Installer), um es zu verwenden.",
+			"steamConflict": "Nicht mit Steam verfügbar: Die MCP-fähigen Player unterstützen Steam nicht. Deaktiviere Steam, um es zu verwenden."
 		}
 	},
 	"generating": {

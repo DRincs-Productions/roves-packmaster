@@ -33,9 +33,9 @@ pub struct SteamSettings {
     pub app_id: String,
 }
 
-/// The Windows player's local MCP bridge (`cef_player.rs`): picks the
-/// `roves_shell_windows_mcp.zip` asset. Off by default; never applies to macOS/Linux and
-/// can't be combined with Steam (no such engine package). Absent in older stored settings.
+/// The players' local MCP bridge (`cef_player.rs`): every desktop output uses the engine's
+/// `roves_shell_<platform>_mcp.zip` asset. Off by default; can't be combined with Steam (no
+/// such engine package, `shell::asset_name`). Absent in older stored settings.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct McpSettings {

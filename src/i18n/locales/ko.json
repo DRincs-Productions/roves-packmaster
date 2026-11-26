@@ -140,12 +140,12 @@
 			}
 		},
 		"mcp": {
-			"title": "AI 연동 (MCP, Windows 전용)",
-			"description": "Windows 패키지를 표준 플레이어 대신 엔진의 MCP 지원 개발용 플레이어로 만듭니다. 이 브리지는 Windows 플레이어에만 있으며 macOS와 Linux 패키지는 바뀌지 않습니다. zip 이름은 …_windows_mcp.zip이므로 배포용 패키지와 혼동되지 않습니다.",
+			"title": "AI 연동 (MCP)",
+			"description": "데스크톱 패키지(Windows, macOS, Linux)를 표준 플레이어 대신 엔진의 MCP 지원 개발용 플레이어로 만듭니다. zip 이름은 …_<플랫폼>_mcp.zip이므로 배포용 패키지와 혼동되지 않습니다.",
 			"enableLabel": "로컬 MCP 브리지 사용 (개발 전용)",
-			"details": "MCP(Model Context Protocol)로 연결된 AI 에이전트나 IDE가 실행 중인 게임의 상태와 콘솔을 읽고, 페이지에서 JavaScript를 실행하고, 클릭·키 입력·텍스트 입력을 할 수 있게 합니다. 자동 플레이테스트에 유용합니다. Node.js 20 이상이 필요합니다. 패키지의 mcp\\README.md를 참고하세요. 끄면 패키지에 MCP 파일이 전혀 포함되지 않습니다.",
-			"warning": "이 패키지를 플레이어에게 배포하지 마세요. 게임이 실행되는 동안 여러분의 Windows 사용자로 실행되는 모든 프로그램이 브리지를 통해 게임을 읽고 제어할 수 있습니다.",
-			"windowsOnly": "사용하려면 Windows(포터블 또는 설치 프로그램)를 선택하세요.",
+			"details": "MCP(Model Context Protocol)로 연결된 AI 에이전트나 IDE가 실행 중인 게임의 상태와 콘솔을 읽고, 페이지에서 JavaScript를 실행하고, 클릭·키 입력·텍스트 입력을 할 수 있게 합니다. 자동 플레이테스트에 유용합니다. Node.js 20 이상이 필요합니다. 패키지의 mcp/README.md를 참고하세요(macOS에서는 앱 내부의 Contents/Resources/mcp). 끄면 패키지에 MCP 파일이 전혀 포함되지 않습니다.",
+			"warning": "이 패키지들을 플레이어에게 배포하지 마세요. 게임이 실행되는 동안 여러분의 사용자 계정으로 실행되는 모든 프로그램이 브리지를 통해 게임을 읽고 제어할 수 있습니다.",
+			"desktopOnly": "사용하려면 Windows, macOS 또는 Linux(포터블 또는 설치 프로그램)를 선택하세요.",
 			"steamConflict": "Steam과 함께 사용할 수 없습니다. MCP 지원 플레이어는 Steam을 지원하지 않습니다. 사용하려면 Steam을 끄세요."
 		}
 	},

@@ -140,13 +140,13 @@
 			}
 		},
 		"mcp": {
-			"title": "Interacción con IA (MCP, solo Windows)",
-			"description": "Genera el paquete de Windows a partir del reproductor de desarrollo con MCP del motor en lugar del estándar. Solo el reproductor de Windows tiene este puente: los paquetes de macOS y Linux nunca cambian. Su zip se llama …_windows_mcp.zip, para que nunca se confunda con el que se distribuye.",
+			"title": "Interacción con IA (MCP)",
+			"description": "Genera los paquetes de escritorio (Windows, macOS y Linux) a partir de los reproductores de desarrollo con MCP del motor en lugar de los estándar. Sus zip se llaman …_<plataforma>_mcp.zip, para que nunca se confundan con los que se distribuyen.",
 			"enableLabel": "Activar el puente MCP local (solo desarrollo)",
-			"details": "Permite que un agente de IA o un IDE conectado mediante MCP (Model Context Protocol) lea el estado y la consola del juego en ejecución, ejecute JavaScript en la página y haga clic, pulse teclas y escriba en ella: útil para pruebas de juego automatizadas. Necesita Node.js 20+; consulta mcp\\README.md en el paquete. Si está desactivado, el paquete no contiene ningún archivo MCP.",
-			"warning": "No distribuyas nunca este paquete a los jugadores: mientras el juego se ejecuta, cualquier programa que se ejecute con tu usuario de Windows puede leerlo y controlarlo a través del puente.",
-			"windowsOnly": "Selecciona Windows (portátil o instalador) para usarlo.",
-			"steamConflict": "No disponible con Steam: el reproductor con MCP no es compatible con Steam. Desactiva Steam para usarlo."
+			"details": "Permite que un agente de IA o un IDE conectado mediante MCP (Model Context Protocol) lea el estado y la consola del juego en ejecución, ejecute JavaScript en la página y haga clic, pulse teclas y escriba en ella: útil para pruebas de juego automatizadas. Necesita Node.js 20+; consulta mcp/README.md en el paquete (en macOS dentro de la app, en Contents/Resources/mcp). Si está desactivado, el paquete no contiene ningún archivo MCP.",
+			"warning": "No distribuyas nunca estos paquetes a los jugadores: mientras el juego se ejecuta, cualquier programa que se ejecute con tu cuenta de usuario puede leerlo y controlarlo a través del puente.",
+			"desktopOnly": "Selecciona Windows, macOS o Linux (portátil o instalador) para usarlo.",
+			"steamConflict": "No disponible con Steam: los reproductores con MCP no son compatibles con Steam. Desactiva Steam para usarlo."
 		}
 	},
 	"generating": {

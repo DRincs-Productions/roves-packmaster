@@ -35,12 +35,6 @@ fn emit_progress(app: &AppHandle, platform: &str, phase: &str, fraction: f64) {
     );
 }
 
-/// The release asset `platform` uses with these options; the MCP option only ever applies to
-/// Windows (the frontend never offers it elsewhere, so it is simply not forwarded).
-fn platform_asset(platform: Platform, steam: bool, mcp: bool) -> Result<String, String> {
-    shell::asset_name(platform, steam, mcp && platform == Platform::Windows)
-}
-
 /// Real feasibility check ("is this actually distributable") for each requested platform —
 /// confirms the targeted engine release genuinely has the matching player package published
 /// (real portable bundling works for any of the 3 platforms from any host, since it's just
@@ -50,7 +44,7 @@ fn platform_asset(platform: Platform, steam: bool, mcp: bool) -> Result<String, 
 pub async fn check_shell_availability(platforms: Vec<String>, steam: bool, mcp: bool) -> Vec<(String, bool)> {
     let mut results = Vec::with_capacity(platforms.len());
     for id in platforms {
-        let available = match Platform::from_id(&id).map(|p| platform_asset(p, steam, mcp)) {
+        let available = match Platform::from_id(&id).map(|p| shell::asset_name(p, steam, mcp)) {
             Some(Ok(asset)) => shell::is_asset_available(&asset).await,
             _ => false,
         };
@@ -112,9 +106,8 @@ pub async fn generate_release(
 
     for &id in &platforms {
         let platform = Platform::from_id(id).ok_or_else(|| format!("unknown platform {id}"))?;
-        let mcp_here = mcp && platform == Platform::Windows;
         emit_progress(&app, id, "checking", 0.0);
-        let asset = platform_asset(platform, steam, mcp)?;
+        let asset = shell::asset_name(platform, steam, mcp)?;
         if !shell::is_asset_available(&asset).await {
             return Err(format!(
                 "{asset} is not published in the targeted Roves release ({})",
@@ -155,7 +148,7 @@ pub async fn generate_release(
                 zip_stem: &zip_stem,
                 version: &raw_version,
                 steam_app_id: steam.then_some(steam_app_id.as_str()),
-                mcp: mcp_here,
+                mcp,
             },
         );
         std::fs::remove_dir_all(&work_dir).ok();
@@ -264,12 +257,12 @@ struct DesktopTarget<'a> {
     version: &'a str,
     /// `Some` for Steam packages: written to `steam_appid.txt` next to the executable.
     steam_app_id: Option<&'a str>,
-    /// Keep the Windows player's local MCP bridge (the `_mcp` asset).
+    /// Keep the player's local MCP bridge (the `_mcp` asset).
     mcp: bool,
 }
 
-/// `<stem>_<platform>.zip`; the MCP development package is `<stem>_windows_mcp.zip`, so it is
-/// never mistaken for the one to ship.
+/// `<stem>_<platform>.zip`; the MCP development package is `<stem>_<platform>_mcp.zip`, so it
+/// is never mistaken for the one to ship.
 fn portable_zip_name(zip_stem: &str, platform: Platform, mcp: bool) -> String {
     let suffix = if mcp { "_mcp" } else { "" };
     format!("{zip_stem}_{}{suffix}.zip", platform.id())
@@ -429,16 +422,10 @@ mod tests {
         assert_eq!(portable_zip_name("mygame_1.0.0", Platform::Windows, false), "mygame_1.0.0_windows.zip");
         assert_eq!(portable_zip_name("mygame_1.0.0", Platform::Windows, true), "mygame_1.0.0_windows_mcp.zip");
         assert_eq!(portable_zip_name("mygame", Platform::Linux, false), "mygame_linux.zip");
+        assert_eq!(portable_zip_name("mygame", Platform::Macos, true), "mygame_macos_mcp.zip");
         // The macOS zip holds the renamed .app directly at its root, no extra wrapper folder.
         assert_eq!(top_folder(Platform::Macos, "my_game"), "my_game.app");
         assert_eq!(top_folder(Platform::Windows, "my_game"), "my_game");
     }
 
-    #[test]
-    fn mcp_is_only_forwarded_for_windows() {
-        assert_eq!(platform_asset(Platform::Linux, false, true).unwrap(), "roves_shell_linux.zip");
-        assert_eq!(platform_asset(Platform::Macos, true, true).unwrap(), "roves_shell_macos_steam.zip");
-        assert_eq!(platform_asset(Platform::Windows, false, true).unwrap(), "roves_shell_windows_mcp.zip");
-        assert!(platform_asset(Platform::Windows, true, true).is_err());
-    }
 }

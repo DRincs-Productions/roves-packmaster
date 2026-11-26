@@ -20,12 +20,15 @@
 //!
 //! **Windows**: the base is checked against its own `SHA256SUMS.txt` (every file listed, every
 //! listed file present with that hash, nothing unlisted) and the output gets a regenerated one.
-//! The local MCP bridge turns on only when the package contains `mcp/enabled` (engine
-//! `support/cef-netrender-probe/mcp/README.md`): with MCP off (default) the output never
-//! contains `mcp/` nor the MCP provenance; with MCP on, the base (the `_mcp` asset) must be a
-//! complete MCP-enabled package. Packmaster never adds MCP files of its own. MCP does not
-//! exist for macOS/Linux. macOS/Linux packages ship no checksums; their required files are
-//! checked instead.
+//! macOS/Linux packages ship no checksums; their required files are checked instead.
+//!
+//! **Local MCP bridge** (every platform): it turns on only when the package contains the
+//! marker `mcp/enabled` (engine `support/cef-netrender-probe/mcp/README.md`), in the folder
+//! that holds `game/`: next to `play.exe`, in `Contents/Resources/` of the `.app`, next to
+//! the Linux executable. With MCP off (default) the output never contains that `mcp/` folder
+//! nor the MCP provenance; with MCP on, the base (the `_mcp` asset) must be a complete
+//! MCP-enabled package (and, on Windows, say so in its `PROVENANCE.txt`). Packmaster never adds
+//! MCP files of its own.
 //!
 //! **Project icon** (engine READMEs "Project icon"/"Application icon"; the same rules as the
 //! engine's and roves-action's `project_icon.py`, keep them in step): the game's icon comes
@@ -63,14 +66,15 @@ const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 const ICO_SIZES: [u32; 7] = [16, 24, 32, 48, 64, 128, 256];
 const GAME_DIR: &str = "game";
 const MCP_DIR: &str = "mcp";
-/// Written by the engine CI's "assemble the MCP-enabled package" step, at the end of
-/// `PROVENANCE.txt`.
+/// Written by the engine CI's "assemble the MCP-enabled package" step, at the end of the
+/// Windows `PROVENANCE.txt` (the macOS/Linux packages have none).
 const MCP_PROVENANCE_HEADER: &str = "MCP-enabled development package";
+/// Files of a complete MCP-enabled package, relative to `Platform::mcp_dir`.
 const MCP_REQUIRED: &[&str] = &[
-    "mcp/enabled",
-    "mcp/server.mjs",
-    "mcp/README.md",
-    "mcp/node_modules/@modelcontextprotocol/server/package.json",
+    "enabled",
+    "server.mjs",
+    "README.md",
+    "node_modules/@modelcontextprotocol/server/package.json",
 ];
 const WINDOWS_EXE: &str = "play.exe";
 const MACOS_INFO_PLIST: &str = "Contents/Info.plist";
@@ -143,6 +147,11 @@ impl Platform {
         }
     }
 
+    /// The local MCP bridge's folder (`mcp`, next to `game/`).
+    fn mcp_dir(self) -> String {
+        join(self.resources_dir(), MCP_DIR)
+    }
+
     fn steam_library(self) -> &'static str {
         match self {
             Self::Windows => "steam_api64.dll",
@@ -203,7 +212,8 @@ pub struct Base {
     entries: BTreeMap<String, Entry>,
     /// Verified `SHA256SUMS.txt` (path -> lowercase hex), when the package ships one.
     checksums: Option<BTreeMap<String, String>>,
-    /// Complete MCP-enabled Windows package.
+    /// Complete MCP-enabled package (every MCP file in `Platform::mcp_dir`, plus the MCP
+    /// section of `PROVENANCE.txt` when the package has one).
     pub mcp_capable: bool,
     /// The player executable, relative to the package root: `play.exe`, the macOS
     /// `CFBundleExecutable` under `Contents/MacOS/`, or the Linux package's only executable
@@ -295,11 +305,12 @@ impl Base {
         if base.is_file(CHECKSUMS) {
             base.checksums = Some(base.verify_checksums()?);
         }
-        base.mcp_capable = platform == Platform::Windows
-            && MCP_REQUIRED.iter().all(|file| base.is_file(file))
-            && String::from_utf8_lossy(&base.read(PROVENANCE)?)
-                .lines()
-                .any(|line| line.starts_with(MCP_PROVENANCE_HEADER));
+        let mcp_dir = platform.mcp_dir();
+        base.mcp_capable = MCP_REQUIRED.iter().all(|file| base.is_file(&join(&mcp_dir, file)))
+            && (!base.is_file(PROVENANCE)
+                || String::from_utf8_lossy(&base.read(PROVENANCE)?)
+                    .lines()
+                    .any(|line| line.starts_with(MCP_PROVENANCE_HEADER)));
         Ok(base)
     }
 
@@ -640,7 +651,7 @@ pub struct AssembleOptions<'a> {
     pub content_dir: &'a Path,
     /// Top-level folder of the output zip: `<name>` (Windows/Linux) or `<name>.app` (macOS).
     pub top_folder: &'a str,
-    /// Keep the Windows base's local MCP bridge.
+    /// Keep the base's local MCP bridge (the `_mcp` asset's `mcp/` folder).
     pub enable_mcp: bool,
     /// Written to `steam_appid.txt` next to the executable.
     pub steam_app_id: Option<&'a str>,
@@ -665,14 +676,11 @@ pub fn assemble(
     patch_exe: &dyn Fn(&Path, &Path) -> Result<(), String>,
 ) -> Result<(), String> {
     let platform = base.platform;
-    if opts.enable_mcp && platform != Platform::Windows {
-        return Err(format!("the local MCP bridge only exists in the Windows player, not for {}", platform.id()));
-    }
     if opts.enable_mcp && !base.mcp_capable {
-        return Err(
-            "the local MCP bridge is enabled, but the Windows player package is not a complete MCP-enabled package"
-                .to_string(),
-        );
+        return Err(format!(
+            "the local MCP bridge is enabled, but the {} player package is not a complete MCP-enabled package",
+            platform.id()
+        ));
     }
     if !opts.content_dir.join("index.html").is_file() {
         return Err(format!("{} has no index.html at its root", opts.content_dir.display()));
@@ -698,6 +706,9 @@ fn write_package(
     let game_dir = join(resources, GAME_DIR);
     let window_icon = join(resources, PROJECT_ICON_FILE);
     let steam_app_id_file = join(platform.exe_dir(), STEAM_APP_ID_FILE);
+    let mcp_dir = platform.mcp_dir();
+    let in_mcp_dir = |rel: &str| rel == mcp_dir || rel.starts_with(&format!("{mcp_dir}/"));
+    let mcp_marker = join(&mcp_dir, MCP_REQUIRED[0]);
 
     // Files Packmaster writes, (package-relative path, source).
     let mut added: Vec<(String, Source)> = Vec::new();
@@ -738,7 +749,6 @@ fn write_package(
 
     let replaced: std::collections::BTreeSet<&str> = added.iter().map(|(rel, _)| rel.as_str()).collect();
     let excluded = |rel: &str| {
-        let first = rel.split('/').next().unwrap_or("");
         rel == game_dir
             || rel.starts_with(&format!("{game_dir}/"))
             || rel == window_icon
@@ -747,7 +757,7 @@ fn write_package(
             || replaced.contains(rel)
             // Provenance of the base's own sample game, which the output no longer contains.
             || rel.starts_with("provenance/visual-novel-template-")
-            || (!opts.enable_mcp && (first == MCP_DIR || rel.starts_with("provenance/mcp-")))
+            || (!opts.enable_mcp && (in_mcp_dir(rel) || rel.starts_with("provenance/mcp-")))
     };
     let kept: Vec<(String, Entry)> = base
         .entries
@@ -817,9 +827,8 @@ fn write_package(
         }
     }
 
-    let has_marker = hashes.contains_key("mcp/enabled")
-        || kept.iter().any(|(rel, _)| rel == "mcp/enabled");
-    let has_mcp_dir = kept.iter().any(|(rel, _)| rel.split('/').next() == Some(MCP_DIR));
+    let has_marker = hashes.contains_key(&mcp_marker) || kept.iter().any(|(rel, _)| *rel == mcp_marker);
+    let has_mcp_dir = kept.iter().any(|(rel, _)| in_mcp_dir(rel));
     if opts.enable_mcp != has_marker || (!opts.enable_mcp && has_mcp_dir) {
         return Err("internal error: the MCP state of the assembled package does not match the setting".to_string());
     }
@@ -955,7 +964,7 @@ mod tests {
         let mut provenance = String::from("Engine\r\n  commit abc\r\n\r\nGame (folder game\\)\r\n  template\r\n");
         if mcp {
             for file in MCP_REQUIRED {
-                put(&mut files, file, b"mcp", FILE_MODE);
+                put(&mut files, &format!("mcp/{file}"), b"mcp", FILE_MODE);
             }
             put(&mut files, "provenance/mcp-npm-ls.txt", b"mcp deps", FILE_MODE);
             // Hidden files are part of the package too (listed in SHA256SUMS.txt).
@@ -974,7 +983,20 @@ mod tests {
         write_zip(&dir.join("windows.zip"), "roves", &files)
     }
 
+    /// The engine's MCP-enabled package content under `mcp_dir` (hidden files included).
+    fn put_mcp(files: &mut Files, mcp_dir: &str) {
+        for file in MCP_REQUIRED {
+            put(files, &format!("{mcp_dir}/{file}"), b"mcp", FILE_MODE);
+        }
+        put(files, &format!("{mcp_dir}/package.json"), b"{}", FILE_MODE);
+        put(files, &format!("{mcp_dir}/node_modules/.package-lock.json"), b"{}", FILE_MODE);
+    }
+
     fn linux_base(dir: &Path, steam: bool) -> PathBuf {
+        linux_base_with(dir, steam, false)
+    }
+
+    fn linux_base_with(dir: &Path, steam: bool, mcp: bool) -> PathBuf {
         let mut files = Files::new();
         put(&mut files, LINUX_EXE, b"elf", EXEC);
         put(&mut files, "libcef.so", b"cef", EXEC);
@@ -985,10 +1007,17 @@ mod tests {
         if steam {
             put(&mut files, "libsteam_api.so", b"steam", EXEC);
         }
+        if mcp {
+            put_mcp(&mut files, "mcp");
+        }
         write_zip(&dir.join("linux.zip"), "roves-cef-linux", &files)
     }
 
     fn macos_base(dir: &Path) -> PathBuf {
+        macos_base_with(dir, false)
+    }
+
+    fn macos_base_with(dir: &Path, mcp: bool) -> PathBuf {
         let mut files = Files::new();
         put(&mut files, MACOS_INFO_PLIST, MACOS_PLIST.as_bytes(), FILE_MODE);
         put(&mut files, MACOS_EXE, b"macho", EXEC);
@@ -997,6 +1026,9 @@ mod tests {
         put(&mut files, "Contents/Frameworks/roves-cef-macos-gate Helper.app/Contents/Info.plist", b"<plist/>", FILE_MODE);
         put(&mut files, "Contents/Resources/game/index.html", b"<p>sample</p>", FILE_MODE);
         put(&mut files, "Contents/Resources/icon.png", b"sample icon", FILE_MODE);
+        if mcp {
+            put_mcp(&mut files, "Contents/Resources/mcp");
+        }
         write_zip(&dir.join("macos.zip"), "roves-cef-macos-gate.app", &files)
     }
 
@@ -1095,7 +1127,7 @@ mod tests {
     }
 
     #[test]
-    fn mcp_needs_an_mcp_package_and_windows() {
+    fn mcp_needs_an_mcp_package() {
         let tmp = tempfile::tempdir().unwrap();
         let (content, work, out) = (dist(&tmp.path().join("dist")), tmp.path().join("work"), tmp.path().join("out.zip"));
         let icon = ProjectIcon::default();
@@ -1105,7 +1137,70 @@ mod tests {
         assert!(assemble(&mut plain, &opts, &out, &no_patch).is_err());
         assert!(!out.exists());
         let mut linux = Base::open(&linux_base(tmp.path(), false), Platform::Linux, false).unwrap();
-        assert!(assemble(&mut linux, &opts, &out, &no_patch).unwrap_err().contains("only exists in the Windows player"));
+        assert!(!linux.mcp_capable);
+        assert!(assemble(&mut linux, &opts, &out, &no_patch).unwrap_err().contains("not a complete MCP-enabled package"));
+        let mut macos = Base::open(&macos_base(tmp.path()), Platform::Macos, false).unwrap();
+        assert!(!macos.mcp_capable);
+        let opts = AssembleOptions { top_folder: "my game.app", ..opts };
+        assert!(assemble(&mut macos, &opts, &out, &no_patch).unwrap_err().contains("not a complete MCP-enabled package"));
+        assert!(!out.exists());
+        // The marker alone (an incomplete mcp/ folder) is not an MCP-enabled package.
+        let mut files = Files::new();
+        put(&mut files, LINUX_EXE, b"elf", EXEC);
+        for file in ["libcef.so", "chrome-sandbox", "icudtl.dat", "resources.pak", "game/index.html", "mcp/enabled"] {
+            put(&mut files, file, b"x", FILE_MODE);
+        }
+        let zip = write_zip(&tmp.path().join("marker-only.zip"), "", &files);
+        assert!(!Base::open(&zip, Platform::Linux, false).unwrap().mcp_capable);
+    }
+
+    #[test]
+    fn linux_mcp_is_kept_next_to_the_executable_or_dropped() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work) = (dist(&tmp.path().join("dist")), tmp.path().join("work"));
+        let icon = ProjectIcon::default();
+        let base_zip = linux_base_with(tmp.path(), false, true);
+        let mut base = Base::open(&base_zip, Platform::Linux, false).unwrap();
+        assert!(base.mcp_capable);
+        let on = tmp.path().join("on.zip");
+        let opts = AssembleOptions { enable_mcp: true, ..options(&content, &work, &icon) };
+        assemble(&mut base, &opts, &on, &no_patch).unwrap();
+        let zip = read_zip(&on);
+        for file in MCP_REQUIRED {
+            assert!(zip.contains_key(&format!("my game/mcp/{file}")), "{file}");
+        }
+        assert!(zip.contains_key("my game/mcp/node_modules/.package-lock.json"));
+        assert!(Base::open(&on, Platform::Linux, false).unwrap().mcp_capable);
+
+        let off = tmp.path().join("off.zip");
+        assemble(&mut base, &options(&content, &work, &icon), &off, &no_patch).unwrap();
+        let zip = read_zip(&off);
+        assert!(!zip.keys().any(|f| f.starts_with("my game/mcp")), "{:?}", names(&zip));
+        assert!(!Base::open(&off, Platform::Linux, false).unwrap().mcp_capable);
+    }
+
+    #[test]
+    fn macos_mcp_is_kept_in_the_app_resources_or_dropped() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (content, work) = (dist(&tmp.path().join("dist")), tmp.path().join("work"));
+        let icon = ProjectIcon::default();
+        let mut base = Base::open(&macos_base_with(tmp.path(), true), Platform::Macos, false).unwrap();
+        assert!(base.mcp_capable);
+        let on = tmp.path().join("on.zip");
+        let opts = AssembleOptions { enable_mcp: true, top_folder: "my game.app", ..options(&content, &work, &icon) };
+        assemble(&mut base, &opts, &on, &no_patch).unwrap();
+        let zip = read_zip(&on);
+        for file in MCP_REQUIRED {
+            assert!(zip.contains_key(&format!("my game.app/Contents/Resources/mcp/{file}")), "{file}");
+        }
+        assert!(Base::open(&on, Platform::Macos, false).unwrap().mcp_capable);
+
+        let off = tmp.path().join("off.zip");
+        let opts = AssembleOptions { top_folder: "my game.app", ..options(&content, &work, &icon) };
+        assemble(&mut base, &opts, &off, &no_patch).unwrap();
+        let zip = read_zip(&off);
+        assert!(!zip.keys().any(|f| f.contains("/mcp")), "{:?}", names(&zip));
+        assert!(!Base::open(&off, Platform::Macos, false).unwrap().mcp_capable);
     }
 
     #[test]

@@ -32,9 +32,9 @@ export interface SteamSettings {
   appId: string;
 }
 
-/** The Windows player's local MCP bridge (src-tauri/src/cef_player.rs): the Windows output
- * uses the engine's `roves_shell_windows_mcp.zip` development package. Off by default; never
- * applies to macOS/Linux and can't be combined with Steam (the engine publishes no such
+/** The players' local MCP bridge (src-tauri/src/cef_player.rs): every desktop output
+ * (Windows, macOS, Linux) uses the engine's `roves_shell_<platform>_mcp.zip` development
+ * package. Off by default; can't be combined with Steam (the engine publishes no such
  * package), so configure.tsx turns it off when Steam is turned on. */
 export interface McpSettings {
   enabled: boolean;

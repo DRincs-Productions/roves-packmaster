@@ -140,12 +140,12 @@
 			}
 		},
 		"mcp": {
-			"title": "AI 交互（MCP，仅 Windows）",
-			"description": "使用引擎启用 MCP 的开发版播放器（而非标准播放器）构建 Windows 包。只有 Windows 播放器具有此桥接；macOS 和 Linux 包不会改变。其 zip 命名为 …_windows_mcp.zip，不会与要发布的包混淆。",
+			"title": "AI 交互（MCP）",
+			"description": "使用引擎启用 MCP 的开发版播放器（而非标准播放器）构建桌面包（Windows、macOS 和 Linux）。其 zip 命名为 …_<平台>_mcp.zip，不会与要发布的包混淆。",
 			"enableLabel": "启用本地 MCP 桥接（仅限开发）",
-			"details": "允许通过 MCP（Model Context Protocol）连接的 AI 智能体或 IDE 读取运行中游戏的状态和控制台、在页面中执行 JavaScript，以及点击、按键和输入文字——适用于自动化试玩测试。需要 Node.js 20+；请参阅包内的 mcp\\README.md。关闭时，包中不包含任何 MCP 文件。",
-			"warning": "切勿将此包分发给玩家：游戏运行期间，以你的 Windows 用户身份运行的任何程序都可以通过该桥接读取并控制游戏。",
-			"windowsOnly": "请选择 Windows（便携版或安装程序）以使用此功能。",
+			"details": "允许通过 MCP（Model Context Protocol）连接的 AI 智能体或 IDE 读取运行中游戏的状态和控制台、在页面中执行 JavaScript，以及点击、按键和输入文字——适用于自动化试玩测试。需要 Node.js 20+；请参阅包内的 mcp/README.md（macOS 上位于应用内的 Contents/Resources/mcp）。关闭时，包中不包含任何 MCP 文件。",
+			"warning": "切勿将这些包分发给玩家：游戏运行期间，以你的用户账户运行的任何程序都可以通过该桥接读取并控制游戏。",
+			"desktopOnly": "请选择 Windows、macOS 或 Linux（便携版或安装程序）以使用此功能。",
 			"steamConflict": "无法与 Steam 同时使用：启用 MCP 的播放器不支持 Steam。请关闭 Steam 以使用此功能。"
 		}
 	},

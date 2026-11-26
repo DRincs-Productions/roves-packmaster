@@ -112,9 +112,9 @@ without being able to try an option that can't work here.
   the former Rust constant remained at v0.4.18 while the frontend reached v0.7.12.
 - **`shell.rs`** downloads (and caches, per version+asset, under this app's cache dir) the
   engine's own prebuilt desktop player package — never compiles one. Since engine v0.9.0
-  these are the CEF players: `roves_shell_<platform>.zip`, `..._steam.zip`, and the
-  Windows-only `roves_shell_windows_mcp.zip` (`shell::asset_name`; Steam + MCP and MCP on
-  macOS/Linux are errors, the engine publishes no such package). The cache keeps the zip
+  these are the CEF players: `roves_shell_<platform>.zip`, `..._steam.zip`, and
+  `..._mcp.zip` for every desktop platform (`shell::asset_name`; Steam + MCP is an error,
+  the engine publishes no such package). The cache keeps the zip
   itself, never an extraction. Its pinned version comes from the shared file above; see the
   engine repo's `AGENTS.md`, "Cutting a versioned release", for the release/pin verification
   procedure. **The pin still says v0.7.15 (the last Servo shell, a different layout):
@@ -135,7 +135,8 @@ without being able to try an option that can't work here.
   build (Windows/Linux next to the executable, macOS `Contents/Resources/game/`), the
   project icon applied, `steam_appid.txt` written next to the executable for Steam packages,
   and the Windows package verified against its own `SHA256SUMS.txt` (regenerated for the
-  output, `PROVENANCE.txt` rewritten) with the MCP files kept only when MCP is on. The macOS
+  output, `PROVENANCE.txt` rewritten); on every platform the `mcp/` folder next to `game/`
+  is kept only when MCP is on (and must then be complete), dropped otherwise. The macOS
   executable and `.icns` names come from `Info.plist` (`plist` crate), the Linux executable
   is the only non-helper executable at the package root — the same lookups as roves-action's
   `cef/assemble.sh`; keep the two (and the engine READMEs) in step.
@@ -182,10 +183,12 @@ executable), so `configure.tsx`'s "Steam" panel is a real control: a `Switch`
 writes the App ID into `steam_appid.txt` next to the executable (Valve's own convention for
 testing outside the real Steam client; macOS: `Contents/MacOS/`).
 
-**AI interaction (MCP):** `settings.plugins.mcp.enabled`, off by default, Windows only:
-the Windows output uses `roves_shell_windows_mcp.zip` and is named `<name>_windows_mcp.zip`.
-The switch is disabled while Steam is on (enabling Steam turns it off) or when Windows isn't
-selected; the Rust side refuses the impossible combinations too.
+**AI interaction (MCP):** `settings.plugins.mcp.enabled`, off by default, every desktop
+platform: each desktop output uses `roves_shell_<platform>_mcp.zip` and is named
+`<name>_<platform>_mcp.zip` (`mcp/` next to `play.exe`, in `Contents/Resources/` of the
+`.app`, next to the Linux executable). The switch is disabled while Steam is on (enabling
+Steam turns it off) or when no desktop platform is selected; the Rust side refuses Steam +
+MCP too.
 
 **Game icon:** a single source PNG (`settings.icon.path`), picked in the "Release info"
 card via `@tauri-apps/plugin-dialog`'s `open()`. Desktop players follow

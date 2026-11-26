@@ -295,8 +295,7 @@ function ConfigureView() {
 
   // Real, live check ("is this actually distributable") against the targeted engine
   // release's actual player packages — not assumed just because it's a supported platform.
-  // Re-run whenever the Steam or MCP toggle changes: each picks a different package (MCP
-  // only for Windows).
+  // Re-run whenever the Steam or MCP toggle changes: each picks a different package.
   useEffect(() => {
     checkShellAvailability(
       [...PORTABLE_PLATFORMS],
@@ -421,14 +420,17 @@ function ConfigureView() {
     }
   };
 
-  // The local MCP bridge only exists in the Windows player, and the engine publishes no
-  // Steam + MCP package: the switch is unavailable (and shown off) in both cases.
-  const windowsSelected = settings.portable.windows || settings.installers.windows.enabled;
+  // The local MCP bridge exists in every desktop player (Windows, macOS, Linux), but not on
+  // mobile, and the engine publishes no Steam + MCP package: the switch is unavailable (and
+  // shown off) without a desktop output or with Steam on.
+  const desktopSelected = PORTABLE_PLATFORMS.some(
+    (p) => settings.portable[p] || settings.installers[p].enabled,
+  );
   const steamEnabled = settings.plugins.steam.enabled;
   const mcpUnavailableReason = steamEnabled
     ? t("configure.mcp.steamConflict")
-    : !windowsSelected
-      ? t("configure.mcp.windowsOnly")
+    : !desktopSelected
+      ? t("configure.mcp.desktopOnly")
       : null;
   const mcpChecked = settings.plugins.mcp.enabled && !steamEnabled;
 
@@ -1171,7 +1173,7 @@ function ConfigureView() {
                 <p className="text-muted-foreground text-xs">{mcpUnavailableReason}</p>
               )}
               <p className="text-muted-foreground text-xs">{t("configure.mcp.details")}</p>
-              {mcpChecked && windowsSelected && (
+              {mcpChecked && desktopSelected && (
                 <Alert>
                   <WarningCircle />
                   <AlertDescription>{t("configure.mcp.warning")}</AlertDescription>
