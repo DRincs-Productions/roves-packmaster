@@ -46,15 +46,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: 'windows-latest'
-            os_name: 'windows'
-          - platform: 'macos-latest'
-            os_name: 'macos'
-          - platform: 'ubuntu-24.04'
-            os_name: 'linux'
+        # Pushes build the Windows distribution only; a manual run builds all three (project
+        # rule: macOS/Linux CI only at release time, i.e. release.yml on version tags).
+        os_name: ${{ fromJSON(github.event_name == 'push' && '["windows"]' || '["windows","macos","linux"]') }}
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os_name == 'windows' && 'windows-latest' || matrix.os_name == 'macos' && 'macos-latest' || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -80,6 +76,12 @@ jobs:
 
       - name: npm install
         run: npm install
+
+      # The roves-cli sidecar (src-tauri/binaries/roves-<target-triple>[.exe], Tauri externalBin):
+      # the standalone executable of the roves-cli release pinned in
+      # src/lib/roves-cli-version.txt. Tauri copies it next to Packmaster's executable.
+      - name: fetch the roves-cli sidecar
+        run: npm run sidecar
 
       # rustup ships preinstalled on all 3 GitHub-hosted runner images; no pinned toolchain
       # here (unlike the main engine repo) so the default stable channel is used as-is.
@@ -107,10 +109,10 @@ jobs:
           mkdir -p out/roves-packmaster
           case "${{ matrix.os_name }}" in
             windows)
-              cp src-tauri/target/release/roves-packmaster.exe out/roves-packmaster/
+              cp src-tauri/target/release/roves-packmaster.exe src-tauri/target/release/roves.exe out/roves-packmaster/
               ;;
             linux)
-              cp src-tauri/target/release/roves-packmaster out/roves-packmaster/
+              cp src-tauri/target/release/roves-packmaster src-tauri/target/release/roves out/roves-packmaster/
               ;;
             macos)
               cp -r "src-tauri/target/release/bundle/macos/Roves Packmaster.app" out/roves-packmaster/

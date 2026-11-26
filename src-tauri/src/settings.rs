@@ -33,7 +33,7 @@ pub struct SteamSettings {
     pub app_id: String,
 }
 
-/// The players' local MCP bridge (`cef_player.rs`): every desktop output uses the engine's
+/// The players' local MCP bridge (roves-cli, `roves_cli.rs`): every desktop output uses the engine's
 /// `roves_shell_<platform>_mcp.zip` asset. Off by default; can't be combined with Steam (no
 /// such engine package, `shell::asset_name`). Absent in older stored settings.
 #[derive(Debug, Default, Deserialize)]
@@ -51,7 +51,7 @@ pub struct PluginSettings {
 }
 
 /// The Release info icon (a PNG), the first source of the project icon -- see
-/// `cef_player::resolve_project_icon` for the per-platform precedence and fallbacks.
+/// roves-cli's project icon rules (`--icon-png`) for the per-platform precedence and fallbacks.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IconSettings {

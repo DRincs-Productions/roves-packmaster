@@ -104,47 +104,63 @@ without being able to try an option that can't work here.
 
 ## Real bundling backend
 
-"Generate release" is real, not a mock — see `src-tauri/src/{shell,cef_player,bundle}.rs`:
+"Generate release" is real, not a mock — see `src-tauri/src/{shell,roves_cli,bundle}.rs`:
 
+- **roves-cli sidecar (desktop packaging):** the packaging is `@drincs/roves-cli`, the same
+  code roves-action runs, shipped as a standalone executable (Node.js Single Executable
+  Application, built by roves-cli's `npm run build:sea` and attached to every roves-cli GitHub
+  Release as `roves-<target-triple>[.exe]`). Tauri bundles it as `bundle.externalBin`
+  (`binaries/roves`, i.e. `src-tauri/binaries/roves-<target-triple>[.exe]`, git-ignored) and puts
+  it next to Packmaster's executable as `roves[.exe]`, where `roves_cli::sidecar_path` finds it
+  (also in `tauri dev`). `npm run sidecar` (`scripts/fetch-roves-cli.mjs`) downloads it; both
+  CI workflows run it before `tauri build`, and stage `roves[.exe]` next to the portable
+  Windows/Linux executable (the macOS `.app` carries it in `Contents/MacOS`).
+- **One roves-cli pin:** `src/lib/roves-cli-version.txt` (the exact CLI version, no `v`). To
+  bump it: release roves-cli (its Release workflow publishes the npm package and the
+  standalone executables), check `npm run sidecar` downloads them, then update the file. A
+  CLI change of `bundle`'s options or `--json`/`--progress json` output needs a matching
+  change in `roves_cli.rs` (argument builder, result and progress parsing; unit tests there).
 - **One shell pin:** update `src/lib/shell-version.txt` after verifying a new engine release.
   Vite imports it as raw text for the frontend `TARGET_SHELL_VERSION`; Rust embeds the same
   file with `include_str!`. Both trim whitespace. Never reintroduce a separate version literal:
   the former Rust constant remained at v0.4.18 while the frontend reached v0.7.12.
-- **`shell.rs`** downloads (and caches, per version+asset, under this app's cache dir) the
-  engine's own prebuilt desktop player package — never compiles one. Since engine v0.9.0
-  these are the CEF players: `roves_shell_<platform>.zip`, `..._steam.zip`, and
-  `..._mcp.zip` for every desktop platform (`shell::asset_name`; Steam + MCP is an error,
-  the engine publishes no such package). The cache keeps the zip
-  itself, never an extraction. Its pinned version comes from the shared file above; see the
-  engine repo's `AGENTS.md`, "Cutting a versioned release", for the release/pin verification
-  procedure. The pin is v0.9.0, the first CEF player release (older tags are Servo shells
-  with a different layout). That pinned
-  tag is what a *real* Packmaster release always targets, for reproducibility —
-  but a *test* build (`PACKMASTER_TEST_BUILD=1`, this project's own `test.yml`) targets
-  whichever tag GitHub currently reports as the engine repo's own latest release instead
-  (`resolve_shell_version()`, a live lookup against
+- **`shell.rs`** decides which engine release the sidecar targets (`--shell-version`), checks
+  that release really publishes an asset (the live availability badges: a HEAD request) and owns
+  the cache folder the sidecar downloads into (`ROVES_CACHE_DIR` = this app's cache dir; the
+  CLI keeps the zips in `shells/<version>/<asset>/`, the layout Packmaster's own downloader
+  used, so the cache size/clear controls keep working). Since engine v0.9.0 the assets are the
+  CEF players: `roves_shell_<platform>.zip`, `..._steam.zip`, and `..._mcp.zip` for every
+  desktop platform (`shell::asset_name`; Steam + MCP is an error, the engine publishes no such
+  package). The pin is v0.9.0, the first CEF player release (older tags are Servo shells with
+  a different layout). That pinned tag is what a *real* Packmaster release always targets, for
+  reproducibility — but a *test* build (`PACKMASTER_TEST_BUILD=1`, this project's own
+  `test.yml`) targets whichever tag GitHub currently reports as the engine repo's own latest
+  release instead (`resolve_shell_version()`, a live lookup against
   `api.github.com/repos/DRincs-Productions/roves/releases/latest`, falling back to
-  `TARGET_SHELL_VERSION` if that lookup fails) — so testing Packmaster against a newly cut
-  engine release doesn't need a `TARGET_SHELL_VERSION` bump here just to pick it up. The
-  on-disk cache is also bypassed entirely for a test build (`ensure_asset`), since "latest"
-  can change between runs.
-- **`cef_player.rs`** assembles a package **zip to zip**: every engine entry is copied raw
-  (`zip` 9's `raw_copy_file_rename` keeps the external attributes: executables, the setuid
-  `chrome-sandbox`, symlinks) and only the replaced files are written. Per platform (see the
-  module doc and README "Desktop packages"): the user's build becomes `game/` (Windows/Linux next to the
-  executable, macOS `Contents/Resources/game/`; any sample `game/` of an older base is dropped), the
-  project icon applied, `steam_appid.txt` written next to the executable for Steam packages,
-  and the Windows package verified against its own `SHA256SUMS.txt` (regenerated for the
-  output, `PROVENANCE.txt` rewritten); on every platform the `mcp/` folder next to `game/`
-  is kept only when MCP is on (and must then be complete), dropped otherwise. The macOS
-  executable and `.icns` names come from `Info.plist` (`plist` crate), the Linux executable
-  is the only non-helper executable at the package root — the same lookups as roves-action's
-  `cef/assemble.sh`; keep the two (and the engine READMEs) in step.
+  `TARGET_SHELL_VERSION` if that lookup fails), and passes `--refresh` so the sidecar never
+  reuses a cached download for it, since "latest" can change between runs.
+- **`roves_cli.rs`** runs the sidecar: `roves bundle --json --progress json --platform <p>
+  --content-dir --name <package name> --out-dir <work>/out --shell-version <v> [--steam
+  --steam-app-id <id>] [--enable-mcp] [--icon-png <Release info icon>] [--no-extract]
+  [--refresh]`, with no console window on Windows. Each `--progress json` stderr line becomes a
+  `bundle-progress` event (`downloading` with its fraction, `assembling` 0.4, `extracting` ->
+  `zipping` 0.6); other stderr lines are logs, and `roves: error: ...` is the error shown to
+  the user. The JSON result gives the zip, the extracted folder (only requested for installers)
+  and the player executable. Everything the CLI does — verification against
+  `SHA256SUMS.txt`, zip-to-zip copy keeping modes/setuid/symlinks, the `game/` folder, the
+  project icon (Release info icon, else the build's `icon.png`, else its
+  `icon.ico`/`favicon.ico`, else the Roves icon; `play.exe` icon resource, macOS `.icns`),
+  `steam_appid.txt`, the MCP folder rule, `PROVENANCE.txt` — is documented in roves-cli's
+  README and the engine's `skills/core/SKILL.md`; it replaced Packmaster's former
+  `cef_player.rs`/`icon.rs` (and their `image`/`icns`/`editpe`/`sha2`/`plist` crates).
+  `real_sidecar` (ignored) is the end-to-end test of this path against a real sidecar and
+  player zip.
 - **`bundle.rs`** orchestrates per selected platform (and per format, for installers),
-  emits `bundle-progress` events the frontend listens for, and writes the portable zip:
-  `<name>/...` on Windows/Linux, the renamed `<name>.app` directly at the archive root on
-  macOS (Finder never shows what's inside it, so no extra wrapper folder). Installers
-  extract that zip again on their own host (where modes and symlinks are restored).
+  emits `bundle-progress` events the frontend listens for, and moves the sidecar's zip to
+  `release/<stem>_<platform>[_mcp].zip`: `<name>/...` on Windows/Linux, the renamed
+  `<name>.app` directly at the archive root on macOS (Finder never shows what's inside it, so
+  no extra wrapper folder). Installers use the sidecar's extracted folder on their own host
+  (where modes and symlinks are restored).
 - **`installer.rs`** wraps the extracted package into a real `.msi`/`.dmg`/`.deb`, porting
   `post_build_commands.py`'s `_wrap_windows_msi`/`_wrap_macos_dmg`/`_bundle_linux_deb` (and
   `support/windows/roves-bundle.wxs.mako` for the WiX source) to Rust; the `.deb` links
@@ -178,9 +194,9 @@ actually running a generated iOS build on a device/simulator.
 (`roves_shell_<platform>_steam.zip`, with the Steamworks redistributable next to the
 executable), so `configure.tsx`'s "Steam" panel is a real control: a `Switch`
 (`settings.plugins.steam.enabled`) and an App ID `Input` (`settings.plugins.steam.appId`).
-`bundle.rs` validates the App ID (non-empty, digits only), picks the `_steam` asset, and
-`cef_player.rs` checks the redistributable is there (and absent from a standard asset) and
-writes the App ID into `steam_appid.txt` next to the executable (Valve's own convention for
+`bundle.rs` validates the App ID (non-empty, digits only) and passes `--steam --steam-app-id`;
+roves-cli picks the `_steam` asset, checks the redistributable is there (and absent from a
+standard asset) and writes the App ID into `steam_appid.txt` next to the executable (Valve's own convention for
 testing outside the real Steam client; macOS: `Contents/MacOS/`).
 
 **AI interaction (MCP):** `settings.plugins.mcp.enabled`, off by default, every desktop
@@ -191,17 +207,18 @@ Steam turns it off) or when no desktop platform is selected; the Rust side refus
 MCP too.
 
 **Game icon:** a single source PNG (`settings.icon.path`), picked in the "Release info"
-card via `@tauri-apps/plugin-dialog`'s `open()`. Desktop players follow
-`cef_player::resolve_project_icon` (the engine's and roves-action's `project_icon.py` rules):
+card via `@tauri-apps/plugin-dialog`'s `open()`. Desktop players follow roves-cli's project
+icon rules (`--icon-png`; the same as the engine's and roves-action's):
 Release info icon, else the build's `icon.png`, else the largest frame of its
 `icon.ico`/`favicon.ico`; that PNG becomes the window `icon.png`, a generated `.ico` is
-set as `play.exe`'s main icon group with the `editpe` crate on every host (the old group,
+set as `play.exe`'s main icon group (roves-cli, on every host) (the old group,
 which the engine CI set to the sample game's icon, is removed; version info and manifest
 are kept), and a generated `.icns` (`icns` crate, never upscaled)
 replaces the macOS bundle icon. With no project icon the Windows base's `roves.ico` is the
 `play.exe` fallback and the macOS `.icns` stays the Roves one. Both containers come from
 maintained encoders (`image`'s `IcoEncoder`, `icns`), nothing hand-written, so they work on
-every host. Android: the same explicit/auto-detected `icon.png` is passed to `android.rs`'s
+every host (all of this now runs inside the roves-cli sidecar). Android: the same
+explicit/auto-detected `icon.png` is passed to `android.rs`'s
 `AndroidBuildOptions.icon_png`, which replaces `res/mipmap/servo.*`.
 
 **Testing without a local Tauri build:** `.github/workflows/test.yml` builds Packmaster

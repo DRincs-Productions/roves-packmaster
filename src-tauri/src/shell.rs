@@ -1,22 +1,44 @@
-//! Fetches and caches the prebuilt Roves desktop player packages instead of compiling one --
-//! the whole point of Packmaster is that a game developer using it needs no Rust/Python
-//! toolchain (see this project's own README/CLAUDE.md). See the engine repo's own AGENTS.md,
-//! "Cutting a versioned release" section: src/lib/shell-version.txt is the shared pin, read
-//! here with include_str! and by the frontend with Vite's raw loader.
-//!
-//! Since engine v0.9.0 the desktop release assets are the CEF players (`cef_player.rs` for
-//! their layout): `roves_shell_<platform>[_steam|_mcp].zip`. The cache keeps the downloaded
-//! zip itself, never an extraction: `cef_player::assemble` copies its entries into the output
-//! zip as they are, so the Unix modes (executables, the setuid `chrome-sandbox`) and any
-//! symlink survive whatever host Packmaster runs on.
+//! The engine release the desktop packages are built from, and the cache of its player
+//! packages. The packaging itself (download, verification, assembly) is done by the roves-cli
+//! sidecar (`roves_cli.rs`); this module decides which release it targets, checks that the
+//! release really publishes an asset (for the live availability badges), and owns the cache
+//! folder the sidecar downloads into (`ROVES_CACHE_DIR`), so the cache size/clear controls keep
+//! working. src/lib/shell-version.txt is the shared pin, read here with include_str! and by the
+//! frontend with Vite's raw loader (see the engine repo's AGENTS.md, "Cutting a versioned
+//! release").
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use futures_util::StreamExt;
 use tauri::{AppHandle, Manager};
-use tokio::io::AsyncWriteExt;
 
-use crate::cef_player::Platform;
+/// A desktop target of the engine's player packages.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Platform {
+    Windows,
+    Macos,
+    Linux,
+}
+
+impl Platform {
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "windows" => Some(Self::Windows),
+            "macos" => Some(Self::Macos),
+            "linux" => Some(Self::Linux),
+            _ => None,
+        }
+    }
+
+    /// `windows` | `macos` | `linux`, as in the engine's release asset names and roves-cli's
+    /// `--platform`.
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Windows => "windows",
+            Self::Macos => "macos",
+            Self::Linux => "linux",
+        }
+    }
+}
 
 fn pinned_shell_version() -> &'static str {
     include_str!("../../src/lib/shell-version.txt").trim()
@@ -29,7 +51,7 @@ const LATEST_RELEASE_API_URL: &str =
 /// `test.yml` (which sets `PACKMASTER_TEST_BUILD=1` before `npm run tauri build` — see that
 /// workflow), never by inspecting anything at runtime: a shipped, tagged Packmaster release
 /// must behave identically regardless of whatever's in an end user's own environment.
-fn is_test_build() -> bool {
+pub fn is_test_build() -> bool {
     option_env!("PACKMASTER_TEST_BUILD").is_some()
 }
 
@@ -103,109 +125,19 @@ pub async fn is_asset_available(asset: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Downloads (or reuses an already-cached copy of) `asset` and returns the path of the zip.
-/// A downloaded zip is accepted only once its central directory reads back, so a truncated
-/// download is retried instead of being cached.
-pub async fn ensure_asset(
-    app: &AppHandle,
-    asset: &str,
-    mut on_progress: impl FnMut(f64) + Send,
-) -> Result<PathBuf, String> {
-    let version = resolve_shell_version().await;
-    let cache_dir = shells_cache_dir(app)?
-        .join(&version)
-        .join(asset.trim_end_matches(".zip"));
-    let zip_path = cache_dir.join(asset);
-    let marker = cache_dir.join(".complete");
-    // A test build always targets whichever tag is currently "latest" (see
-    // resolve_shell_version) -- reusing a cached download here would silently keep testing
-    // against whatever was latest the first time this ran, even after a newer engine release
-    // ships. A real, tagged Packmaster release targets an immutable, pinned tag instead,
-    // where caching has no such staleness risk.
-    if !is_test_build() && marker.exists() && zip_path.exists() {
-        on_progress(1.0);
-        return Ok(zip_path);
-    }
-
-    if cache_dir.exists() {
-        tokio::fs::remove_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
-    }
-    tokio::fs::create_dir_all(&cache_dir).await.map_err(|e| e.to_string())?;
-
-    let url = asset_url(asset, &version);
-    // The player zip is 100+ MB -- a mid-stream connection drop (flaky wifi, a corporate
-    // TLS-inspecting proxy resetting a long-lived download) surfaces from reqwest as a
-    // generic "error decoding response body" with no further detail, and is exactly the
-    // kind of transient failure a retry fixes; a genuinely bad URL/404 fails immediately on
-    // the first attempt instead (see download_file's status check), so this doesn't mask
-    // real errors, just network flakiness.
-    const MAX_ATTEMPTS: u32 = 3;
-    let mut last_err = String::new();
-    for attempt in 1..=MAX_ATTEMPTS {
-        // A connection that closes early without reqwest noticing produces a truncated-but-
-        // not-erroring zip, which only surfaces once its central directory is read.
-        let result = match download_file(&url, &zip_path, &mut on_progress).await {
-            Ok(()) => check_zip(&zip_path),
-            Err(e) => Err(e),
-        };
-        match result {
-            Ok(()) => {
-                last_err.clear();
-                break;
-            },
-            Err(e) => {
-                last_err = e;
-                tokio::fs::remove_file(&zip_path).await.ok();
-                if attempt < MAX_ATTEMPTS {
-                    tokio::time::sleep(std::time::Duration::from_secs(2 * attempt as u64)).await;
-                }
-            },
-        }
-    }
-    if !last_err.is_empty() {
-        return Err(format!("downloading {asset} after {MAX_ATTEMPTS} attempts: {last_err}"));
-    }
-    tokio::fs::write(&marker, b"1").await.map_err(|e| e.to_string())?;
-    Ok(zip_path)
-}
-
-async fn download_file(url: &str, dest: &Path, on_progress: &mut impl FnMut(f64)) -> Result<(), String> {
-    let response = reqwest::get(url)
-        .await
-        .map_err(|e| format!("downloading {url}: {e}"))?;
-    if !response.status().is_success() {
-        return Err(format!("downloading {url}: HTTP {}", response.status()));
-    }
-    let total = response.content_length().unwrap_or(0);
-    let mut downloaded: u64 = 0;
-    let mut file = tokio::fs::File::create(dest).await.map_err(|e| e.to_string())?;
-    let mut stream = response.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| e.to_string())?;
-        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
-        downloaded += chunk.len() as u64;
-        if total > 0 {
-            on_progress(downloaded as f64 / total as f64);
-        }
-    }
-    file.flush().await.map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-fn check_zip(zip_path: &Path) -> Result<(), String> {
-    let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
-    zip::ZipArchive::new(file)
-        .map(|_| ())
-        .map_err(|e| format!("reading the downloaded zip: {e}"))
+/// The sidecar's `ROVES_CACHE_DIR`: this app's cache folder. roves-cli keeps the player zips in
+/// `<it>/shells/<version>/<asset>/` (with a `.complete` marker), the same layout Packmaster's
+/// own downloader used, so existing caches stay valid.
+pub fn cache_root(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path().app_cache_dir().map_err(|e| e.to_string())
 }
 
 fn shells_cache_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app.path().app_cache_dir().map_err(|e| e.to_string())?.join("shells"))
+    Ok(cache_root(app)?.join("shells"))
 }
 
 /// Total on-disk size of every cached player package, across every version/asset ever
-/// downloaded (`ensure_asset` keys each one by version -- so this walks all of them, not just
-/// whatever `resolve_shell_version` currently targets).
+/// downloaded.
 pub fn cache_size(app: &AppHandle) -> Result<u64, String> {
     let dir = shells_cache_dir(app)?;
     if !dir.exists() {
@@ -222,9 +154,9 @@ pub fn cache_size(app: &AppHandle) -> Result<u64, String> {
 }
 
 /// Removes every cached player package outright, regardless of version -- the next
-/// `ensure_asset` call just re-downloads fresh. Not scoped to "only the stale/unused ones":
-/// simplest correct behavior, and a stale version already never gets served (see
-/// `ensure_asset`'s version-keyed cache_dir) -- this only reclaims disk space.
+/// generation just downloads fresh. Not scoped to "only the stale/unused ones": simplest
+/// correct behavior, and a stale version is never served anyway (the cache is keyed by
+/// version) -- this only reclaims disk space.
 pub fn clear_cache(app: &AppHandle) -> Result<(), String> {
     let dir = shells_cache_dir(app)?;
     if dir.exists() {
@@ -258,5 +190,13 @@ mod tests {
             asset_url("roves_shell_linux_steam.zip", "v0.9.0"),
             "https://github.com/DRincs-Productions/roves/releases/download/v0.9.0/roves_shell_linux_steam.zip"
         );
+    }
+
+    #[test]
+    fn platforms_round_trip_their_ids() {
+        for platform in [Platform::Windows, Platform::Macos, Platform::Linux] {
+            assert_eq!(Platform::from_id(platform.id()), Some(platform));
+        }
+        assert_eq!(Platform::from_id("android"), None);
     }
 }

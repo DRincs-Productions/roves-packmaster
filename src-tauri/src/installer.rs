@@ -330,7 +330,7 @@ pub fn build_dmg(stage_dir: &Path, output_dir: &Path, package_name: &str, versio
 
 // ── Linux: .deb via dpkg-deb ─────────────────────────────────────────────────────────────
 
-/// `exe` is the player executable's file name inside `stage_dir` (`cef_player::Platform::exe`).
+/// `exe` is the player executable's file name inside `stage_dir` (roves-cli's `executable`).
 pub fn build_deb(
     stage_dir: &Path,
     output_dir: &Path,

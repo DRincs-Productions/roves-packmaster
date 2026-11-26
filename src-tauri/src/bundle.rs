@@ -1,9 +1,10 @@
-//! Orchestrates a real release: for each selected desktop platform, download the engine's
-//! prebuilt CEF player package (`shell.rs`), add the user's build
-//! output (`cef_player.rs`), and keep the result as the portable zip and/or wrap it into an
-//! installer; then the mobile outputs. This is the real implementation behind the "Generate
-//! release" button; see this project's own README/CLAUDE.md for why it never shells out to
-//! `mach` or requires a Rust/Python toolchain on the machine running Packmaster itself.
+//! Orchestrates a real release: for each selected desktop platform, run the roves-cli sidecar
+//! (`roves_cli.rs`), which downloads the engine's prebuilt CEF player package of the targeted
+//! release (`shell.rs`), adds the user's build and writes the package zip; keep it as the
+//! portable zip and/or wrap its extracted folder into an installer; then the mobile outputs.
+//! This is the real implementation behind the "Generate release" button; see this project's
+//! own README/CLAUDE.md for why it never shells out to `mach` or requires a Rust/Python/Node
+//! toolchain on the machine running Packmaster itself.
 
 use std::path::{Path, PathBuf};
 
@@ -11,10 +12,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::android;
-use crate::cef_player::{self, Platform};
 use crate::installer;
+use crate::roves_cli;
 use crate::settings::PackmasterSettings;
-use crate::shell;
+use crate::shell::{self, Platform};
 use crate::signing;
 
 #[derive(Clone, Serialize)]
@@ -103,16 +104,15 @@ pub async fn generate_release(
     let package_name = sanitize_name(window_title.as_deref().unwrap_or("game"));
     let raw_version = version.trim().to_string();
     let zip_stem = file_stem(window_title.as_deref().unwrap_or("game"), &raw_version);
+    let shell_version = shell::resolve_shell_version().await;
+    let cache_dir = shell::cache_root(&app)?;
 
     for &id in &platforms {
         let platform = Platform::from_id(id).ok_or_else(|| format!("unknown platform {id}"))?;
         emit_progress(&app, id, "checking", 0.0);
         let asset = shell::asset_name(platform, steam, mcp)?;
         if !shell::is_asset_available(&asset).await {
-            return Err(format!(
-                "{asset} is not published in the targeted Roves release ({})",
-                shell::resolve_shell_version().await
-            ));
+            return Err(format!("{asset} is not published in the targeted Roves release ({shell_version})"));
         }
         let installer_settings = settings.installers.get(id);
         if installer_settings.enabled {
@@ -125,12 +125,6 @@ pub async fn generate_release(
             }
         }
 
-        let base_zip = shell::ensure_asset(&app, &asset, |fraction| {
-            emit_progress(&app, id, "downloading", fraction);
-        })
-        .await?;
-
-        emit_progress(&app, id, "assembling", 0.4);
         let work_dir = std::env::temp_dir().join(format!("roves-packmaster-{id}-{}", process_id()));
         if work_dir.exists() {
             std::fs::remove_dir_all(&work_dir).map_err(|e| e.to_string())?;
@@ -138,7 +132,6 @@ pub async fn generate_release(
         let result = build_desktop(
             &app,
             platform,
-            &base_zip,
             &content_dir,
             &settings,
             &DesktopTarget {
@@ -149,8 +142,11 @@ pub async fn generate_release(
                 version: &raw_version,
                 steam_app_id: steam.then_some(steam_app_id.as_str()),
                 mcp,
+                shell_version: &shell_version,
+                cache_dir: &cache_dir,
             },
-        );
+        )
+        .await;
         std::fs::remove_dir_all(&work_dir).ok();
         result?;
         emit_progress(&app, id, "done", 1.0);
@@ -259,6 +255,10 @@ struct DesktopTarget<'a> {
     steam_app_id: Option<&'a str>,
     /// Keep the player's local MCP bridge (the `_mcp` asset).
     mcp: bool,
+    /// The engine release of the player (`shell::resolve_shell_version`).
+    shell_version: &'a str,
+    /// The sidecar's download cache (`shell::cache_root`).
+    cache_dir: &'a Path,
 }
 
 /// `<stem>_<platform>.zip`; the MCP development package is `<stem>_<platform>_mcp.zip`, so it
@@ -268,71 +268,62 @@ fn portable_zip_name(zip_stem: &str, platform: Platform, mcp: bool) -> String {
     format!("{zip_stem}_{}{suffix}.zip", platform.id())
 }
 
-/// Top folder of the portable zip: `<name>/` for Windows/Linux (many loose files), and the
-/// renamed `<name>.app/` bundle itself on macOS (already the single double-click-to-run
-/// thing a player needs; Finder never shows what's inside it).
-fn top_folder(platform: Platform, package_name: &str) -> String {
-    match platform {
-        Platform::Macos => format!("{package_name}.app"),
-        _ => package_name.to_string(),
-    }
-}
-
-fn build_desktop(
+/// Runs the sidecar for one platform, then keeps its zip as the portable output (renamed
+/// `<stem>_<platform>[_mcp].zip`; inside, `<name>/` on Windows/Linux and the renamed `<name>.app`
+/// directly at the root on macOS) and/or wraps its extracted folder into the installers.
+async fn build_desktop(
     app: &AppHandle,
     platform: Platform,
-    base_zip: &Path,
     content_dir: &Path,
     settings: &PackmasterSettings,
     target: &DesktopTarget<'_>,
 ) -> Result<(), String> {
     let id = platform.id();
-    let mut base = cef_player::Base::open(base_zip, platform, target.steam_app_id.is_some())?;
-    let icon_dir = target.work_dir.join("icon");
-    let fallback_ico = base.fallback_ico(&icon_dir)?;
-    let icon = cef_player::resolve_project_icon(
-        platform,
-        settings.icon.path.as_deref().map(Path::new),
+    let installer_settings = settings.installers.get(id);
+    // Only the sidecar's output in here, so on macOS the folder holds just `<name>.app` once the
+    // zip has been moved away (hdiutil packs the whole folder).
+    let out_dir = target.work_dir.join("out");
+    let request = roves_cli::BundleRequest {
+        platform: id,
         content_dir,
-        fallback_ico.as_deref(),
-        &icon_dir,
-    )?;
-    for warning in &icon.warnings {
-        eprintln!("project icon ({id}): {warning}");
+        name: target.package_name,
+        out_dir: &out_dir,
+        shell_version: target.shell_version,
+        steam_app_id: target.steam_app_id,
+        mcp: target.mcp,
+        icon_png: settings.icon.path.as_deref().map(Path::new),
+        extract: installer_settings.enabled,
+        // Test builds follow the latest release, which can change between runs.
+        refresh: shell::is_test_build(),
+        cache_dir: target.cache_dir,
+    };
+    let result = roves_cli::bundle(&request, |stage, fraction| match stage {
+        "downloading" => emit_progress(app, id, "downloading", fraction),
+        "assembling" => emit_progress(app, id, "assembling", 0.4),
+        "extracting" => emit_progress(app, id, "zipping", 0.6),
+        _ => {},
+    })
+    .await?;
+    for warning in &result.warnings {
+        eprintln!("roves-cli ({id}): {warning}");
+    }
+    eprintln!("project icon ({id}): {}", result.icon_source);
+
+    if settings.portable.get(id) {
+        let dest = target.release_dir.join(portable_zip_name(target.zip_stem, platform, target.mcp));
+        move_file(&result.archive_path, &dest)?;
+    } else {
+        std::fs::remove_file(&result.archive_path).map_err(|e| e.to_string())?;
     }
 
-    let top = top_folder(platform, target.package_name);
-    let portable = settings.portable.get(id);
-    let out_zip = if portable {
-        target.release_dir.join(portable_zip_name(target.zip_stem, platform, target.mcp))
-    } else {
-        target.work_dir.join("package.zip")
-    };
-    emit_progress(app, id, "zipping", 0.6);
-    cef_player::assemble(
-        &mut base,
-        &cef_player::AssembleOptions {
-            content_dir,
-            top_folder: &top,
-            enable_mcp: target.mcp,
-            steam_app_id: target.steam_app_id,
-            icon: &icon,
-            work_dir: target.work_dir,
-        },
-        &out_zip,
-        &cef_player::set_exe_icon,
-    )?;
-
-    let installer_settings = settings.installers.get(id);
     if installer_settings.enabled {
-        // Installers run only on their own host OS (`check_installer_availability`), where
-        // extracting the assembled zip restores its Unix modes and symlinks.
-        let stage_root = target.work_dir.join("stage");
-        extract_zip(&out_zip, &stage_root)?;
+        let bundle_dir = result
+            .bundle_dir
+            .ok_or_else(|| "roves-cli wrote no extracted package".to_string())?;
         let stage_dir = match platform {
             // hdiutil gets the folder holding `<name>.app` (plus its Applications link).
-            Platform::Macos => stage_root,
-            _ => stage_root.join(&top),
+            Platform::Macos => out_dir.clone(),
+            _ => bundle_dir,
         };
         for format in &installer_settings.formats {
             emit_progress(app, id, "packaging", 0.85);
@@ -340,7 +331,7 @@ fn build_desktop(
             let result = match format.as_str() {
                 "msi" => installer::build_msi(&stage_dir, release_dir, name, version),
                 "dmg" => installer::build_dmg(&stage_dir, release_dir, name, version),
-                "deb" => installer::build_deb(&stage_dir, release_dir, name, version, &base.executable),
+                "deb" => installer::build_deb(&stage_dir, release_dir, name, version, &result.executable),
                 other => Err(format!("unknown installer format {other:?}")),
             };
             result.map_err(|e| format!("building .{format} for {id}: {e}"))?;
@@ -349,18 +340,23 @@ fn build_desktop(
     Ok(())
 }
 
-fn extract_zip(zip_path: &Path, dest_dir: &Path) -> Result<(), String> {
-    let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
-    let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
-    archive
-        .extract(dest_dir)
-        .map_err(|e| format!("extracting {}: {e}", zip_path.display()))
+/// Renames `source` to `dest` (replacing it), copying when they are on different volumes
+/// (the work folder is in the temp folder, the release folder next to Packmaster).
+fn move_file(source: &Path, dest: &Path) -> Result<(), String> {
+    if dest.exists() {
+        std::fs::remove_file(dest).map_err(|e| format!("{}: {e}", dest.display()))?;
+    }
+    if std::fs::rename(source, dest).is_err() {
+        std::fs::copy(source, dest).map_err(|e| format!("{}: {e}", dest.display()))?;
+        std::fs::remove_file(source).ok();
+    }
+    Ok(())
 }
 
 /// The Android icon: an explicit `settings.icon.path` always wins, else auto-detect
 /// `icon.png` sitting directly in `content_dir` -- many bundlers already emit one there for
 /// their own PWA manifest (confirmed: `pixi-vn-react-template`'s own `dist/` has exactly
-/// this). The desktop players follow `cef_player::resolve_project_icon` instead.
+/// this). The desktop players follow roves-cli's project icon rules instead.
 fn resolve_icon_path(icon: &crate::settings::IconSettings, content_dir: &Path) -> Option<String> {
     icon.path.clone().or_else(|| {
         let candidate = content_dir.join("icon.png");
@@ -423,9 +419,6 @@ mod tests {
         assert_eq!(portable_zip_name("mygame_1.0.0", Platform::Windows, true), "mygame_1.0.0_windows_mcp.zip");
         assert_eq!(portable_zip_name("mygame", Platform::Linux, false), "mygame_linux.zip");
         assert_eq!(portable_zip_name("mygame", Platform::Macos, true), "mygame_macos_mcp.zip");
-        // The macOS zip holds the renamed .app directly at its root, no extra wrapper folder.
-        assert_eq!(top_folder(Platform::Macos, "my_game"), "my_game.app");
-        assert_eq!(top_folder(Platform::Windows, "my_game"), "my_game");
     }
 
 }

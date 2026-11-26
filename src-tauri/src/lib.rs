@@ -1,10 +1,9 @@
 mod android;
 mod bundle;
-mod cef_player;
-mod icon;
 mod installer;
 mod ios;
 mod ios_signing;
+mod roves_cli;
 mod settings;
 mod shell;
 mod signing;

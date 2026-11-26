@@ -32,17 +32,14 @@ tauri-plugin-store = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Real bundling (see src/bundle.rs): downloads a prebuilt Roves CEF player release asset
-# instead of compiling one (no Rust/Python toolchain needed on a game developer's machine)
-# and replaces its game -- see the engine repo's AGENTS.md, "Cutting a versioned release"
-# section, on why roves-packmaster/roves-action must track a specific release tag.
+# Desktop packages are made by the roves-cli sidecar (see src/roves_cli.rs, bundle.rs):
+# `process` runs it and streams its progress; reqwest checks the targeted release's assets
+# (src/shell.rs) and downloads the Android toolchain (src/android.rs).
 glob = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
-tokio = { version = "1", features = ["fs", "io-util", "time"] }
+tokio = { version = "1", features = ["fs", "io-util", "time", "process"] }
 futures-util = "0.3"
-# 9.x: raw entry copies keep the external attributes (Unix mode incl. setuid, file type), which
-# src/cef_player.rs relies on to carry the engine package's executables, the setuid
-# chrome-sandbox and any symlink through unchanged on every host; 2.x reduced them to 0o777.
+# Android SDK/project zips (src/android.rs).
 zip = { version = "9", default-features = false, features = ["deflate"] }
 walkdir = "2"
 
@@ -57,26 +54,8 @@ uuid = { version = "1", features = ["v4", "v5"] }
 tar = "0.4"
 flate2 = "1"
 
-# Project icon (see src/icon.rs, src/cef_player.rs): `image` decodes/resizes the PNG, validates
-# a game's icon.ico/favicon.ico and encodes the Windows .ico (IcoEncoder); `icns` encodes the
-# macOS bundle .icns (the iconutil element types), so neither container is hand-written and
-# both work on every host.
-image = { version = "0.25", default-features = false, features = ["png", "ico"] }
-icns = { version = "0.5", default-features = false, features = ["pngio"] }
-# Reads the macOS player's Info.plist (CFBundleExecutable, CFBundleIconFile) like roves-action does
-# with PlistBuddy, instead of hard-coding the engine's bundle names.
-plist = "1"
-
-# Sets play.exe's icon resource in-process on every host (replaces the pinned electron/rcedit
-# download, which only ran on Windows); only its resource editing is used, the ICO comes from
-# src/icon.rs.
-editpe = { version = "0.2.4", default-features = false, features = ["std"] }
-
-# CEF player packages (see src/cef_player.rs): verifies the Windows base against its own
-# SHA256SUMS.txt and regenerates it for the output. Already in the lock file through other
-# dependencies.
-sha2 = "0.10"
-
 [dev-dependencies]
 tempfile = "3"
+# The ignored end-to-end sidecar test runs its own runtime (src/roves_cli.rs).
+tokio = { version = "1", features = ["rt"] }
 

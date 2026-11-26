@@ -10,7 +10,8 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "sidecar": "node scripts/fetch-roves-cli.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

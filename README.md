@@ -15,7 +15,11 @@ Built with [Tauri](https://tauri.app/) (Rust + a native webview) so Packmaster i
 ships as a single, ordinary desktop app: the *user running Packmaster* never needs a Rust
 or Python toolchain. Real bundling never shells out to `mach`/Python either — it downloads
 the engine's own prebuilt, versioned player package (`roves_shell_<platform>.zip`, see the
-engine repo's [README](../README.md)) instead of compiling one, and adds your game to it (see `src-tauri/src/bundle.rs` and `src-tauri/src/cef_player.rs`). Building *Packmaster itself* is the only place a Rust toolchain
+engine repo's [README](../README.md)) instead of compiling one, and adds your game to it.
+That packaging is [`@drincs/roves-cli`](https://github.com/DRincs-Productions/roves-cli), the
+same code the roves-action GitHub Action runs, bundled with Packmaster as a standalone
+executable (a Tauri sidecar: no Node.js needed either; see `src-tauri/src/roves_cli.rs` and
+`src-tauri/src/bundle.rs`). Building *Packmaster itself* is the only place a Rust toolchain
 is still needed — see "Development" below, or grab a build from this repo's own [rolling
 test release](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/test) instead.
 
@@ -54,7 +58,7 @@ same as the portable/installable paths above.
 - **Project icon**: the Release info icon, else your build's `icon.png`, else the largest frame
   of its `icon.ico`/`favicon.ico`; with none, the Roves icon is used (`roves.ico` from the
   Windows package for `play.exe`). The `.ico`, the macOS `.icns` and the `play.exe` icon
-  resource are all produced in-process, so Packmaster on any OS gives the same result. The
+  resource are all produced by the bundled roves-cli, so Packmaster on any OS gives the same result. The
   sample game's icon is never carried over (the base `play.exe` carries it, so its main icon
   group is always replaced).
 - **AI interaction (MCP, Advanced)**: off by default. When on, every desktop output is built
@@ -120,14 +124,21 @@ Every screen shows the Roves icon and wordmark, and is available in nine languag
 
 ```bash
 npm install
+npm run sidecar     # downloads the pinned roves-cli sidecar (src/lib/roves-cli-version.txt)
 npm run tauri dev
 ```
+
+`npm run sidecar` puts the standalone roves-cli executable of the pinned release in
+`src-tauri/binaries/roves-<target-triple>[.exe]` (Tauri `externalBin`; it is copied next to
+Packmaster's executable). To try an unreleased CLI, build it in roves-cli
+(`npm run build:sea`) and run `npm run sidecar -- --from <path to roves-<triple>.exe>`.
 
 ## Testing a build without compiling it yourself
 
 `.github/workflows/test.yml` builds Packmaster (portable output — `--no-bundle` on
-Windows/Linux, `--bundles app` on macOS, mirroring this project's own portable-only scope)
-on every push, and publishes it to a rolling, unversioned ["test"
+Windows/Linux, `--bundles app` on macOS, mirroring this project's own portable-only scope;
+the portable folder holds `roves-packmaster[.exe]` and its `roves[.exe]` sidecar) on every
+push for Windows (macOS and Linux on a manual run, and in every tagged release), and publishes it to a rolling, unversioned ["test"
 release](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/test) — its assets are
 overwritten on every run, the same pattern the main engine repo's own `test.yml` uses. Grab
 a build from there if you don't have (or don't want to set up) a local Rust/Tauri
