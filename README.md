@@ -2,10 +2,9 @@
 
 The desktop outputs are built from the engine's **CEF players** (engine v0.9.0 and later).
 The frontend and Rust packager read the same `src/lib/shell-version.txt` pin; the displayed
-version and downloaded release cannot drift through separate version constants. The pin
-still says v0.7.15, the last Servo shell release, whose assets have a different layout:
-desktop generation works once the pin is bumped to the v0.9.0 tag, which is the only change
-needed when that release is published.
+version and downloaded release cannot drift through separate version constants. The pin is
+v0.9.0, the first CEF player release (v0.7.15 and older are Servo shells with a different
+layout).
 
 A desktop GUI for packaging a web-built game into [Roves](https://github.com/DRincs-Productions/roves)
 distributions — portable binaries for Windows, macOS, and Linux — without needing Rust or

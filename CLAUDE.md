@@ -117,8 +117,8 @@ without being able to try an option that can't work here.
   the engine publishes no such package). The cache keeps the zip
   itself, never an extraction. Its pinned version comes from the shared file above; see the
   engine repo's `AGENTS.md`, "Cutting a versioned release", for the release/pin verification
-  procedure. **The pin still says v0.7.15 (the last Servo shell, a different layout):
-  bumping it to the v0.9.0 tag is the only change desktop generation needs.** That pinned
+  procedure. The pin is v0.9.0, the first CEF player release (older tags are Servo shells
+  with a different layout). That pinned
   tag is what a *real* Packmaster release always targets, for reproducibility —
   but a *test* build (`PACKMASTER_TEST_BUILD=1`, this project's own `test.yml`) targets
   whichever tag GitHub currently reports as the engine repo's own latest release instead
