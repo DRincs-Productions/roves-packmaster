@@ -1,7 +1,7 @@
 //! Desktop packages built on the Roves CEF players (engine v0.9.0+, the release assets
-//! `roves_shell_<platform>[_steam|_mcp].zip` that `shell.rs` downloads). Each asset is a
-//! complete, playable package with a sample game; Packmaster keeps the engine files untouched
-//! and replaces the game:
+//! `roves_shell_<platform>[_steam|_mcp].zip` that `shell.rs` downloads). Each asset is the
+//! player shell without a game (any `game/` an older base carries is dropped); Packmaster keeps
+//! the engine files untouched and adds the game:
 //!
 //! | | package root | executable | `game/` and window `icon.png` |
 //! | --- | --- | --- | --- |
@@ -39,7 +39,7 @@
 //! base's `roves.ico`. macOS bundle icon: an `.icns` generated from that PNG replaces
 //! `Contents/Resources/roves-cef-macos-gate.icns` (the `CFBundleIconFile`), else the base's
 //! Roves icon stays. Linux has no bundle icon (no `.desktop` entry in the package). The base's
-//! own `icon.png` belongs to its sample game and is never copied.
+//! own `icon.png`, if any, is never copied.
 //!
 //! **Steam** (`_steam` assets): the Steamworks redistributable must be in the base;
 //! `steam_appid.txt` is written next to the executable (where every player reads it).
@@ -142,8 +142,8 @@ impl Platform {
         match self {
             Self::Windows => &[WINDOWS_EXE, "play.dll", "play.exe.manifest", "libcef.dll", PROVENANCE, CHECKSUMS],
             // Plus the CFBundleExecutable, the CFBundleIconFile and the CEF framework.
-            Self::Macos => &[MACOS_INFO_PLIST, "Contents/Resources/game/index.html"],
-            Self::Linux => &["libcef.so", "chrome-sandbox", "icudtl.dat", "resources.pak", "game/index.html"],
+            Self::Macos => &[MACOS_INFO_PLIST],
+            Self::Linux => &["libcef.so", "chrome-sandbox", "icudtl.dat", "resources.pak"],
         }
     }
 
@@ -755,7 +755,7 @@ fn write_package(
             || rel == steam_app_id_file
             || rel == CHECKSUMS
             || replaced.contains(rel)
-            // Provenance of the base's own sample game, which the output no longer contains.
+            // Provenance of a sample game in older bases (release assets are shell only since v0.9.0).
             || rel.starts_with("provenance/visual-novel-template-")
             || (!opts.enable_mcp && (in_mcp_dir(rel) || rel.starts_with("provenance/mcp-")))
     };
@@ -852,8 +852,8 @@ fn rewrite_provenance(base: &str, platform: Platform, exe: &str, enable_mcp: boo
     let mut out = lines.join("\r\n");
     out.push_str(
         "\r\n\r\nGame replaced by Roves Packmaster\r\n\
-         \x20 the game folder contains the developer's own build output, not the sample game\r\n\
-         \x20 described above; the sample game's provenance files were removed.\r\n",
+         \x20 the game folder contains the developer's own build output; any sample game of the\r\n\
+         \x20 base package and its provenance files were removed.\r\n",
     );
     out.push_str(&if icon.exe_ico.is_some() {
         format!("  engine files are the base package's; only {exe}'s icon resource was replaced\r\n  (editpe).\r\n")
@@ -1003,7 +1003,8 @@ mod tests {
         put(&mut files, "chrome-sandbox", b"sandbox", 0o4755);
         put(&mut files, "icudtl.dat", b"icu", FILE_MODE);
         put(&mut files, "resources.pak", b"pak", FILE_MODE);
-        put(&mut files, "game/index.html", b"<p>sample</p>", FILE_MODE);
+        // Shell only, like the release assets since v0.9.0 (the Windows and macOS fixtures keep a
+        // sample game to cover older bases).
         if steam {
             put(&mut files, "libsteam_api.so", b"steam", EXEC);
         }

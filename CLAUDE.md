@@ -131,8 +131,8 @@ without being able to try an option that can't work here.
 - **`cef_player.rs`** assembles a package **zip to zip**: every engine entry is copied raw
   (`zip` 9's `raw_copy_file_rename` keeps the external attributes: executables, the setuid
   `chrome-sandbox`, symlinks) and only the replaced files are written. Per platform (see the
-  module doc and README "Desktop packages"): the sample `game/` is replaced by the user's
-  build (Windows/Linux next to the executable, macOS `Contents/Resources/game/`), the
+  module doc and README "Desktop packages"): the user's build becomes `game/` (Windows/Linux next to the
+  executable, macOS `Contents/Resources/game/`; any sample `game/` of an older base is dropped), the
   project icon applied, `steam_appid.txt` written next to the executable for Steam packages,
   and the Windows package verified against its own `SHA256SUMS.txt` (regenerated for the
   output, `PROVENANCE.txt` rewritten); on every platform the `mcp/` folder next to `game/`

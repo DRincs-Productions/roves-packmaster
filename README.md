@@ -15,8 +15,7 @@ Built with [Tauri](https://tauri.app/) (Rust + a native webview) so Packmaster i
 ships as a single, ordinary desktop app: the *user running Packmaster* never needs a Rust
 or Python toolchain. Real bundling never shells out to `mach`/Python either — it downloads
 the engine's own prebuilt, versioned player package (`roves_shell_<platform>.zip`, see the
-engine repo's [README](../README.md)) instead of compiling one, and replaces its sample game
-with yours (see `src-tauri/src/bundle.rs` and `src-tauri/src/cef_player.rs`). Building *Packmaster itself* is the only place a Rust toolchain
+engine repo's [README](../README.md)) instead of compiling one, and adds your game to it (see `src-tauri/src/bundle.rs` and `src-tauri/src/cef_player.rs`). Building *Packmaster itself* is the only place a Rust toolchain
 is still needed — see "Development" below, or grab a build from this repo's own [rolling
 test release](https://github.com/DRincs-Productions/roves-packmaster/releases/tag/test) instead.
 
@@ -108,7 +107,7 @@ same as the portable/installable paths above.
      for the current caveats (Windows Android support is new and unverified against a real
      device; iOS is untested end to end on a real macOS machine).
 3. **Generate.** Downloads the player package (cached per version/asset after the first
-   run), replaces its sample game with your build, and shows real, per-step progress. Opens
+   run), adds your build as its game, and shows real, per-step progress. Opens
    the folder the release was written to when done — a `release/` folder next to wherever
    Packmaster itself is running from, containing one `<your-game-name>_<platform>.zip` per
    platform (`<name>/` inside on Windows/Linux, the `<name>.app` itself on macOS).

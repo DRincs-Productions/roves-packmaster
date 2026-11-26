@@ -1,5 +1,5 @@
 //! Orchestrates a real release: for each selected desktop platform, download the engine's
-//! prebuilt CEF player package (`shell.rs`), replace its sample game with the user's build
+//! prebuilt CEF player package (`shell.rs`), add the user's build
 //! output (`cef_player.rs`), and keep the result as the portable zip and/or wrap it into an
 //! installer; then the mobile outputs. This is the real implementation behind the "Generate
 //! release" button; see this project's own README/CLAUDE.md for why it never shells out to
