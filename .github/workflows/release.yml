@@ -108,10 +108,14 @@ jobs:
           mkdir -p out/roves-packmaster
           case "${{ matrix.os_name }}" in
             windows)
-              cp src-tauri/target/release/roves-packmaster.exe src-tauri/target/release/roves.exe out/roves-packmaster/
+              cp src-tauri/target/release/roves-packmaster.exe out/roves-packmaster/
+              # The sidecar as npm run sidecar fetched it, renamed the way Tauri names it next to the app.
+              cp src-tauri/binaries/roves-x86_64-pc-windows-msvc.exe out/roves-packmaster/roves.exe
               ;;
             linux)
-              cp src-tauri/target/release/roves-packmaster src-tauri/target/release/roves out/roves-packmaster/
+              cp src-tauri/target/release/roves-packmaster out/roves-packmaster/
+              cp src-tauri/binaries/roves-x86_64-unknown-linux-gnu out/roves-packmaster/roves
+              chmod +x out/roves-packmaster/roves
               ;;
             macos)
               cp -r "src-tauri/target/release/bundle/macos/Roves Packmaster.app" out/roves-packmaster/
