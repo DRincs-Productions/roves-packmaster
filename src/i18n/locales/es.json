@@ -147,6 +147,19 @@
 			"warning": "No distribuyas nunca estos paquetes a los jugadores: mientras el juego se ejecuta, cualquier programa que se ejecute con tu cuenta de usuario puede leerlo y controlarlo a través del puente.",
 			"desktopOnly": "Selecciona Windows, macOS o Linux (portátil o instalador) para usarlo.",
 			"steamConflict": "No disponible con Steam: los reproductores con MCP no son compatibles con Steam. Desactiva Steam para usarlo."
+		},
+		"content": {
+			"title": "Contenido del juego",
+			"description": "Cómo se guarda tu juego en los paquetes de escritorio. Los contenedores (por defecto) ponen todo el código en un archivo y agrupan el resto por carpeta; el reproductor los lee directamente desde la memoria, más rápido que los archivos sueltos.",
+			"layoutLabel": "Formato",
+			"layoutArchive": "Contenedores (recomendado)",
+			"layoutFiles": "Archivos sueltos",
+			"compressionLabel": "Compresión",
+			"compressionNone": "0 — ninguna (más rápido en el juego)",
+			"compressionMax": "9 — máxima (descarga más pequeña)",
+			"compressionHint": "La compresión reduce la descarga pero cuesta tiempo la primera vez que se lee cada archivo en el juego. Las imágenes, el audio, el vídeo y las fuentes nunca se vuelven a comprimir.",
+			"maxSizeLabel": "Contenedor más grande (MB)",
+			"maxSizeHint": "Las carpetas más grandes se dividen en varios contenedores. Por defecto 300 MB."
 		}
 	},
 	"generating": {

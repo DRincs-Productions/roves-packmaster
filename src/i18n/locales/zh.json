@@ -147,6 +147,19 @@
 			"warning": "切勿将这些包分发给玩家：游戏运行期间，以你的用户账户运行的任何程序都可以通过该桥接读取并控制游戏。",
 			"desktopOnly": "请选择 Windows、macOS 或 Linux（便携版或安装程序）以使用此功能。",
 			"steamConflict": "无法与 Steam 同时使用：启用 MCP 的播放器不支持 Steam。请关闭 Steam 以使用此功能。"
+		},
+		"content": {
+			"title": "游戏内容",
+			"description": "游戏在桌面安装包中的存储方式。归档（默认）将所有代码放在一个文件中，并按文件夹归组其他文件；播放器直接从内存读取，比散装文件更快。",
+			"layoutLabel": "格式",
+			"layoutArchive": "归档（推荐）",
+			"layoutFiles": "散装文件",
+			"compressionLabel": "压缩",
+			"compressionNone": "0 — 不压缩（游戏中最快）",
+			"compressionMax": "9 — 最大（下载最小）",
+			"compressionHint": "压缩会减小下载体积，但游戏中首次读取每个文件时会花费时间。图片、音频、视频和字体不会被再次压缩。",
+			"maxSizeLabel": "最大归档（MB）",
+			"maxSizeHint": "超过此大小的文件夹会拆分为多个归档。默认 300 MB。"
 		}
 	},
 	"generating": {

@@ -42,6 +42,27 @@ pub struct McpSettings {
     pub enabled: bool,
 }
 
+/// How roves-cli stores the game in `game/` (mirrors `src/lib/settings.ts`'s
+/// `ContentSettings`): `--content-layout`, `--compression-level`, `--max-archive-size`.
+/// Absent in older stored settings: the CLI defaults (archive, 0, 300 MB).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ContentSettings {
+    pub layout: String,
+    pub compression_level: u8,
+    pub max_archive_size_mb: u32,
+}
+
+impl Default for ContentSettings {
+    fn default() -> Self {
+        ContentSettings {
+            layout: "archive".into(),
+            compression_level: 0,
+            max_archive_size_mb: 300,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginSettings {
@@ -118,6 +139,8 @@ pub struct PackmasterSettings {
     pub mobile: MobileSettings,
     pub plugins: PluginSettings,
     pub icon: IconSettings,
+    #[serde(default)]
+    pub content: ContentSettings,
 }
 
 impl PortableSettings {

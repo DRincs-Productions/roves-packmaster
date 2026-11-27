@@ -296,6 +296,9 @@ async fn build_desktop(
         // Test builds follow the latest release, which can change between runs.
         refresh: shell::is_test_build(),
         cache_dir: target.cache_dir,
+        content_layout: &settings.content.layout,
+        compression_level: settings.content.compression_level,
+        max_archive_size_mb: settings.content.max_archive_size_mb,
     };
     let result = roves_cli::bundle(&request, |stage, fraction| match stage {
         "downloading" => emit_progress(app, id, "downloading", fraction),

@@ -147,6 +147,19 @@
 			"warning": "Ne distribuez jamais ces paquets aux joueurs : pendant que le jeu tourne, tout programme exécuté sous votre compte utilisateur peut le lire et le contrôler via le pont.",
 			"desktopOnly": "Sélectionnez Windows, macOS ou Linux (portable ou installateur) pour l'utiliser.",
 			"steamConflict": "Indisponible avec Steam : les lecteurs avec MCP ne prennent pas en charge Steam. Désactivez Steam pour l'utiliser."
+		},
+		"content": {
+			"title": "Contenu du jeu",
+			"description": "Comment votre jeu est stocké dans les paquets de bureau. Les archives (par défaut) placent tout le code dans un fichier et regroupent les autres fichiers par dossier ; le lecteur les lit directement en mémoire, plus vite que des fichiers séparés.",
+			"layoutLabel": "Format",
+			"layoutArchive": "Archives (recommandé)",
+			"layoutFiles": "Fichiers séparés",
+			"compressionLabel": "Compression",
+			"compressionNone": "0 — aucune (le plus rapide en jeu)",
+			"compressionMax": "9 — maximale (téléchargement le plus petit)",
+			"compressionHint": "La compression réduit le téléchargement mais coûte du temps la première fois que chaque fichier est lu en jeu. Les images, l'audio, la vidéo et les polices ne sont jamais recompressés.",
+			"maxSizeLabel": "Plus grande archive (Mo)",
+			"maxSizeHint": "Les dossiers plus grands sont répartis sur plusieurs archives. Par défaut 300 Mo."
 		}
 	},
 	"generating": {

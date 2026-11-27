@@ -1181,6 +1181,88 @@ function ConfigureView() {
               )}
             </AccordionContent>
           </AccordionItem>
+          <AccordionItem
+            value="content"
+            className="rounded-xl border bg-card px-4 shadow-xs ring-1 ring-foreground/10"
+          >
+            <AccordionTrigger>{t("configure.content.title")}</AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              <p className="text-muted-foreground text-sm">{t("configure.content.description")}</p>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="content-layout">{t("configure.content.layoutLabel")}</Label>
+                <Select
+                  value={settings.content.layout}
+                  onValueChange={(value) =>
+                    updateSettings({
+                      content: { ...settings.content, layout: value as "archive" | "files" },
+                    })
+                  }
+                >
+                  <SelectTrigger id="content-layout" className="w-64">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="archive">{t("configure.content.layoutArchive")}</SelectItem>
+                    <SelectItem value="files">{t("configure.content.layoutFiles")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="content-compression">
+                  {t("configure.content.compressionLabel")}
+                </Label>
+                <Select
+                  value={String(settings.content.compressionLevel)}
+                  disabled={settings.content.layout === "files"}
+                  onValueChange={(value) =>
+                    updateSettings({
+                      content: { ...settings.content, compressionLevel: Number(value) },
+                    })
+                  }
+                >
+                  <SelectTrigger id="content-compression" className="w-64">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => (
+                      <SelectItem key={level} value={String(level)}>
+                        {level === 0
+                          ? t("configure.content.compressionNone")
+                          : level === 9
+                            ? t("configure.content.compressionMax")
+                            : String(level)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                {t("configure.content.compressionHint")}
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="content-max-size">{t("configure.content.maxSizeLabel")}</Label>
+                <Input
+                  id="content-max-size"
+                  type="number"
+                  min={1}
+                  step={1}
+                  className="w-64"
+                  disabled={settings.content.layout === "files"}
+                  value={settings.content.maxArchiveSizeMb}
+                  onChange={(event) => {
+                    const mb = Math.floor(Number(event.target.value));
+                    updateSettings({
+                      content: {
+                        ...settings.content,
+                        maxArchiveSizeMb: Number.isFinite(mb) && mb >= 1 ? mb : 1,
+                      },
+                    });
+                  }}
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">{t("configure.content.maxSizeHint")}</p>
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       </div>
 

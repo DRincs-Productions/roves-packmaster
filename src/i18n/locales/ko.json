@@ -147,6 +147,19 @@
 			"warning": "이 패키지들을 플레이어에게 배포하지 마세요. 게임이 실행되는 동안 여러분의 사용자 계정으로 실행되는 모든 프로그램이 브리지를 통해 게임을 읽고 제어할 수 있습니다.",
 			"desktopOnly": "사용하려면 Windows, macOS 또는 Linux(포터블 또는 설치 프로그램)를 선택하세요.",
 			"steamConflict": "Steam과 함께 사용할 수 없습니다. MCP 지원 플레이어는 Steam을 지원하지 않습니다. 사용하려면 Steam을 끄세요."
+		},
+		"content": {
+			"title": "게임 콘텐츠",
+			"description": "데스크톱 패키지 안에 게임을 저장하는 방식입니다. 아카이브(기본값)는 모든 코드를 하나의 파일에 넣고 나머지 파일을 폴더별로 묶습니다. 플레이어가 메모리에서 바로 읽기 때문에 개별 파일보다 빠릅니다.",
+			"layoutLabel": "형식",
+			"layoutArchive": "아카이브(권장)",
+			"layoutFiles": "개별 파일",
+			"compressionLabel": "압축",
+			"compressionNone": "0 — 없음(게임에서 가장 빠름)",
+			"compressionMax": "9 — 최대(다운로드가 가장 작음)",
+			"compressionHint": "압축하면 다운로드는 작아지지만 게임에서 각 파일을 처음 읽을 때 시간이 걸립니다. 이미지, 오디오, 비디오, 글꼴은 다시 압축하지 않습니다.",
+			"maxSizeLabel": "최대 아카이브 크기(MB)",
+			"maxSizeHint": "이보다 큰 폴더는 여러 아카이브로 나뉩니다. 기본값 300 MB."
 		}
 	},
 	"generating": {

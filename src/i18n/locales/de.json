@@ -147,6 +147,19 @@
 			"warning": "Gib diese Pakete niemals an Spieler weiter: Während das Spiel läuft, kann jedes Programm, das unter deinem Benutzerkonto läuft, es über die Brücke lesen und steuern.",
 			"desktopOnly": "Wähle Windows, macOS oder Linux (portabel oder Installer), um es zu verwenden.",
 			"steamConflict": "Nicht mit Steam verfügbar: Die MCP-fähigen Player unterstützen Steam nicht. Deaktiviere Steam, um es zu verwenden."
+		},
+		"content": {
+			"title": "Spielinhalt",
+			"description": "Wie dein Spiel in den Desktop-Paketen gespeichert wird. Archive (Standard) legen den gesamten Code in eine Datei und gruppieren die übrigen Dateien nach Ordner; der Player liest sie direkt aus dem Speicher, schneller als einzelne Dateien.",
+			"layoutLabel": "Format",
+			"layoutArchive": "Archive (empfohlen)",
+			"layoutFiles": "Einzelne Dateien",
+			"compressionLabel": "Komprimierung",
+			"compressionNone": "0 — keine (am schnellsten im Spiel)",
+			"compressionMax": "9 — maximal (kleinster Download)",
+			"compressionHint": "Komprimierung verkleinert den Download, kostet aber Zeit, wenn eine Datei im Spiel zum ersten Mal gelesen wird. Bilder, Audio, Video und Schriften werden nie erneut komprimiert.",
+			"maxSizeLabel": "Größtes Archiv (MB)",
+			"maxSizeHint": "Größere Ordner werden auf mehrere Archive aufgeteilt. Standard 300 MB."
 		}
 	},
 	"generating": {

@@ -147,6 +147,19 @@
 			"warning": "Never ship these packages to players: while the game runs, any program running as your user account can read and control it through the bridge.",
 			"desktopOnly": "Select Windows, macOS or Linux (portable or installer) to use it.",
 			"steamConflict": "Not available with Steam: the MCP-enabled players have no Steam support. Turn Steam off to use it."
+		},
+		"content": {
+			"title": "Game content",
+			"description": "How your game is stored inside the desktop packages. Archives (the default) put all the code in one file and group the other files by folder; the player reads them straight from memory, which is faster than loose files.",
+			"layoutLabel": "Layout",
+			"layoutArchive": "Archives (recommended)",
+			"layoutFiles": "Loose files",
+			"compressionLabel": "Compression",
+			"compressionNone": "0 — none (fastest in game)",
+			"compressionMax": "9 — maximum (smallest download)",
+			"compressionHint": "Compression makes the download smaller but costs time the first time each file is read in game. Images, audio, video and fonts are never compressed again.",
+			"maxSizeLabel": "Largest archive (MB)",
+			"maxSizeHint": "Folders bigger than this are split into several archives. Default 300 MB."
 		}
 	},
 	"generating": {

@@ -37,6 +37,11 @@ pub struct BundleRequest<'a> {
     pub refresh: bool,
     /// `ROVES_CACHE_DIR` of the sidecar.
     pub cache_dir: &'a Path,
+    /// `files` forces loose files; `archive` (the CLI default) is not passed, so the CLI can
+    /// fall back to loose files for a player older than v0.9.1.
+    pub content_layout: &'a str,
+    pub compression_level: u8,
+    pub max_archive_size_mb: u32,
 }
 
 /// The fields of roves-cli's `--json` result that Packmaster uses.
@@ -104,6 +109,14 @@ pub fn bundle_args(request: &BundleRequest) -> Vec<OsString> {
     if request.refresh {
         args.push("--refresh".into());
     }
+    if request.content_layout == "files" {
+        args.push("--content-layout".into());
+        args.push("files".into());
+    }
+    args.push("--compression-level".into());
+    args.push(request.compression_level.to_string().into());
+    args.push("--max-archive-size".into());
+    args.push(format!("{}MB", request.max_archive_size_mb).into());
     args
 }
 
@@ -214,6 +227,9 @@ mod tests {
             extract: false,
             refresh: false,
             cache_dir: cache,
+            content_layout: "archive",
+            compression_level: 0,
+            max_archive_size_mb: 300,
         }
     }
 
@@ -228,7 +244,8 @@ mod tests {
             strings(bundle_args(&request(content, out, cache))),
             [
                 "bundle", "--json", "--progress", "json", "--platform", "windows", "--content-dir", "dist", "--name",
-                "my_game", "--out-dir", "out", "--shell-version", "v0.9.0", "--no-extract"
+                "my_game", "--out-dir", "out", "--shell-version", "v0.9.0", "--no-extract",
+                "--compression-level", "0", "--max-archive-size", "300MB"
             ]
         );
         let icon = Path::new("icon.png");
@@ -246,7 +263,25 @@ mod tests {
             "480".into(),
             "--icon-png".into(),
             "icon.png".into(),
-            "--refresh".into()
+            "--refresh".into(),
+            "--compression-level".into(),
+            "0".into(),
+            "--max-archive-size".into(),
+            "300MB".into()
+        ]));
+        let loose = BundleRequest {
+            content_layout: "files",
+            compression_level: 6,
+            max_archive_size_mb: 1000,
+            ..request(content, out, cache)
+        };
+        assert!(strings(bundle_args(&loose)).ends_with(&[
+            "--content-layout".to_string(),
+            "files".into(),
+            "--compression-level".into(),
+            "6".into(),
+            "--max-archive-size".into(),
+            "1000MB".into()
         ]));
         let mcp = BundleRequest { mcp: true, ..request(content, out, cache) };
         assert!(strings(bundle_args(&mcp)).contains(&"--enable-mcp".to_string()));

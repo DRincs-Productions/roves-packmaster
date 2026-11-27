@@ -3,8 +3,8 @@
 The desktop outputs are built from the engine's **CEF players** (engine v0.9.0 and later).
 The frontend and Rust packager read the same `src/lib/shell-version.txt` pin; the displayed
 version and downloaded release cannot drift through separate version constants. The pin is
-v0.9.0, the first CEF player release (v0.7.15 and older are Servo shells with a different
-layout).
+v0.9.1 (v0.9.0 was the first CEF player release; v0.7.15 and older are Servo shells with a
+different layout).
 
 A desktop GUI for packaging a web-built game into [Roves](https://github.com/DRincs-Productions/roves)
 distributions — portable binaries for Windows, macOS, and Linux — without needing Rust or
@@ -70,6 +70,11 @@ same as the portable/installable paths above.
   to the executable on Linux. Never ship these packages to players: any program running as
   your user account can control the game through them. It can't be combined with Steam (no
   such engine package). When off, the package contains no `mcp/` folder.
+- **Game content (Advanced)**: how the game is stored in `game/` (roves-cli `--content-layout`,
+  `--compression-level`, `--max-archive-size`). *Archives* (default) packs it into
+  `roves-content.json`, `code.pack` (all JS, CSS, HTML, JSON, WASM) and `data-<folder>.pack`
+  archives that the player memory-maps; *Loose files* copies the build. Compression 0 (default,
+  fastest in game) to 9; largest archive 300 MB by default.
 
 ## What it does
 
@@ -92,8 +97,8 @@ same as the portable/installable paths above.
      host-OS-and-tool availability check (see "Status" above).
    - **Advanced** — Steam (a toggle plus your Steam App ID — downloads the Steam player
      package and writes a `steam_appid.txt` next to the packaged executable; see "Status"
-     above) and AI interaction (the players' local MCP bridge, see "Desktop
-     packages").
+     above), AI interaction (the players' local MCP bridge, see "Desktop
+     packages") and Game content (archives or loose files, compression, archive size).
    - **Mobile (Android, experimental)** — builds a real, installable `.apk` alongside your
      desktop release, downloading a JRE and the Android SDK on first use (no NDK needed, no
      native/Rust compilation involved — the game runs on the system's own Android WebView) —

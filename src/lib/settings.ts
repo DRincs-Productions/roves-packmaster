@@ -40,6 +40,18 @@ export interface McpSettings {
   enabled: boolean;
 }
 
+/** How roves-cli stores the game in the desktop packages' `game/` folder (`roves bundle
+ * --content-layout/--compression-level/--max-archive-size`): `archive` (default) packs it into
+ * memory-mapped archives (code in one, assets grouped by top-level folder), `files` copies loose
+ * files. Level 0 (no compression) is the fastest in game. */
+export interface ContentSettings {
+  layout: "archive" | "files";
+  /** 0 (none) to 9. */
+  compressionLevel: number;
+  /** Largest asset archive in MB (1 MB = 1,000,000 bytes). */
+  maxArchiveSizeMb: number;
+}
+
 export interface PluginSettings {
   steam: SteamSettings;
   mcp: McpSettings;
@@ -129,6 +141,7 @@ export interface PackmasterSettings {
   mobile: MobileSettings;
   plugins: PluginSettings;
   icon: IconSettings;
+  content: ContentSettings;
 }
 
 // Defaults: every portable desktop player, nothing else (no installer, no mobile, no Steam,
@@ -160,6 +173,11 @@ export const defaultSettings: PackmasterSettings = {
   },
   icon: {
     path: null,
+  },
+  content: {
+    layout: "archive",
+    compressionLevel: 0,
+    maxArchiveSizeMb: 300,
   },
 };
 
@@ -216,6 +234,7 @@ export async function loadSettings(): Promise<PackmasterSettings> {
       mcp: { ...defaultSettings.plugins.mcp, ...stored.plugins?.mcp },
     },
     icon: { ...defaultSettings.icon, ...stored.icon },
+    content: { ...defaultSettings.content, ...stored.content },
   };
 }
 
